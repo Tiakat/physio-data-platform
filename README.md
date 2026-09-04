@@ -31,18 +31,17 @@ Completed:
 
 ## Projects
 
-| Project | Patients | Files | PASS | WARN | FAIL |
-|---|---:|---:|---:|---:|---:|
-| IPAMS | 39 | 160 | 148 | 11 | 1 |
-| SILVR | 23 | 63 | 41 | 22 | 0 |
-| DEXREM | 34 | 113 | 80 | 33 | 0 |
-| ESMONOL | 16 | 51 | 41 | 10 | 0 |
-| PROMISES | 61 | 317 | 230 | 87 | 0 |
-| V-RAPS | 36 | 105 | 89 | 16 | 0 |
+The platform currently supports six active research projects:
 
-The validation process identified one confirmed file-level failure:
+- PROMISES
+- IPAMS
+- DEXREM
+- V-RAPS
+- SILVR
+- ESMONOL
 
-- IPAMS patient 35: an empty NOL CSV without a header.
+Project-specific characteristics and patient counts are maintained in the project
+profiles and validation outputs rather than in this README.
 
 Warnings are recorded separately from failures. For example, a missing
 modality or device signal is not automatically treated as a corrupt file.

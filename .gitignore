@@ -1,42 +1,116 @@
+# ============================================================
 # Python
+# ============================================================
+
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.so
 
 # Virtual environments
 .venv/
 venv/
 env/
+ENV/
+env.bak/
+venv.bak/
 
-# Secrets
+# ============================================================
+# Secrets and local configuration
+# ============================================================
+
 .env
 .env.*
 !.env.example
 
-# Local data / storage
-local_store/
+# ============================================================
+# Lab data — NEVER commit research data
+# ============================================================
+
 rawdata/
 RawData/
+local_store/
 
-# Generated ingestion state
+# ============================================================
+# Generated ingestion / validation state
+# ============================================================
+
 sync_state/
 sync_reports/
 validation_reports/
-
-# Generated validation/checklist outputs
-_checklist*.log
 validation_checklist/
 
+_checklist*.log
+
+# ============================================================
 # Inventories containing lab-data metadata
+# ============================================================
+
 rawdata_main_inventory.csv
 rawdata_nested_inventory.csv
 
-# Temporary/test files
-version_test.csv
+# ============================================================
+# Temporary / test files
+# ============================================================
 
-# OS/editor
-.DS_Store
-Thumbs.db
+version_test.csv
+tempCodeRunnerFile.py
+
+# ============================================================
+# Testing and coverage
+# ============================================================
+
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+
+# ============================================================
+# Build / packaging
+# ============================================================
+
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ============================================================
+# Jupyter
+# ============================================================
+
+.ipynb_checkpoints/
+
+# ============================================================
+# Type checking / linting caches
+# ============================================================
+
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ============================================================
+# IDE / editor
+# ============================================================
+
 .vscode/
 .idea/
+.spyderproject
+.spyproject
+.ropeproject
+
+# ============================================================
+# OS
+# ============================================================
+
+.DS_Store
+Thumbs.db

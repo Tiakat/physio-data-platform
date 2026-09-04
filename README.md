@@ -1,88 +1,110 @@
-# Lab Research Data Platform
+# Physiological Research Data Platform
 
-Ingestion, validation, standardisation, preprocessing, quality control and visualisation
-of clinical recordings from six research projects.
+A private research data platform for ingesting and validating heterogeneous physiological
+recordings from multiple research projects.
 
-## The five design decisions, and why
+The repository contains source code and configuration only. Research data, credentials,
+and other sensitive material are never stored in GitHub.
 
-### 1. Not everything is a CSV. Three tiers, never a failure.
+## Current phase
 
-Every file that arrives is registered, checksummed and stored. What happens next depends
-on its tier, declared in the project profile.
+### Phase 1 — Data discovery and validation
 
-| Tier | Files | Behaviour |
-|---|---|---|
-| A, parsed | Infinity CSV, BetterCare CSV, NOL ExcelData CSV, pump CSV | Full pipeline |
-| B, kept | .med, .enc, .ara, .o_a, .m_a, .pdf, .jpeg | Registered, stored, checksummed, indexed, NOT parsed |
-| C, ignored | .DS_Store, Thumbs.db, ~$ temp files | Logged and skipped |
+Completed:
 
-A tier B file is **not** an ingestion failure. It appears in the database with
-`parse_status = 'not_supported'` so it is findable, and a parser can be added later
-without re-ingesting. This is the rule that stops one PDF from breaking a patient.
+- Connected the development environment to Azure Blob Storage.
+- Established the private GitHub repository.
+- Defined the six active research projects.
+- Restricted ingestion to project `Database/RawData` folders.
+- Identified heterogeneous file formats and device sources.
+- Implemented recursive data discovery.
+- Implemented file-level validation.
+- Implemented SHA-256 checksums.
+- Implemented duplicate detection.
+- Implemented project-specific configuration profiles.
+- Implemented device-specific parsers/validators for supported formats.
+- Tested Azure uploads with small and large files.
+- Tested resumable/retry-style ingestion behaviour.
+- Verified uploaded files against their SHA-256 checksums.
+- Distinguished validation failures from missing modality coverage.
+- Completed validation across all six active projects.
 
-### 2. Preprocess only what has a declared schema.
+## Projects
 
-Preprocessing runs when, and only when, the project profile declares a schema for that
-file type. NOL has a schema, so NOL is preprocessed. Photographs do not, so they are
-stored and indexed but never parsed. Adding BIS later means writing a parser and adding
-six lines to a profile, not changing the pipeline.
+| Project | Patients | Files | PASS | WARN | FAIL |
+|---|---:|---:|---:|---:|---:|
+| IPAMS | 39 | 160 | 148 | 11 | 1 |
+| SILVR | 23 | 63 | 41 | 22 | 0 |
+| DEXREM | 34 | 113 | 80 | 33 | 0 |
+| ESMONOL | 16 | 51 | 41 | 10 | 0 |
+| PROMISES | 61 | 317 | 230 | 87 | 0 |
+| V-RAPS | 36 | 105 | 89 | 16 | 0 |
 
-### 3. Naming chaos is absorbed by profiles, not by scripts.
+The validation process identified one confirmed file-level failure:
 
-One pipeline. One YAML per project declaring folder patterns, file patterns, column
-aliases, delimiter, date format, missing value codes and quality thresholds.
-`discover.py` scans the archive and tells you what to put in the YAML.
+- IPAMS patient 35: an empty NOL CSV without a header.
 
-### 4. Missing modalities: never silently compare. Record coverage explicitly.
+Warnings are recorded separately from failures. For example, a missing
+modality or device signal is not automatically treated as a corrupt file.
 
-The database holds a **coverage matrix**: for every patient, which modalities exist.
-Cohort queries filter on required modalities *first*, and every result carries its
-denominator.
+## Validation principles
 
-```
-Cohort: IPAMS, age > 60
-  38 patients in project
-  31 have Infinity
-  27 have BetterCare
-  24 have both          <- analysis runs on these 24, and says so
-```
+The platform currently separates three concepts:
 
-A patient missing BetterCare is not an error and is not dropped from the project. It is
-dropped from analyses that require BetterCare, and the platform states how many were
-dropped and why. Never impute a missing device.
+### Validation
 
-### 5. Patients with only NOL or only BIS are NOT excluded at validation.
+Is the file intact, readable, and structurally valid?
 
-Validation answers "is this file intact and readable". It does not answer "is this
-patient scientifically useful". Those are different questions and conflating them loses
-data permanently.
+### Coverage
 
-- Validation: per file. Passes or fails on integrity.
-- Coverage: per patient. Recorded as fact.
-- Inclusion: per analysis. Decided by the cohort filter at query time.
+Which devices and physiological modalities are actually present for a patient?
 
-A patient with only BIS stays in the database with `coverage = {bis}`. If a study needs
-Infinity, the cohort filter excludes that patient and reports it. If a later study needs
-only BIS, that patient is available. Excluding at ingestion would bake one study's
-assumptions into the platform forever.
+### Inclusion
 
-## Quick start
+Does a particular analysis require a modality that this patient does not have?
 
-```bash
-cp .env.example .env          # edit passwords
-docker compose up -d          # postgres, minio, prefect, streamlit
-python -m backbone.discover --root /data/incoming --out reports/
-```
+A missing modality is therefore not automatically an ingestion failure.
 
-Open:
-- Streamlit app: http://localhost:8501
-- Prefect:       http://localhost:4200
-- MinIO console: http://localhost:9001
+## Current supported data sources
 
-## Order of work
+The codebase currently contains parsers/validation logic for supported physiological
+recording sources including:
 
-1. `discover.py` on the whole Dropbox archive. Read the report.
-2. Write or correct one profile per project.
-3. Run the pipeline on one project. Check the QC queue.
-4. Repeat for the other five.
-5. Compare automated output against your manual results before trusting it.
+- NOL / Medasense
+- Infinity
+- BetterCare
+- Pump-related recordings
+
+Additional formats are retained for future handling rather than being forced through
+an unsupported parser.
+
+## Repository structure
+
+```text
+backbone/
+    config.py
+    discover.py
+    validate.py
+    qc.py
+    parsers/
+        _common.py
+        nol_medasense.py
+        infinity.py
+        bettercare.py
+        pump.py
+
+profiles/
+    _variables.yaml
+    promises.yaml
+    ipams.yaml
+    dexrem.yaml
+    v-raps.yaml
+    silvr.yaml
+    esmonol.yaml
+
+ingest/
+    rules.yaml
+
+tools/
+    sync_dropbox.py
+    validate_project.py

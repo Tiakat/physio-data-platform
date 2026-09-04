@@ -1,0 +1,14 @@
+# SILVR. 26 patients, 3.14 GB.
+#   RawData/<n>/ExtractedData/{Infinity, BetterCare}
+# Highest per patient BetterCare volume observed: patient 13, six files, 593 MB.
+
+extends: ipams.yaml
+
+project:
+  code: SILVR
+  name: SILVR study
+  organised_by: patient
+
+coverage:
+  expected: [infinity, bettercare]
+  primary_analysis_requires: [infinity, bettercare]

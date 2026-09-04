@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local data / storage
+local_store/
+rawdata/
+RawData/
+
+# Generated ingestion state
+sync_state/
+sync_reports/
+validation_reports/
+
+# Generated validation/checklist outputs
+_checklist*.log
+validation_checklist/
+
+# Inventories containing lab-data metadata
+rawdata_main_inventory.csv
+rawdata_nested_inventory.csv
+
+# Temporary/test files
+version_test.csv
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,76 @@
+# PROMISES. 61 patients, 45.42 GB. The awkward one.
+#
+# Two differences from every other project:
+#   1. Organised by DEVICE first, then patient:
+#        RawData/ExtractedData/The infinity/Included Patients/<patient folder>
+#        RawData/ExtractedData/bettercare/<n>/
+#   2. Patient folder names use four conventions, two languages, and contain
+#      initials:
+#        Patient 13 20240905 PLL
+#        Patient 18 11-10-2024 PLL
+#        Patient 34 2025-02-25
+#        PROMISES 51 22 juillet 2025
+#
+# The initials must be dropped at ingestion. source_label keeps the original
+# string for traceability, but the participant code never contains initials.
+
+extends: ipams.yaml
+
+project:
+  code: PROMISES
+  name: Promises invasive versus non invasive pressure
+  organised_by: device
+
+layout:
+  device_first: true
+  device_dir_map:
+    "the infinity": infinity
+    "bettercare": bettercare
+    "superposition": other
+
+  # Tried in order. First match wins. Named group 'patient' is required,
+  # 'date' is optional.
+  patient_dir_patterns:
+    - '^Patient\s+(?P<patient>\d+)\s+(?P<date>\d{8})(\s+\S+)?$'          # 20240905 PLL
+    - '^Patient\s+(?P<patient>\d+)\s+(?P<date>\d{2}-\d{2}-\d{4})(\s+\S+)?$'  # 11-10-2024
+    - '^Patient\s+(?P<patient>\d+)\s+(?P<date>\d{4}-\d{2}-\d{2})$'       # 2025-02-25
+    - '^PROMISES\s+(?P<patient>\d+)\s+(?P<date>.+)$'                     # 22 juillet 2025
+    - '^(?P<patient>\d+)$'                                               # bettercare side
+  patient_code_format: "P-{patient:0>4}"
+
+  date_formats: ["%Y%m%d", "%d-%m-%Y", "%Y-%m-%d"]
+  date_locale_months:            # French month names seen in folder names
+    janvier: 1
+    fevrier: 2
+    "février": 2
+    mars: 3
+    avril: 4
+    mai: 5
+    juin: 6
+    juillet: 7
+    aout: 8
+    "août": 8
+    septembre: 9
+    octobre: 10
+    novembre: 11
+    "décembre": 12
+    decembre: 12
+
+  # Folders that look like patients but are not. Observed in the archive.
+  exclude_dir_regex: '^(BetterCare1|bettercare_combined\d*|Superposition|Included Patients)$'
+  # Loose files sitting beside patient folders, for example IMG_9314.jpeg
+  exclude_loose_files: true
+
+  strip_initials: true           # never carry PLL, ERR, LM into the participant code
+
+coverage:
+  expected: [infinity, bettercare]
+  primary_analysis_requires: [infinity]
+
+analyses:
+  - id: gradient
+    label: Invasive to non invasive pressure gradient
+    kind: paired_difference
+    pairs:
+      - [ART_MEAN, NBP_MEAN, 10]
+    requires: [infinity]

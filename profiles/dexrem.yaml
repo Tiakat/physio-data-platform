@@ -1,0 +1,35 @@
+# DEXREM. 34 patients, 6.61 GB.
+# No extraction folder at all. Subfolders are named after drugs:
+#   RawData/<n>/{remi, propofol, NOL}
+# remi and propofol contain infusion pump exports named Perf_*.csv
+
+extends: ipams.yaml
+
+project:
+  code: DEXREM
+  name: Dexmedetomidine remifentanil study
+  organised_by: patient
+
+layout:
+  patient_dir_regex: '^(?P<patient>\d+)$'
+  patient_code_format: "P-{patient:0>4}"
+  device_dir_map:
+    remi: pump
+    propofol: pump
+    nol: nol
+  # The drug name is not a device. It is the infusion channel, and it is kept
+  # as metadata on the recording so that remi and propofol stay distinguishable.
+  dir_to_metadata:
+    remi:     {infusion_channel: remifentanil}
+    propofol: {infusion_channel: propofol}
+
+coverage:
+  expected: [nol, pump]
+  primary_analysis_requires: [nol]
+
+analyses:
+  - id: nol_vs_infusion
+    label: Nociception index against infusion rate
+    kind: single_variable
+    variable: NOL
+    requires: [nol]

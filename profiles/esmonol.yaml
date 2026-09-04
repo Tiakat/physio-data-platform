@@ -1,0 +1,22 @@
+# ESMONOL. 16 patients, 3.04 GB.
+#   RawData/<n>/ExtractedData/{NOL, Infinity, BIS}
+# Recorded in intensive care, not the operating room: Infinity filenames carry
+# CU1^^Bed13 rather than OR^^BLOC03. Location is captured into sessions.location.
+
+extends: ipams.yaml
+
+project:
+  code: ESMONOL
+  name: Esmolol study
+  organised_by: patient
+
+coverage:
+  expected: [infinity, nol, bis]
+  primary_analysis_requires: [infinity]
+
+# BIS files here are proprietary binaries (.ara, .o_a, .m_a). They are kept,
+# never parsed, and flagged so a parser can be added later without re-ingesting.
+devices:
+  bis:
+    kind: vendor_binary
+    note: "Requires a vendor export to CSV before it can be parsed."

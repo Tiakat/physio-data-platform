@@ -1,0 +1,43 @@
+# V-RAPS. 37 patients, 5.57 GB.
+# Differs from IPAMS only in folder spelling, so it inherits and overrides.
+#   RawData/<n>/Extracted data/{NOL, Infinity, Better Care}   <- note the spaces
+#   RawData/<n>/BIS                                           <- patient 1 has only this
+
+extends: ipams.yaml
+
+project:
+  code: V-RAPS
+  name: Video assisted regional anaesthesia pain study
+  organised_by: patient
+
+layout:
+  patient_dir_regex: '^(?P<patient>\d+)$'
+  patient_code_format: "P-{patient:0>4}"
+  # Folder matching is case and space insensitive, so "Extracted data",
+  # "ExtractedData" and "Better Care" all resolve without a new rule.
+
+coverage:
+  expected: [infinity, bettercare, nol]
+  # Deliberately permissive. Patient 1 has BIS only and is kept, with
+  # coverage recorded as {bis}. Inclusion is decided per analysis.
+  primary_analysis_requires: [nol]
+
+# Inherited from ipams.yaml, with one deliberate difference: the V-RAPS
+# Draeger monitor exports carry no invasive pressure columns (these patients
+# were recorded without an arterial line). What a recording must contain is
+# therefore only the vital-sign core. Absence of anything else is coverage,
+# reported as WARNING_MISSING_MODALITY, never as a corrupt file.
+devices:
+  infinity:
+    required_variables: [HR, SPO2]
+  bettercare:
+    required_variables: [HR]
+  nol:
+    required_variables: [NOL]
+
+analyses:
+  - id: nol_summary
+    label: Nociception index over the case
+    kind: single_variable
+    variable: NOL
+    requires: [nol]

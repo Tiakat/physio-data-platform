@@ -1,0 +1,189 @@
+# Master data dictionary. One entry per standard variable, shared by every project.
+# Adding a device column name here makes it work everywhere at once.
+#
+# zero_is_valid is the field that matters most. In the IPAM analysis, blanket
+# removal of zeros and blanket keeping of zeros both produced wrong answers.
+
+variables:
+
+  ART_SYS:
+    label: Radial arterial systolic pressure
+    unit: mmHg
+    min: 40
+    max: 300
+    zero_is_valid: false
+    aliases:
+      - "ART S (mm(hg)^^ISO+)"
+      - "RAD S (mm(hg)^^ISO+)"
+      - "P1 S (mm(hg)^^ISO+)"
+      - "ART M Sys"
+      - "systolic"
+      - "SysBP"
+
+  ART_DIA:
+    label: Radial arterial diastolic pressure
+    unit: mmHg
+    min: 20
+    max: 200
+    zero_is_valid: false
+    aliases:
+      - "ART D (mm(hg)^^ISO+)"
+      - "RAD D (mm(hg)^^ISO+)"
+      - "P1 D (mm(hg)^^ISO+)"
+      - "ART M Dias"
+      - "diastolic"
+      - "DiaBP"
+
+  ART_MEAN:
+    label: Radial arterial mean pressure
+    unit: mmHg
+    min: 30
+    max: 250
+    zero_is_valid: false
+    aliases:
+      - "ART M (mm(hg)^^ISO+)"
+      - "RAD M (mm(hg)^^ISO+)"
+      - "P1 M (mm(hg)^^ISO+)"
+      - "ART M"
+      - "mean_pressure"
+      - "MAP"
+
+  PA_SYS:
+    label: Brachial or pulmonary artery systolic pressure
+    unit: mmHg
+    min: 40
+    max: 300
+    zero_is_valid: false
+    aliases: ["PA S (mm(hg)^^ISO+)", "BRA S (mm(hg)^^ISO+)", "PA M Sys"]
+
+  PA_DIA:
+    label: Brachial or pulmonary artery diastolic pressure
+    unit: mmHg
+    min: 20
+    max: 200
+    zero_is_valid: false
+    aliases: ["PA D (mm(hg)^^ISO+)", "BRA D (mm(hg)^^ISO+)", "PA M Dias"]
+
+  PA_MEAN:
+    label: Brachial or pulmonary artery mean pressure
+    unit: mmHg
+    min: 30
+    max: 250
+    zero_is_valid: false
+    aliases: ["PA M (mm(hg)^^ISO+)", "BRA M (mm(hg)^^ISO+)", "PA M"]
+
+  NBP_SYS:
+    label: Non invasive systolic pressure
+    unit: mmHg
+    min: 40
+    max: 300
+    zero_is_valid: false
+    aliases: ["NBP S (mm(hg)^^ISO+)", "PNI", "NIBP Sys"]
+
+  NBP_MEAN:
+    label: Non invasive mean pressure
+    unit: mmHg
+    min: 30
+    max: 250
+    zero_is_valid: false
+    aliases: ["NBP M (mm(hg)^^ISO+)", "NIBP M"]
+
+  HR:
+    label: Heart rate
+    unit: bpm
+    min: 20
+    max: 250
+    zero_is_valid: false
+    aliases: ["HR (/min^^ISO+)", "HR", "Pulse", "heart_rate", "PLS (/min^^ISO+)"]
+
+  SPO2:
+    label: Peripheral oxygen saturation
+    unit: percent
+    min: 50
+    max: 100
+    zero_is_valid: false
+    aliases: ["SpO2 (%^^ISO+)", "SpO2", "oxygen"]
+
+  ETCO2:
+    label: End tidal carbon dioxide
+    unit: mmHg
+    min: 5
+    max: 90
+    zero_is_valid: false
+    aliases: ["etCO2 (mm(hg)^^ISO+)", "etCO2"]
+
+  TEMP:
+    label: Temperature
+    unit: celsius
+    min: 28
+    max: 42
+    zero_is_valid: false
+    aliases: ["Ta (cel^^ISO+)", "Tb (cel^^ISO+)"]
+
+  CVP:
+    label: Central venous pressure
+    unit: mmHg
+    min: -5
+    max: 40
+    zero_is_valid: true          # zero is a plausible CVP
+    aliases: ["CVP (mm(hg)^^ISO+)", "CVP M"]
+
+  BIS:
+    label: Bispectral index
+    unit: index
+    min: 0
+    max: 100
+    zero_is_valid: true          # zero means isoelectric, real and important
+    aliases: ["BIS", "bis"]
+
+  NOL:
+    label: Nociception level index
+    unit: index
+    min: 0
+    max: 100
+    zero_is_valid: true          # zero is a real NOL reading
+    aliases: ["NOL"]
+
+  PEEP:
+    label: Positive end expiratory pressure
+    unit: cmH2O
+    min: 0
+    max: 30
+    zero_is_valid: true
+    aliases: ["PEEP (mbar^^ISO+)", "PEEP"]
+
+  TV:
+    label: Tidal volume expired
+    unit: mL
+    min: 0
+    max: 1500
+    zero_is_valid: true
+    aliases: ["VTe (mL^^ISO+)", "VT"]
+
+  ET_SEVO:
+    label: End tidal sevoflurane
+    unit: percent
+    min: 0
+    max: 8
+    zero_is_valid: true
+    aliases: ["etSev (%^^ISO+)"]
+
+  ET_DES:
+    label: End tidal desflurane
+    unit: percent
+    min: 0
+    max: 20
+    zero_is_valid: true
+    aliases: ["etDes (%^^ISO+)"]
+
+  MAC:
+    label: Minimum alveolar concentration
+    unit: MAC
+    min: 0
+    max: 4
+    zero_is_valid: true
+    aliases: ["xMAC (^^ISO+)"]
+
+# Values that mean "no measurement", regardless of variable.
+# Observed in the Draeger and BetterCare exports.
+global_missing_codes: [-1401, -1500, 9885, 9999]

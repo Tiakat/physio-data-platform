@@ -1,0 +1,133 @@
+# What is allowed to leave Dropbox and enter Azure.
+#
+# This file is a whitelist.
+# Only directories explicitly included below are transferred.
+# Excluded directories are never transferred.
+# Unknown directories are reported and require human review.
+#
+# Dropbox root:
+#   C:\Users\katia\Dropbox
+#
+# Project data is under:
+#   C:\Users\katia\Dropbox\Liam\Projects actifs\
+
+
+defaults:
+
+  # Directories under <project>/Database that are transferred.
+  include_directories:
+    - "RawData"
+
+  # Project-level metadata workbooks.
+  # These are matched only directly inside Database/.
+  include_file_patterns:
+    - "Données*.xls*"
+    - "Donnees*.xls*"
+    - "*Data*.xls*"
+    - "*database*.xls*"
+
+  # Never transferred.
+  exclude_directories:
+    - "AnalyzedData"
+    - "Analyzed Data"
+    - "AnalysedData"
+    - "Analyse"
+    - "Analyses"
+    - "Documents"
+    - "Doc"
+    - "Protocole"
+    - "Protocol"
+    - "Articles"
+    - "Figures"
+    - "Scripts"
+    - "Extracted"
+    - "Processed"
+    - "Backup"
+    - "Old"
+    - "Archive"
+    - "Trash"
+
+  # Silently ignored.
+  ignore_names:
+    - ".DS_Store"
+    - "Thumbs.db"
+    - "desktop.ini"
+    - "~$*"
+    - "*.tmp"
+    - ".dropbox*"
+    - "Icon\r"
+
+  # Unknown directory policy:
+  #   flag   = report it, do not transfer
+  #   ignore = silently skip it
+  #   error  = stop synchronization
+  on_unknown_directory: flag
+
+  # Raw files without a parser are still transferred.
+  # They are reported so parsers can be added later.
+  report_unparsed_files: true
+
+  # Human-glance warning threshold.
+  # This does NOT exclude the file.
+  max_file_mb: 2048
+
+
+projects:
+
+  IPAMS:
+    dropbox_path: "Liam/Projects actifs/IPAMS/Database"
+    patient_id_format: "IPAMS_{n:0>3}"
+    expect_modalities:
+      - infinity
+      - bettercare
+      - nol
+
+  V-RAPS:
+    dropbox_path: "Liam/Projects actifs/V-RAPS/Database"
+    patient_id_format: "VRAPS_{n:0>3}"
+    expect_modalities:
+      - infinity
+      - bettercare
+      - nol
+      - bis
+
+  SILVR:
+    dropbox_path: "Liam/Projects actifs/SILVR/Database"
+    patient_id_format: "SILVR_{n:0>3}"
+    expect_modalities:
+      - infinity
+      - bettercare
+
+  DEXREM:
+    dropbox_path: "Liam/Projects actifs/DEXREM/Database"
+    patient_id_format: "DEXREM_{n:0>3}"
+    expect_modalities:
+      - nol
+      - pump
+
+    # DEXREM does not have the same RawData/<patient>/ExtractedData
+    # organization as some other projects.
+    # Patient folders can contain drug-named folders directly.
+
+  ESMONOL:
+    dropbox_path: "Liam/Projects actifs/ESMONOL Patients recrutés/Database"
+    patient_id_format: "ESMONOL_{n:0>3}"
+    expect_modalities:
+      - infinity
+      - nol
+      - bis
+
+  PROMISES:
+    dropbox_path: "Liam/Projects actifs/PROMISES/Database"
+    patient_id_format: "PROMISES_{n:0>3}"
+    expect_modalities:
+      - infinity
+      - bettercare
+
+    # PROMISES has additional processing/derived folders
+    # that must not enter the raw-data cloud area.
+    exclude_directories_extra:
+      - "Superposition"
+      - "BetterCare1"
+      - "bettercare_combined4"
+      - "infinity_brute"

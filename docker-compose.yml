@@ -1,0 +1,67 @@
+services:
+
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: labdata_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER} -d ${PG_DATABASE}"]
+      interval: 10s
+      retries: 10
+
+  # Local stand-in for Azure Blob Storage. Same API, so moving to Azure later
+  # changes only the connection settings in .env, not any code.
+  storage:
+    image: minio/minio:latest
+    container_name: labdata_storage
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_KEY}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  prefect:
+    image: prefecthq/prefect:3-latest
+    container_name: labdata_prefect
+    restart: unless-stopped
+    command: prefect server start --host 0.0.0.0
+    environment:
+      PREFECT_API_URL: http://localhost:4200/api
+    ports:
+      - "4200:4200"
+    volumes:
+      - prefectdata:/root/.prefect
+
+  app:
+    build: .
+    container_name: labdata_app
+    restart: unless-stopped
+    command: streamlit run app/Home.py --server.port 8501 --server.address 0.0.0.0
+    env_file: .env
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./:/srv
+      - ${DATA_ROOT}:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  miniodata:
+  prefectdata:

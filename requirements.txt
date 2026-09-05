@@ -25,6 +25,7 @@ pingouin>=0.5
 # Storage
 azure-storage-blob>=12.19
 minio>=7.2
+dropbox>=12.2
 
 # Utilities
 python-dotenv>=1.0

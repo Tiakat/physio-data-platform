@@ -90,6 +90,7 @@ CREATE TABLE signals (
 SELECT create_hypertable('signals', 'ts', chunk_time_interval => INTERVAL '1 day',
                          if_not_exists => TRUE);
 CREATE INDEX ON signals (recording_id, variable, ts DESC);
+CREATE UNIQUE INDEX uq_signals_recording_variable_ts ON signals (recording_id, variable, ts);
 
 CREATE TABLE validation (
     validation_id   SERIAL PRIMARY KEY,

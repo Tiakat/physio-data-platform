@@ -80,6 +80,15 @@ variables:
       - "PA M (mm(hg)^^ISO+)"
       - "BRA M (mm(hg)^^ISO+)"
       - "PA M"
+  NBP_DIA:
+    label: Non invasive diastolic pressure
+    unit: mmHg
+    min: 20
+    max: 200
+    zero_is_valid: false
+    aliases:
+      - "NBP D (mm(hg)^^ISO+)"
+      - "NIBP Dia"
 
   NBP_SYS:
     label: Non invasive systolic pressure

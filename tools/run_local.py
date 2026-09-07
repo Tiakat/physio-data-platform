@@ -1,4 +1,4 @@
-"""
+﻿"""
 Run the whole pipeline on a folder, with no database, no Docker and no cloud.
 
 This exists so the pipeline can be proved on real data on day one, before any
@@ -21,6 +21,7 @@ import json
 import re
 import sys
 import traceback
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,17 +29,14 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from backbone import qc, validate                    # noqa: E402
-from backbone.config import (                        # noqa: E402
+from backbone import qc, validate
+from backbone.config import (
     classify_file,
     device_from_dirname,
     load_profile,
-    normalise_key,
 )
-from backbone.parsers import get as get_parser       # noqa: E402
-from backbone.parsers._common import (               # noqa: E402
-    file_sequence_number,
-)
+from backbone.parsers import get as get_parser
+from backbone.parsers._common import file_sequence_number
 
 PIPELINE_VERSION = "0.1.0"
 
@@ -97,9 +95,12 @@ def find_patient(profile: dict, relative: Path):
                     "P-{patient:0>4}",
                 )
 
-                return fmt.format(
-                    patient=number
-                ), part
+                return (
+                    fmt.format(
+                        patient=number
+                    ),
+                    part,
+                )
 
     return None, None
 
@@ -157,9 +158,13 @@ def main():
 
     args = ap.parse_args()
 
-    profile = load_profile(args.project)
+    profile = load_profile(
+        args.project
+    )
 
-    root = Path(args.root)
+    root = Path(
+        args.root
+    )
 
     out = (
         Path(args.out)
@@ -200,7 +205,9 @@ def main():
         if args.limit and n > args.limit:
             break
 
-        relative = path.relative_to(root)
+        relative = path.relative_to(
+            root
+        )
 
         tier, declared_device, parser_name = (
             classify_file(
@@ -242,7 +249,9 @@ def main():
             ),
         }
 
-        digest = sha256(path)
+        digest = sha256(
+            path
+        )
 
         entry["sha256"] = digest
 
@@ -252,17 +261,23 @@ def main():
 
         if digest in seen_hashes:
 
-            entry["parse_status"] = "duplicate"
+            entry["parse_status"] = (
+                "duplicate"
+            )
 
             entry["duplicate_of"] = (
                 seen_hashes[digest]
             )
 
-            catalog.append(entry)
+            catalog.append(
+                entry
+            )
 
             continue
 
-        seen_hashes[digest] = entry["file"]
+        seen_hashes[digest] = (
+            entry["file"]
+        )
 
         # -------------------------------------------------------------
         # Tier B files
@@ -270,14 +285,18 @@ def main():
 
         if tier == "B" and not parser_name:
 
-            entry["parse_status"] = "not_supported"
+            entry["parse_status"] = (
+                "not_supported"
+            )
 
             entry["note"] = (
                 "kept and indexed, no parser "
                 "for this format"
             )
 
-            catalog.append(entry)
+            catalog.append(
+                entry
+            )
 
             continue
 
@@ -300,13 +319,17 @@ def main():
             bettercare_groups.setdefault(
                 key,
                 [],
-            ).append(path)
+            ).append(
+                path
+            )
 
             entry["parse_status"] = (
                 "deferred_group"
             )
 
-            catalog.append(entry)
+            catalog.append(
+                entry
+            )
 
             continue
 
@@ -348,7 +371,9 @@ def main():
 
         entry = {
             "file": str(
-                paths[0].relative_to(root)
+                paths[0].relative_to(
+                    root
+                )
             ).replace(
                 "\\",
                 "/",
@@ -448,6 +473,10 @@ def _parse_one(
 
     Validation is performed after parsing because several validation checks
     depend on the parsed frame and metadata.
+
+    A parser may explicitly classify an export as
+    non_physiological_or_unrecognised. Such an export is preserved in the
+    catalog but is not counted as a normal physiological recording.
     """
 
     cfg = profile.get(
@@ -502,7 +531,7 @@ def _parse_one(
         )
 
         # -------------------------------------------------------------
-        # Existing QC
+        # QC
         # -------------------------------------------------------------
 
         flags = qc.run(
@@ -513,12 +542,34 @@ def _parse_one(
         )
 
         # -------------------------------------------------------------
+        # Determine parser-level export type
+        # -------------------------------------------------------------
+
+        export_type = meta.get(
+            "export_type"
+        )
+
+        if export_type == (
+            "non_physiological_or_unrecognised"
+        ):
+
+            parse_status = (
+                "non_physiological_or_unrecognised"
+            )
+
+        else:
+
+            parse_status = "parsed"
+
+        # -------------------------------------------------------------
         # Catalog entry
         # -------------------------------------------------------------
 
         entry.update(
             {
-                "parse_status": "parsed",
+                "parse_status": parse_status,
+
+                "export_type": export_type,
 
                 "rows": meta.get(
                     "rows"
@@ -547,6 +598,45 @@ def _parse_one(
                 "source_columns": meta.get(
                     "source_columns",
                     {},
+                ),
+
+                "recognised_columns": meta.get(
+                    "recognised_columns",
+                    [],
+                ),
+
+                "unknown_columns": meta.get(
+                    "unknown_columns",
+                    [],
+                ),
+
+                "source_column_mapping": meta.get(
+                    "source_column_mapping",
+                    {},
+                ),
+
+                "source_column_count": meta.get(
+                    "source_column_count"
+                ),
+
+                "recognised_column_count": meta.get(
+                    "recognised_column_count"
+                ),
+
+                "unknown_column_count": meta.get(
+                    "unknown_column_count"
+                ),
+
+                "source_resolution_preserved": meta.get(
+                    "source_resolution_preserved"
+                ),
+
+                "downsampled": meta.get(
+                    "downsampled"
+                ),
+
+                "estimated_hz": meta.get(
+                    "estimated_hz"
                 ),
 
                 "location": meta.get(
@@ -589,8 +679,15 @@ def _parse_one(
         # -------------------------------------------------------------
         # Standardized Parquet
         # -------------------------------------------------------------
+        #
+        # Only physiological exports are written as signal Parquet.
+        # Event-only/unrecognised exports remain represented in the catalog
+        # without being mistaken for physiological signal recordings.
 
-        if not frame.empty:
+        if (
+            parse_status == "parsed"
+            and not frame.empty
+        ):
 
             key = (
                 f"{entry['patient'] or 'unknown'}"
@@ -622,7 +719,9 @@ def _parse_one(
             }
         )
 
-    catalog.append(entry)
+    catalog.append(
+        entry
+    )
 
 
 def build_summary(
@@ -631,7 +730,9 @@ def build_summary(
 ):
     """
     One row per patient: coverage, duration, QC state and validation state.
-    This is what the researcher interface reads.
+
+    Non-physiological/unrecognised exports are counted separately and do not
+    falsely contribute to physiological recording coverage.
     """
 
     expected = (
@@ -675,6 +776,7 @@ def build_summary(
                 "parsed": 0,
                 "failed": 0,
                 "not_supported": 0,
+                "non_physiological": 0,
                 "duplicates": 0,
                 "review": 0,
                 "validation_fail": 0,
@@ -697,7 +799,7 @@ def build_summary(
         )
 
         # -------------------------------------------------------------
-        # Parsed
+        # Parsed physiological recording
         # -------------------------------------------------------------
 
         if status == "parsed":
@@ -745,6 +847,18 @@ def build_summary(
                 row[
                     "validation_warning"
                 ] += 1
+
+        # -------------------------------------------------------------
+        # Non-physiological/unrecognised export
+        # -------------------------------------------------------------
+
+        elif status == (
+            "non_physiological_or_unrecognised"
+        ):
+
+            row[
+                "non_physiological"
+            ] += 1
 
         # -------------------------------------------------------------
         # Failed parser
@@ -859,8 +973,6 @@ def _report(
 ):
     """Print a compact pipeline report."""
 
-    from collections import Counter
-
     status = Counter(
         e.get(
             "parse_status"
@@ -875,7 +987,7 @@ def _report(
     for key, count in status.most_common():
 
         print(
-            f"  {str(key):<16} {count}"
+            f"  {str(key):<36} {count}"
         )
 
     if not summary.empty:
@@ -898,7 +1010,20 @@ def _report(
                 f"of {len(summary)}"
             )
 
-        if "complete_for_primary" in summary:
+        if "ready for primary" in summary.columns:
+
+            n = int(
+                summary[
+                    "ready for primary"
+                ].sum()
+            )
+
+            print(
+                f"  {'ready for primary':<20} "
+                f"{n} of {len(summary)}"
+            )
+
+        elif "complete_for_primary" in summary:
 
             n = int(
                 summary[
@@ -923,6 +1048,13 @@ def _report(
             print(
                 f"  {'validation warnings':<20} "
                 f"{int(summary['validation_warning'].sum())}"
+            )
+
+        if "non_physiological" in summary:
+
+            print(
+                f"  {'non-physiological exports':<20} "
+                f"{int(summary['non_physiological'].sum())}"
             )
 
     failed = [

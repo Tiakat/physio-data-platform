@@ -54,7 +54,10 @@ variables:
     min: 40
     max: 300
     zero_is_valid: false
-    aliases: ["PA S (mm(hg)^^ISO+)", "BRA S (mm(hg)^^ISO+)", "PA M Sys"]
+    aliases:
+      - "PA S (mm(hg)^^ISO+)"
+      - "BRA S (mm(hg)^^ISO+)"
+      - "PA M Sys"
 
   PA_DIA:
     label: Brachial or pulmonary artery diastolic pressure
@@ -62,7 +65,10 @@ variables:
     min: 20
     max: 200
     zero_is_valid: false
-    aliases: ["PA D (mm(hg)^^ISO+)", "BRA D (mm(hg)^^ISO+)", "PA M Dias"]
+    aliases:
+      - "PA D (mm(hg)^^ISO+)"
+      - "BRA D (mm(hg)^^ISO+)"
+      - "PA M Dias"
 
   PA_MEAN:
     label: Brachial or pulmonary artery mean pressure
@@ -70,7 +76,10 @@ variables:
     min: 30
     max: 250
     zero_is_valid: false
-    aliases: ["PA M (mm(hg)^^ISO+)", "BRA M (mm(hg)^^ISO+)", "PA M"]
+    aliases:
+      - "PA M (mm(hg)^^ISO+)"
+      - "BRA M (mm(hg)^^ISO+)"
+      - "PA M"
 
   NBP_SYS:
     label: Non invasive systolic pressure
@@ -78,7 +87,9 @@ variables:
     min: 40
     max: 300
     zero_is_valid: false
-    aliases: ["NBP S (mm(hg)^^ISO+)", "PNI", "NIBP Sys"]
+    aliases:
+      - "NBP S (mm(hg)^^ISO+)"
+      - "NIBP Sys"
 
   NBP_MEAN:
     label: Non invasive mean pressure
@@ -86,7 +97,9 @@ variables:
     min: 30
     max: 250
     zero_is_valid: false
-    aliases: ["NBP M (mm(hg)^^ISO+)", "NIBP M"]
+    aliases:
+      - "NBP M (mm(hg)^^ISO+)"
+      - "NIBP M"
 
   HR:
     label: Heart rate
@@ -94,7 +107,12 @@ variables:
     min: 20
     max: 250
     zero_is_valid: false
-    aliases: ["HR (/min^^ISO+)", "HR", "Pulse", "heart_rate", "PLS (/min^^ISO+)"]
+    aliases:
+      - "HR (/min^^ISO+)"
+      - "HR"
+      - "Pulse"
+      - "heart_rate"
+      - "PLS (/min^^ISO+)"
 
   SPO2:
     label: Peripheral oxygen saturation
@@ -102,7 +120,10 @@ variables:
     min: 50
     max: 100
     zero_is_valid: false
-    aliases: ["SpO2 (%^^ISO+)", "SpO2", "oxygen"]
+    aliases:
+      - "SpO2 (%^^ISO+)"
+      - "SpO2"
+      - "oxygen"
 
   ETCO2:
     label: End tidal carbon dioxide
@@ -110,7 +131,9 @@ variables:
     min: 5
     max: 90
     zero_is_valid: false
-    aliases: ["etCO2 (mm(hg)^^ISO+)", "etCO2"]
+    aliases:
+      - "etCO2 (mm(hg)^^ISO+)"
+      - "etCO2"
 
   TEMP:
     label: Temperature
@@ -118,31 +141,39 @@ variables:
     min: 28
     max: 42
     zero_is_valid: false
-    aliases: ["Ta (cel^^ISO+)", "Tb (cel^^ISO+)"]
+    aliases:
+      - "Ta (cel^^ISO+)"
+      - "Tb (cel^^ISO+)"
 
   CVP:
     label: Central venous pressure
     unit: mmHg
     min: -5
     max: 40
-    zero_is_valid: true          # zero is a plausible CVP
-    aliases: ["CVP (mm(hg)^^ISO+)", "CVP M"]
+    zero_is_valid: true
+    aliases:
+      - "CVP (mm(hg)^^ISO+)"
+      - "CVP M"
+      - "CVPM"
 
   BIS:
     label: Bispectral index
     unit: index
     min: 0
     max: 100
-    zero_is_valid: true          # zero means isoelectric, real and important
-    aliases: ["BIS", "bis"]
+    zero_is_valid: true
+    aliases:
+      - "BIS"
+      - "bis"
 
   NOL:
     label: Nociception level index
     unit: index
     min: 0
     max: 100
-    zero_is_valid: true          # zero is a real NOL reading
-    aliases: ["NOL"]
+    zero_is_valid: true
+    aliases:
+      - "NOL"
 
   PEEP:
     label: Positive end expiratory pressure
@@ -150,7 +181,9 @@ variables:
     min: 0
     max: 30
     zero_is_valid: true
-    aliases: ["PEEP (mbar^^ISO+)", "PEEP"]
+    aliases:
+      - "PEEP (mbar^^ISO+)"
+      - "PEEP"
 
   TV:
     label: Tidal volume expired
@@ -158,7 +191,9 @@ variables:
     min: 0
     max: 1500
     zero_is_valid: true
-    aliases: ["VTe (mL^^ISO+)", "VT"]
+    aliases:
+      - "VTe (mL^^ISO+)"
+      - "VT"
 
   ET_SEVO:
     label: End tidal sevoflurane
@@ -166,7 +201,8 @@ variables:
     min: 0
     max: 8
     zero_is_valid: true
-    aliases: ["etSev (%^^ISO+)"]
+    aliases:
+      - "etSev (%^^ISO+)"
 
   ET_DES:
     label: End tidal desflurane
@@ -174,7 +210,8 @@ variables:
     min: 0
     max: 20
     zero_is_valid: true
-    aliases: ["etDes (%^^ISO+)"]
+    aliases:
+      - "etDes (%^^ISO+)"
 
   MAC:
     label: Minimum alveolar concentration
@@ -182,8 +219,13 @@ variables:
     min: 0
     max: 4
     zero_is_valid: true
-    aliases: ["xMAC (^^ISO+)"]
+    aliases:
+      - "xMAC (^^ISO+)"
 
 # Values that mean "no measurement", regardless of variable.
 # Observed in the Draeger and BetterCare exports.
-global_missing_codes: [-1401, -1500, 9885, 9999]
+global_missing_codes:
+  - -1401
+  - -1500
+  - 9885
+  - 9999

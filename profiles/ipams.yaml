@@ -32,7 +32,7 @@ tiers:
     - pattern: "1.2.826.*.csv"
       device: bettercare
       parser: bettercare
-    - pattern: "*_ExcelData.csv"
+    - pattern: "*_ExcelData*.csv"
       device: nol
       parser: nol_medasense
     - pattern: "Perf_*.csv"

@@ -268,7 +268,7 @@ def main():
         # Tier B files
         # -------------------------------------------------------------
 
-        if tier == "B":
+        if tier == "B" and not parser_name:
 
             entry["parse_status"] = "not_supported"
 

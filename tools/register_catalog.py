@@ -25,7 +25,12 @@ def load_catalog(path: Path) -> list[dict]:
     return data
 
 
-def get_or_create_project(conn, project_code: str, project_name: str, profile_file: str) -> int:
+def get_or_create_project(
+    conn,
+    project_code: str,
+    project_name: str,
+    profile_file: str,
+) -> int:
     row = conn.execute(
         text("""
             SELECT project_id
@@ -64,7 +69,12 @@ def get_or_create_project(conn, project_code: str, project_name: str, profile_fi
     return row[0]
 
 
-def get_or_create_participant(conn, project_id: int, patient_code: str, source_label: str | None) -> int:
+def get_or_create_participant(
+    conn,
+    project_id: int,
+    patient_code: str,
+    source_label: str | None,
+) -> int:
     row = conn.execute(
         text("""
             SELECT participant_id
@@ -169,6 +179,12 @@ def register_recording(
     entry: dict,
 ) -> str:
 
+    # Duplicate catalog entries are provenance records, not
+    # independent database recordings. They must never overwrite
+    # the canonical recording's parse status.
+    if entry.get("parse_status") == "duplicate":
+        return "duplicate_skipped"
+
     existing = conn.execute(
         text("""
             SELECT recording_id
@@ -179,7 +195,37 @@ def register_recording(
     ).fetchone()
 
     if existing:
-        return "existing"
+        conn.execute(
+            text("""
+                UPDATE core.recordings
+                SET
+                    session_id = :session_id,
+                    device_id = :device_id,
+                    file_name = :file_name,
+                    source_path = :source_path,
+                    size_bytes = :size_bytes,
+                    tier = :tier,
+                    parse_status = :parse_status,
+                    pipeline_version = :pipeline_version
+                WHERE recording_id = :recording_id
+            """),
+            {
+                "recording_id": existing[0],
+                "session_id": session_id,
+                "device_id": device_id,
+                "file_name": entry["name"],
+                "source_path": entry["file"],
+                "size_bytes": entry.get("size_bytes"),
+                "tier": entry["tier"],
+                "parse_status": entry.get("parse_status", "pending"),
+                "pipeline_version": entry.get(
+                    "pipeline_version",
+                    PIPELINE_VERSION,
+                ),
+            },
+        )
+
+        return "updated"
 
     conn.execute(
         text("""
@@ -238,7 +284,8 @@ def register_catalog(
     catalog = load_catalog(catalog_path)
 
     inserted = 0
-    existing = 0
+    updated = 0
+    duplicate_skipped = 0
     skipped = 0
 
     with engine.begin() as conn:
@@ -296,25 +343,31 @@ def register_catalog(
                     f"{project_code} / {patient} / {device} / "
                     f"{entry['name']}"
                 )
-            else:
-                existing += 1
+
+            elif result == "updated":
+                updated += 1
                 print(
-                    f"EXISTS: "
+                    f"UPDATED: "
                     f"{project_code} / {patient} / {device} / "
-                    f"{entry['name']}"
+                    f"{entry['name']} / "
+                    f"parse_status={entry.get('parse_status', 'pending')}"
                 )
+
+            elif result == "duplicate_skipped":
+                duplicate_skipped += 1
 
     print()
     print("Registration complete.")
     print(f"Catalog entries : {len(catalog)}")
     print(f"Inserted        : {inserted}")
-    print(f"Already existed : {existing}")
+    print(f"Updated         : {updated}")
+    print(f"Duplicates     : {duplicate_skipped}")
     print(f"Skipped         : {skipped}")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Register a local catalog in PostgreSQL."
+        description="Register and synchronize a local catalog in PostgreSQL."
     )
 
     parser.add_argument(

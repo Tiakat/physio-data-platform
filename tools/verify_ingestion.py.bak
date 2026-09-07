@@ -1,0 +1,88 @@
+﻿from sqlalchemy import create_engine, text
+from app.config import settings
+
+
+def main():
+    engine = create_engine(settings.DATABASE_URL)
+
+    with engine.connect() as conn:
+        recording_count = conn.execute(
+            text("SELECT COUNT(*) FROM core.recording")
+        ).scalar()
+
+        validation_count = conn.execute(
+            text("SELECT COUNT(*) FROM core.validation")
+        ).scalar()
+
+        qc_count = conn.execute(
+            text("SELECT COUNT(*) FROM core.qc_result")
+        ).scalar()
+
+        print()
+        print("=== INGESTION VERIFICATION ===")
+        print(f"Recordings : {recording_count}")
+        print(f"Validation : {validation_count}")
+        print(f"QC results : {qc_count}")
+        print()
+
+        print("=== VALIDATION RESULTS ===")
+        rows = conn.execute(
+            text("""
+                SELECT result, COUNT(*)
+                FROM core.validation
+                GROUP BY result
+                ORDER BY result
+            """)
+        ).fetchall()
+
+        for result, count in rows:
+            print(f"{result}: {count}")
+
+        print()
+        print("=== RECORDINGS BY SOURCE ===")
+        rows = conn.execute(
+            text("""
+                SELECT source, COUNT(*)
+                FROM core.recording
+                GROUP BY source
+                ORDER BY source
+            """)
+        ).fetchall()
+
+        for source, count in rows:
+            print(f"{source}: {count}")
+
+        print()
+        print("=== RECORDINGS BY PATIENT ===")
+        rows = conn.execute(
+            text("""
+                SELECT patient_id, COUNT(*)
+                FROM core.recording
+                GROUP BY patient_id
+                ORDER BY patient_id
+            """)
+        ).fetchall()
+
+        for patient_id, count in rows:
+            print(f"{patient_id}: {count}")
+
+        print()
+        print("=== QC RESULTS BY TYPE ===")
+        rows = conn.execute(
+            text("""
+                SELECT check_name, COUNT(*)
+                FROM core.qc_result
+                GROUP BY check_name
+                ORDER BY check_name
+            """)
+        ).fetchall()
+
+        for check_name, count in rows:
+            print(f"{check_name}: {count}")
+
+        print()
+        print("Verification complete.")
+
+
+if __name__ == "__main__":
+    main()

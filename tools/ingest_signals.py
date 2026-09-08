@@ -133,10 +133,18 @@ def insert_signals(
     conn,
     recording_id: int,
     parquet_path: Path,
+    recognised_columns: list[str] | None = None,
 ) -> tuple[int, int]:
+    import io
     import pandas as pd
 
-    frame = pd.read_parquet(parquet_path)
+    if recognised_columns:
+        frame = pd.read_parquet(
+            parquet_path,
+            columns=recognised_columns,
+        )
+    else:
+        frame = pd.read_parquet(parquet_path)
 
     if not isinstance(frame.index, pd.DatetimeIndex):
         raise ValueError(
@@ -151,61 +159,89 @@ def insert_signals(
     frame = frame.copy()
     frame.index = frame.index.tz_convert("UTC")
 
-    prepared = 0
-    inserted = 0
+    prepared = int(frame.shape[0] * frame.shape[1])
 
-    rows = []
+    conn.execute(
+        text(
+            """
+            CREATE TEMP TABLE signal_stage (
+                recording_id bigint NOT NULL,
+                ts timestamptz NOT NULL,
+                variable text NOT NULL,
+                value double precision,
+                valid boolean NOT NULL
+            ) ON COMMIT DROP
+            """
+        )
+    )
 
-    for ts, row in frame.iterrows():
-        for variable, value in row.items():
-            prepared += 1
+    raw_connection = conn.connection.driver_connection
 
-            if pd.isna(value):
-                numeric_value = None
-                valid = False
-            else:
-                try:
-                    numeric_value = float(value)
+    chunk_size = 100_000
 
-                    if not pd.notna(numeric_value):
-                        numeric_value = None
-                        valid = False
-                    else:
-                        valid = True
+    with raw_connection.cursor().copy(
+        """
+        COPY signal_stage
+            (recording_id, ts, variable, value, valid)
+        FROM STDIN
+        WITH (FORMAT CSV, NULL '\\N')
+        """
+    ) as copy:
 
-                except (TypeError, ValueError):
-                    numeric_value = None
-                    valid = False
+        for start_row in range(0, len(frame), chunk_size):
+            chunk = frame.iloc[start_row:start_row + chunk_size]
 
-            rows.append(
-                {
-                    "recording_id": recording_id,
-                    "ts": ts.to_pydatetime(),
-                    "variable": str(variable),
-                    "value": numeric_value,
-                    "valid": valid,
-                }
+            long = (
+                chunk
+                .reset_index(names="ts")
+                .melt(
+                    id_vars="ts",
+                    var_name="variable",
+                    value_name="value",
+                )
             )
 
-    if rows:
-        result = conn.execute(
-            text(
-                """
-                INSERT INTO core.signals
-                    (recording_id, ts, variable, value, valid)
-                VALUES
-                    (:recording_id, :ts, :variable, :value, :valid)
-                ON CONFLICT (recording_id, variable, ts)
-                DO NOTHING
-                """
-            ),
-            rows,
-        )
+            long["value"] = pd.to_numeric(
+                long["value"],
+                errors="coerce",
+            )
 
-        inserted = result.rowcount
+            long["valid"] = long["value"].notna()
+
+            long.insert(0, "recording_id", recording_id)
+
+            buffer = io.StringIO()
+
+            long.to_csv(
+                buffer,
+                index=False,
+                header=False,
+                na_rep="\\N",
+            )
+
+            copy.write(buffer.getvalue().encode("utf-8"))
+
+    result = conn.execute(
+        text(
+            """
+            INSERT INTO core.signals
+                (recording_id, ts, variable, value, valid)
+            SELECT
+                recording_id,
+                ts,
+                variable,
+                value,
+                valid
+            FROM signal_stage
+            ON CONFLICT (recording_id, variable, ts)
+            DO NOTHING
+            """
+        )
+    )
+
+    inserted = result.rowcount
 
     return prepared, inserted
-
 
 def insert_qc_flags(
     conn,
@@ -407,6 +443,7 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
                 conn,
                 recording_id,
                 parquet_path,
+                entry.get("recognised_columns", []),
             )
 
             inserted_validation = insert_validation_checks(
@@ -458,6 +495,8 @@ def main() -> None:
     processed = 0
     failed = 0
 
+    parsed_count = 0
+
     with engine.connect() as conn:
         for entry in entries:
             if entry.get("parse_status") != "parsed":
@@ -465,6 +504,7 @@ def main() -> None:
 
             if not entry.get("parquet"):
                 continue
+
 
             patient = entry.get("patient", "?")
             device = entry.get("device", "?")

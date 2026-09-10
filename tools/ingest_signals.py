@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -337,6 +338,25 @@ def insert_qc_flags(
     return inserted
 
 
+def update_recording_status(
+    conn,
+    recording_id: int,
+    status: str,
+) -> None:
+    conn.execute(
+        text(
+            """
+            UPDATE core.recordings
+            SET status = :status
+            WHERE recording_id = :recording_id
+            """
+        ),
+        {
+            "recording_id": recording_id,
+            "status": status,
+        },
+    )
+
 def create_processing_run(conn, recording_id: int) -> int:
     row = conn.execute(
         text(
@@ -459,6 +479,11 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
             )
 
         with conn.begin():
+            update_recording_status(
+                conn,
+                recording_id,
+                "QC_PENDING",
+            )
             finish_processing_run(
                 conn,
                 run_id,
@@ -475,6 +500,11 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
 
     except Exception as exc:
         with conn.begin():
+            update_recording_status(
+                conn,
+                recording_id,
+                "FAILED",
+            )
             finish_processing_run(
                 conn,
                 run_id,
@@ -486,6 +516,10 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Ingest parsed V-RAPS signals into PostgreSQL.")
+    parser.add_argument("--recording-id", type=int, help="Process only the specified database recording ID.")
+    args = parser.parse_args()
+
     catalog_path = ROOT / "local_store" / PROJECT / "catalog.json"
 
     entries = load_catalog(catalog_path)
@@ -505,6 +539,16 @@ def main() -> None:
             if not entry.get("parquet"):
                 continue
 
+
+            if args.recording_id is not None:
+                sha256 = entry.get("sha256")
+                if not sha256:
+                    continue
+
+                db_recording_id = find_recording_id(conn, sha256)
+
+                if db_recording_id != args.recording_id:
+                    continue
 
             patient = entry.get("patient", "?")
             device = entry.get("device", "?")
@@ -542,4 +586,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

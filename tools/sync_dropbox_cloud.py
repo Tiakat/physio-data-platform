@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import dropbox
+from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
 
@@ -23,14 +24,30 @@ REPORT_DIR.mkdir(exist_ok=True)
 
 
 def get_dropbox_client():
-    token = os.getenv("DROPBOX_ACCESS_TOKEN")
+    app_key = os.getenv("DROPBOX_APP_KEY")
+    app_secret = os.getenv("DROPBOX_APP_SECRET")
+    refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
 
-    if not token:
+    if not app_key:
         raise RuntimeError(
-            "DROPBOX_ACCESS_TOKEN is missing from .env"
+            "DROPBOX_APP_KEY is missing from .env"
         )
 
-    client = dropbox.Dropbox(token)
+    if not app_secret:
+        raise RuntimeError(
+            "DROPBOX_APP_SECRET is missing from .env"
+        )
+
+    if not refresh_token:
+        raise RuntimeError(
+            "DROPBOX_REFRESH_TOKEN is missing from .env"
+        )
+
+    client = dropbox.Dropbox(
+        oauth2_refresh_token=refresh_token,
+        app_key=app_key,
+        app_secret=app_secret,
+    )
 
     account = client.users_get_current_account()
 
@@ -39,10 +56,8 @@ def get_dropbox_client():
 
     return client
 
-
 def get_azure_container():
     account = os.getenv("AZURE_STORAGE_ACCOUNT")
-    key = os.getenv("AZURE_STORAGE_KEY")
     container_name = os.getenv(
         "AZURE_CONTAINER_RAW",
         "rawdata",
@@ -50,17 +65,14 @@ def get_azure_container():
 
     if not account:
         raise RuntimeError(
-            "AZURE_STORAGE_ACCOUNT is missing from .env"
+            "AZURE_STORAGE_ACCOUNT is missing"
         )
 
-    if not key:
-        raise RuntimeError(
-            "AZURE_STORAGE_KEY is missing from .env"
-        )
+    credential = DefaultAzureCredential()
 
     blob_service = BlobServiceClient(
         account_url=f"https://{account}.blob.core.windows.net",
-        credential=key,
+        credential=credential,
     )
 
     return blob_service.get_container_client(
@@ -314,6 +326,11 @@ def upload_file(
     """Synchronize one Dropbox file to Azure.
 
     Existing blobs are never overwritten.
+
+    Dropbox content_hash is used as the first incremental
+    comparison. SHA-256 verification is performed when
+    the Dropbox content hash differs or when legacy Azure
+    metadata is incomplete.
     """
 
     relative = item["relative_path"]
@@ -337,15 +354,42 @@ def upload_file(
         properties = blob.get_blob_properties()
 
         azure_size = properties.size
+        metadata = properties.metadata or {}
 
         print(
             f"Existing Azure blob: "
             f"{azure_size} bytes"
         )
 
-        azure_sha256 = get_blob_sha256(
-            blob
+        azure_sha256 = metadata.get("sha256")
+        azure_dropbox_hash = metadata.get(
+            "dropbox_content_hash"
         )
+
+        current_dropbox_hash = item[
+            "dropbox_content_hash"
+        ]
+
+        if (
+            azure_dropbox_hash
+            and azure_dropbox_hash == current_dropbox_hash
+            and azure_size == item["size"]
+        ):
+
+            print(
+                "Azure Dropbox content hash matches."
+            )
+
+            print(
+                "STATUS: ALREADY_VERIFIED"
+            )
+
+            return {
+                "status": "ALREADY_VERIFIED",
+                "azure_path": azure_path,
+                "sha256": azure_sha256,
+                "verification": "dropbox_content_hash",
+            }
 
         if azure_sha256:
 
@@ -368,6 +412,7 @@ def upload_file(
                     "status": "ALREADY_VERIFIED",
                     "azure_path": azure_path,
                     "sha256": dropbox_sha256,
+                    "verification": "sha256",
                 }
 
             print(
@@ -431,6 +476,7 @@ def upload_file(
                     "status": "LEGACY_BLOB_VERIFIED",
                     "azure_path": azure_path,
                     "sha256": dropbox_sha256,
+                    "verification": "sha256",
                 }
 
             print(
@@ -509,8 +555,8 @@ def upload_file(
         "status": "UPLOADED_AND_VERIFIED",
         "azure_path": azure_path,
         "sha256": sha256,
+        "verification": "sha256",
     }
-
 
 def save_state(project, results):
 

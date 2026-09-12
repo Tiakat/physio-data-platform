@@ -2,10 +2,12 @@
 import hashlib
 import json
 import os
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 import dropbox
+from azure.core.pipeline.transport import RequestsTransport
 from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 from dotenv import load_dotenv
@@ -29,19 +31,13 @@ def get_dropbox_client():
     refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
 
     if not app_key:
-        raise RuntimeError(
-            "DROPBOX_APP_KEY is missing from .env"
-        )
+        raise RuntimeError("DROPBOX_APP_KEY is missing from .env")
 
     if not app_secret:
-        raise RuntimeError(
-            "DROPBOX_APP_SECRET is missing from .env"
-        )
+        raise RuntimeError("DROPBOX_APP_SECRET is missing from .env")
 
     if not refresh_token:
-        raise RuntimeError(
-            "DROPBOX_REFRESH_TOKEN is missing from .env"
-        )
+        raise RuntimeError("DROPBOX_REFRESH_TOKEN is missing from .env")
 
     client = dropbox.Dropbox(
         oauth2_refresh_token=refresh_token,
@@ -56,36 +52,31 @@ def get_dropbox_client():
 
     return client
 
+
 def get_azure_container():
     account = os.getenv("AZURE_STORAGE_ACCOUNT")
-    container_name = os.getenv(
-        "AZURE_CONTAINER_RAW",
-        "rawdata",
-    )
+    container_name = os.getenv("AZURE_CONTAINER_RAW", "rawdata")
 
     if not account:
-        raise RuntimeError(
-            "AZURE_STORAGE_ACCOUNT is missing"
-        )
+        raise RuntimeError("AZURE_STORAGE_ACCOUNT is missing")
 
     credential = DefaultAzureCredential()
+
+    transport = RequestsTransport(
+        connection_timeout=300,
+        read_timeout=300,
+    )
 
     blob_service = BlobServiceClient(
         account_url=f"https://{account}.blob.core.windows.net",
         credential=credential,
+        transport=transport,
     )
 
-    return blob_service.get_container_client(
-        container_name
-    )
+    return blob_service.get_container_client(container_name)
 
 
 def list_dropbox_files(dbx, project):
-    """List files from the project's RawData folder.
-
-    The nested RawData/RawData mirror is excluded.
-    """
-
     root = f"{DROPBOX_ROOT}/{project}/Database/RawData"
 
     print("\nScanning Dropbox:")
@@ -99,7 +90,6 @@ def list_dropbox_files(dbx, project):
     )
 
     while True:
-
         for entry in result.entries:
 
             if not isinstance(
@@ -108,10 +98,7 @@ def list_dropbox_files(dbx, project):
             ):
                 continue
 
-            relative = (
-                entry.path_display[len(root):]
-                .lstrip("/")
-            )
+            relative = entry.path_display[len(root):].lstrip("/")
 
             if relative.startswith("RawData/"):
                 continue
@@ -122,12 +109,8 @@ def list_dropbox_files(dbx, project):
                     "relative_path": relative,
                     "name": entry.name,
                     "size": entry.size,
-                    "dropbox_content_hash": (
-                        entry.content_hash
-                    ),
-                    "modified": (
-                        entry.server_modified.isoformat()
-                    ),
+                    "dropbox_content_hash": entry.content_hash,
+                    "modified": entry.server_modified.isoformat(),
                 }
             )
 
@@ -142,22 +125,22 @@ def list_dropbox_files(dbx, project):
 
 
 def stream_dropbox_file(dbx, dropbox_path):
-    """Download a Dropbox file as a streaming response."""
-
     _, response = dbx.files_download(dropbox_path)
-
     return response
 
 
 def upload_stream_and_hash(blob, response):
-    """Upload a stream to Azure while calculating SHA-256.
-
-    The Dropbox response is consumed only once.
-    """
+    """Download to temporary disk, hash, then upload."""
 
     sha256 = hashlib.sha256()
 
-    def hashed_chunks():
+    with tempfile.NamedTemporaryFile(
+        mode="wb",
+        delete=False,
+        suffix=".upload",
+    ) as temp:
+
+        temp_path = temp.name
 
         while True:
 
@@ -169,21 +152,29 @@ def upload_stream_and_hash(blob, response):
                 break
 
             sha256.update(chunk)
+            temp.write(chunk)
 
-            yield chunk
+    try:
 
-    blob.upload_blob(
-        hashed_chunks(),
-        overwrite=False,
-        max_concurrency=1,
-    )
+        with open(temp_path, "rb") as file:
+
+            blob.upload_blob(
+                file,
+                overwrite=False,
+                max_concurrency=1,
+            )
+
+    finally:
+
+        try:
+            os.remove(temp_path)
+        except OSError:
+            pass
 
     return sha256.hexdigest()
 
 
 def sha256_dropbox(dbx, dropbox_path):
-    """Calculate SHA-256 from Dropbox."""
-
     response = stream_dropbox_file(
         dbx,
         dropbox_path,
@@ -206,31 +197,23 @@ def sha256_dropbox(dbx, dropbox_path):
 
 
 def get_blob_sha256(blob):
-    """Read SHA-256 from Azure blob metadata."""
-
     properties = blob.get_blob_properties()
-
     metadata = properties.metadata or {}
-
     return metadata.get("sha256")
 
 
 def build_metadata(item, sha256, project):
-    """Build immutable provenance metadata."""
-
     return {
         "sha256": sha256,
-        "dropbox_content_hash": (
-            item["dropbox_content_hash"]
-        ),
+        "dropbox_content_hash": item["dropbox_content_hash"],
         "source": "dropbox",
         "project": project,
         "relative_path": item["relative_path"],
         "source_modified": item["modified"],
         "source_size": str(item["size"]),
-        "ingested_at": (
-            datetime.now(timezone.utc).isoformat()
-        ),
+        "ingested_at": datetime.now(
+            timezone.utc
+        ).isoformat(),
     }
 
 
@@ -256,16 +239,13 @@ def upload_version(
     item,
     original_sha256,
 ):
-    """Upload changed content as an immutable version."""
-
     version_path = make_version_path(
         project,
         item["relative_path"],
     )
 
     print(
-        f"Creating immutable version: "
-        f"{version_path}"
+        f"Creating immutable version: {version_path}"
     )
 
     version_blob = container.get_blob_client(
@@ -296,8 +276,7 @@ def upload_version(
     if version_sha256 != original_sha256:
 
         print(
-            "WARNING: source hash changed "
-            "between checks."
+            "WARNING: source hash changed between checks."
         )
 
         return {
@@ -323,18 +302,7 @@ def upload_file(
     project,
     item,
 ):
-    """Synchronize one Dropbox file to Azure.
-
-    Existing blobs are never overwritten.
-
-    Dropbox content_hash is used as the first incremental
-    comparison. SHA-256 verification is performed when
-    the Dropbox content hash differs or when legacy Azure
-    metadata is incomplete.
-    """
-
     relative = item["relative_path"]
-
     azure_path = f"{project}/{relative}"
 
     blob = container.get_blob_client(
@@ -357,8 +325,7 @@ def upload_file(
         metadata = properties.metadata or {}
 
         print(
-            f"Existing Azure blob: "
-            f"{azure_size} bytes"
+            f"Existing Azure blob: {azure_size} bytes"
         )
 
         azure_sha256 = metadata.get("sha256")
@@ -380,9 +347,7 @@ def upload_file(
                 "Azure Dropbox content hash matches."
             )
 
-            print(
-                "STATUS: ALREADY_VERIFIED"
-            )
+            print("STATUS: ALREADY_VERIFIED")
 
             return {
                 "status": "ALREADY_VERIFIED",
@@ -404,9 +369,7 @@ def upload_file(
 
             if dropbox_sha256 == azure_sha256:
 
-                print(
-                    "STATUS: ALREADY_VERIFIED"
-                )
+                print("STATUS: ALREADY_VERIFIED")
 
                 return {
                     "status": "ALREADY_VERIFIED",
@@ -415,9 +378,7 @@ def upload_file(
                     "verification": "sha256",
                 }
 
-            print(
-                "STATUS: HASH_MISMATCH"
-            )
+            print("STATUS: HASH_MISMATCH")
 
             version_result = upload_version(
                 dbx,
@@ -497,9 +458,7 @@ def upload_file(
 
             return version_result
 
-        print(
-            "STATUS: SIZE_MISMATCH"
-        )
+        print("STATUS: SIZE_MISMATCH")
 
         return {
             "status": "SIZE_MISMATCH",
@@ -558,15 +517,16 @@ def upload_file(
         "verification": "sha256",
     }
 
+
 def save_state(project, results):
 
     state_file = STATE_DIR / f"{project}.json"
 
     state = {
         "project": project,
-        "updated_at": (
-            datetime.now(timezone.utc).isoformat()
-        ),
+        "updated_at": datetime.now(
+            timezone.utc
+        ).isoformat(),
         "files": results,
     }
 
@@ -591,37 +551,29 @@ def main():
     parser.add_argument(
         "--project",
         default="V-RAPS",
-        help="Project name.",
     )
 
     parser.add_argument(
         "--limit",
         type=int,
         default=None,
-        help="Process only the first N files.",
     )
 
     parser.add_argument(
         "--only",
         default=None,
-        help=(
-            "Process only paths containing "
-            "this text."
-        ),
     )
 
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help=(
-            "Discover files and report planned "
-            "actions without downloading or uploading."
-        ),
     )
 
     args = parser.parse_args()
 
     project = args.project
+
+    dbx = get_dropbox_client()
 
     if args.dry_run:
 
@@ -630,23 +582,14 @@ def main():
             "downloaded or uploaded."
         )
 
-        dbx = get_dropbox_client()
-
-        files = list_dropbox_files(
-            dbx,
-            project,
-        )
-
     else:
-
-        dbx = get_dropbox_client()
 
         container = get_azure_container()
 
-        files = list_dropbox_files(
-            dbx,
-            project,
-        )
+    files = list_dropbox_files(
+        dbx,
+        project,
+    )
 
     print("\n" + "=" * 70)
     print("DISCOVERY")
@@ -661,13 +604,11 @@ def main():
         files = [
             item
             for item in files
-            if args.only
-            in item["relative_path"]
+            if args.only in item["relative_path"]
         ]
 
         print(
-            f"After --only filter: "
-            f"{len(files)}"
+            f"After --only filter: {len(files)}"
         )
 
     if args.limit is not None:
@@ -680,28 +621,25 @@ def main():
         files = files[:args.limit]
 
         print(
-            f"After --limit: "
-            f"{len(files)}"
+            f"After --limit: {len(files)}"
         )
 
-    if args.dry_run:
+    results = []
 
-        results = []
+    if args.dry_run:
 
         for item in files:
 
             results.append(
                 {
-                    "relative_path": (
-                        item["relative_path"]
-                    ),
+                    "relative_path": item[
+                        "relative_path"
+                    ],
                     "status": "WOULD_SYNC",
                     "size": item["size"],
-                    "dropbox_content_hash": (
-                        item[
-                            "dropbox_content_hash"
-                        ]
-                    ),
+                    "dropbox_content_hash": item[
+                        "dropbox_content_hash"
+                    ],
                     "modified": item["modified"],
                 }
             )
@@ -716,8 +654,6 @@ def main():
 
         print("\nStarting ingestion...")
 
-        results = []
-
         for item in files:
 
             try:
@@ -731,25 +667,20 @@ def main():
 
                 results.append(
                     {
-                        "relative_path": (
-                            item["relative_path"]
-                        ),
+                        "relative_path": item[
+                            "relative_path"
+                        ],
                         "status": result[
                             "status"
                         ],
                         "size": item["size"],
-                        "dropbox_content_hash": (
-                            item[
-                                "dropbox_content_hash"
-                            ]
-                        ),
-                        "modified": (
-                            item["modified"]
-                        ),
+                        "dropbox_content_hash": item[
+                            "dropbox_content_hash"
+                        ],
+                        "modified": item["modified"],
                         **{
                             key: value
-                            for key, value
-                            in result.items()
+                            for key, value in result.items()
                             if key != "status"
                         },
                     }
@@ -762,19 +693,15 @@ def main():
 
                 results.append(
                     {
-                        "relative_path": (
-                            item["relative_path"]
-                        ),
+                        "relative_path": item[
+                            "relative_path"
+                        ],
                         "status": "FAILED",
                         "size": item["size"],
-                        "dropbox_content_hash": (
-                            item[
-                                "dropbox_content_hash"
-                            ]
-                        ),
-                        "modified": (
-                            item["modified"]
-                        ),
+                        "dropbox_content_hash": item[
+                            "dropbox_content_hash"
+                        ],
+                        "modified": item["modified"],
                         "error": str(exc),
                     }
                 )

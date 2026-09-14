@@ -22,6 +22,20 @@ PIPELINE_VERSION = "0.1.0"
 STAGE = "signal_ingestion"
 
 
+def file_sha256(path: Path, chunk=1 << 20) -> str:
+    """Calculate the SHA-256 hash of a file."""
+
+    import hashlib
+
+    digest = hashlib.sha256()
+
+    with open(path, "rb") as fh:
+        while block := fh.read(chunk):
+            digest.update(block)
+
+    return digest.hexdigest()
+
+
 def load_catalog(path: Path) -> list[dict[str, Any]]:
     with path.open("r", encoding="utf-8") as f:
         data = json.load(f)
@@ -439,6 +453,20 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
     if not parquet_path.exists():
         raise FileNotFoundError(
             f"Parquet file not found: {parquet_path}"
+        )
+
+    parquet_sha256 = entry.get("parquet_sha256")
+
+    if not parquet_sha256:
+        raise ValueError("Catalog entry has no parquet_sha256")
+
+    actual_parquet_sha256 = file_sha256(parquet_path)
+
+    if actual_parquet_sha256 != parquet_sha256:
+        raise ValueError(
+            "Parquet SHA-256 mismatch: "
+            f"expected {parquet_sha256}, "
+            f"got {actual_parquet_sha256}"
         )
 
     recording_id = find_recording_id(conn, sha256)

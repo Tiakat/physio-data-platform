@@ -53,6 +53,18 @@ def sha256(path: Path, chunk=1 << 20) -> str:
     return digest.hexdigest()
 
 
+def profile_sha256(profile: dict) -> str:
+    """Calculate a deterministic SHA-256 hash of the effective profile."""
+
+    payload = json.dumps(
+        profile,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+    return hashlib.sha256(payload).hexdigest()
+
+
 def find_patient(profile: dict, relative: Path):
     """
     Resolve a patient code from the path, using whichever rule the profile
@@ -162,6 +174,7 @@ def main():
         args.project
     )
 
+    profile_hash = profile_sha256(profile)
     root = Path(
         args.root
     )
@@ -239,9 +252,11 @@ def main():
             "patient": patient,
             "source_label": source_label,
             "device": device,
+            "parser": parser_name,
             "tier": tier,
             "size_bytes": path.stat().st_size,
             "pipeline_version": PIPELINE_VERSION,
+            "profile_sha256": profile_hash,
             "ingested_at": datetime.now(
                 timezone.utc
             ).isoformat(
@@ -383,6 +398,8 @@ def main():
                 f"[{len(paths)} files]"
             ),
             "patient": patient,
+            "parser": "bettercare",
+            "profile_sha256": profile_hash,
             "device": "bettercare",
             "tier": "A",
             "size_bytes": sum(
@@ -695,14 +712,22 @@ def _parse_one(
                 f"{entry['sha256'][:8]}"
             )
 
-            frame.to_parquet(
+            parquet_path = (
                 out
                 / "parquet"
                 / f"{key}.parquet"
             )
 
+            frame.to_parquet(
+                parquet_path
+            )
+
             entry["parquet"] = (
                 f"parquet/{key}.parquet"
+            )
+
+            entry["parquet_sha256"] = (
+                sha256(parquet_path)
             )
 
     except Exception as exc:  # noqa: BLE001

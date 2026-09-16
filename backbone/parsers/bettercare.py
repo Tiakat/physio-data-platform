@@ -165,6 +165,7 @@ def _read_csv(path, sep, time_col):
                 sep=sep,
                 encoding=enc,
                 low_memory=False,
+                decimal=",",
             )
         except Exception as exc:
             last = exc

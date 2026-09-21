@@ -1,0 +1,12 @@
+Database
+Database\RawData
+Database\ExtractedData
+Database\ProcessedData
+Database\QC
+Database\QC\automatic
+Database\QC\review
+Database\AnalyzedData
+Database\Visualization
+Database\Statistics
+Database\Metadata
+Documents

@@ -1,0 +1,341 @@
+# =====================================================================
+# Controlled vocabulary of acquisition SOURCES + file-name signatures.
+#
+# Derived from the full Azure inventory (7,111 blobs, 2026-09-23).
+# Used by physio/classify.py to recognise a file from its NAME ALONE,
+# so a file that sits outside any source folder can still be classified.
+#
+# Rule order matters: first matching rule wins (most specific first).
+#   stage:  RAW        = produced by the device / acquisition software
+#           EXTRACTED  = device-software export or decoded copy of a raw file
+#           DERIVED    = produced by the lab (combined, aligned, analysed,
+#                        reports, figures)  -> never goes to RawData
+#           DOCUMENT   = photos, audio notes, scanned forms
+#           METADATA   = project-level workbooks (CRF / master database)
+#   confidence: high | medium | low
+# =====================================================================
+
+sources:
+
+  Infinity:
+    device: Draeger Infinity (Delta / Gateway) monitor export
+    folder_aliases: ["infinity", "infinity_brute", "drager", "draeger"]
+
+  BetterCare:
+    device: BetterCare (DICOM-UID named CSV exports)
+    folder_aliases: ["bettercare", "better care", "better care csv", "bettercare1", "bettercare 1"]
+
+  NOL:
+    device: Medasense PMD-200 (NOL index)
+    folder_aliases: ["nol", "medasense", "medasense_data", "pmd", "pmd-200"]
+
+  BIS:
+    device: Medtronic BIS / BIS Vista (L/S-files, DSA & BIS PDF reports)
+    folder_aliases: ["bis", "bis vista"]
+    # BIS Vista export folders: M-KQ3k-05090917 / DH05090917 / L05090917 / BIS_KQ3k_09052025091701
+    folder_patterns: ['^M-\w{4}-\d{8}$', '^DH\d{8}$', '^L\d{8}$', '^BIS_\w{4}_\d{14}$']
+
+  VitalRecorder:
+    device: VitalDB Vital Recorder (.vital + CSV export)
+    folder_aliases: ["vital", "vitalrecorder", "vital recorder"]
+
+  Pump:
+    device: Infusion pump history export (propofol / remifentanil ...)
+    folder_aliases: ["pump", "pompe", "propofol", "remi", "remifentanil", "ketamine", "dexmedetomidine"]
+
+  Oximetry:
+    device: Cerebral / tissue oximetry (TPAD .H3 files)
+    folder_aliases: ["oxymetrie", "oximetrie", "oximetry", "nirs", "invos"]
+
+  EEG:
+    device: Raw EEG exports (POEGEA)
+    folder_aliases: ["raw eeg files", "raw_eeg", "eeg"]
+
+  ForceSensor:
+    device: Laryngoscope force-sensor logs (Intubation forces study)
+    folder_aliases: ["ett force study"]
+
+  Photos:
+    device: Photographs (phone / camera)
+    folder_aliases: ["photos", "photo", "brachiale", "radiale", "brachiale g", "radiale g"]
+
+  Audio:
+    device: Audio recordings
+    folder_aliases: ["enregistrement", "enregistrements", "audio"]
+
+  NMT:
+    device: Neuromuscular (train-of-four) monitor recorded with Vital Recorder (MONREPI)
+    folder_aliases: ["tof", "nmt", "curarisation"]
+
+  Clinical:
+    device: CRF / master database / analysed patient sheets
+    folder_aliases: ["donnees quelconques", "données quelconques", "crf"]
+
+
+# ---------------------------------------------------------------------
+# File-name signatures.  Matched against the FILE NAME (case-insensitive).
+# `session` = named-group recipe used to extract the acquisition time.
+# ---------------------------------------------------------------------
+rules:
+
+  # ---------------- Infinity ----------------
+  - id: infinity_derived
+    pattern: '^\d{14}\.infinity\.data\..*_(blood_pressure\.csv|analysis\.xlsx|report\.pdf)$'
+    source: Infinity
+    stage: DERIVED
+    kind: lab_analysis
+    confidence: high
+  - id: infinity_csv
+    pattern: '^(?P<ts>\d{14})\.infinity\.data\.(?P<bed>[^.]*)(\s*\(.*\))?\.csv$'
+    source: Infinity
+    stage: RAW
+    kind: monitor_export
+    confidence: high
+    session: ts            # YYYYMMDDhhmmss
+  - id: infinity_nocsv
+    pattern: '^(?P<ts>\d{14})\.infinity\.data$'
+    source: Infinity
+    stage: RAW
+    kind: monitor_export
+    confidence: high
+    session: ts
+  - id: infinity_hl7_message
+    pattern: '^message \d+(_[enw])?\.(xml|json)$'
+    source: Infinity
+    stage: RAW
+    kind: gateway_message
+    confidence: medium
+  - id: infinity_lab_csv
+    pattern: '^infinity\.csv$'
+    source: Infinity
+    stage: DERIVED
+    kind: lab_superposition
+    confidence: high
+
+  # ---------------- BetterCare ----------------
+  - id: bettercare_dicom_csv
+    pattern: '^1\.2\.826\.0\.1\.3680043\.2\.403\.36\.(?P<uid>1(?P<yymmddhhmmss>\d{12})\d*)?\.13\.\d*\.?-\d+\.csv$'
+    source: BetterCare
+    stage: RAW
+    kind: dicom_waveform_csv
+    confidence: high
+    session: yymmddhhmmss
+  - id: bettercare_derived
+    pattern: '^(bettercare(_aligne)?\.csv|.*_combined\.csv)$'
+    source: BetterCare
+    stage: DERIVED
+    kind: lab_combined
+    confidence: high
+
+  # ---------------- NOL / Medasense PMD-200 ----------------
+  - id: nol_encrypted
+    pattern: '^(data_\d+\.pmd|data_\d+\.mat|chan\.mat|details\.mat|patient\.mat|processing\.mat|testinfo\.mat|pmd_log\.csv|key\.bin|metadata\.json|wasencrypted)(\.enc)?$'
+    source: NOL
+    stage: RAW
+    kind: pmd_encrypted_bundle
+    confidence: high
+  - id: nol_med
+    pattern: '^(?P<d>\d{4}-\d{2}-\d{2})[ _](?P<t>\d{4})(-\d+)?_PM\d+\.med$'
+    source: NOL
+    stage: RAW
+    kind: pmd_med
+    confidence: high
+    session: d_t
+  - id: nol_exceldata
+    pattern: '^(?P<d>\d{4}-\d{2}-\d{2})[ _](?P<t>\d{4})(-\d+)?_exceldata( \(\d+\))?\.csv$'
+    source: NOL
+    stage: EXTRACTED
+    kind: pmd_software_export
+    confidence: high
+    session: d_t
+  - id: nol_plotpdf
+    pattern: '^\d{4}-\d{2}-\d{2}[ _]\d{4}(-\d+)?_plotpdf( \(\d+\))?\.pdf$'
+    source: NOL
+    stage: EXTRACTED
+    kind: pmd_report
+    confidence: high
+  - id: nol_archive
+    pattern: '^\d{4}-\d{2}-\d{2}_\d{4}(-\d+)?_PM\d+\.zip$'
+    source: NOL
+    stage: RAW
+    kind: pmd_archive
+    confidence: high
+  - id: nol_screenshot
+    pattern: '^\d{4}-\d{2}-\d{2} \d{6}_screenshot\.png$'
+    source: NOL
+    stage: DOCUMENT
+    kind: device_screenshot
+    confidence: high
+
+  # ---------------- BIS ----------------
+  - id: bis_lfile
+    pattern: '^[LS](?P<mmddhhmm>\d{8})(-\d+)?\.(ara|h_a|m_a|r2a|o_a|spa|t_a|e_a|f_a)$'
+    source: BIS
+    stage: RAW
+    kind: bis_binary
+    confidence: high
+  - id: bis_report_pdf
+    pattern: '^(BIS|DSA|EEG)_\w{4}(_\d+)?_(?P<d>\d{8})_\d+-\d+\.pdf$'
+    source: BIS
+    stage: EXTRACTED
+    kind: bis_report
+    confidence: high
+  - id: bis_screencap
+    pattern: '^ScrCap_\w{4}_\d{14}\.pdf$'
+    source: BIS
+    stage: DOCUMENT
+    kind: bis_screen_capture
+    confidence: high
+  - id: bis_archive
+    pattern: '^DH\d{8}\.zip$'
+    source: BIS
+    stage: RAW
+    kind: bis_archive
+    confidence: high
+  # "SN <serial> Events Log" is found in both BIS and NOL folders -> let the folder decide
+  - id: device_events
+    pattern: '^(\w+-)?SN \d+ Events Log \d{8} \d{4}\.csv$'
+    source: null
+    stage: RAW
+    kind: device_event_log
+    confidence: medium
+
+  # ---------------- MONREPI: TOF monitor via Vital Recorder ----------------
+  # rules with `projects:` only apply inside those projects
+  - id: nmt_vital
+    projects: [MONREPI]
+    pattern: '\.vital$'
+    source: NMT
+    stage: RAW
+    kind: vital
+    confidence: high
+  - id: nmt_csv
+    projects: [MONREPI]
+    pattern: '^(patient\s*\d+.*|\d{2}-\d{2}-\d{4}( \d+)?)\.csv$'
+    source: NMT
+    stage: RAW
+    kind: vital_csv_export      # header: Time,TOF_CNT,TOF_RATIO,T1..T4_RATIO,Event
+    confidence: high
+  - id: nmt_scan
+    projects: [MONREPI]
+    pattern: '^(doc \d{1,2} \w+ \d{4}.*|patient\s*\d+.*)\.(pdf|xlsx?)$'
+    source: Clinical
+    stage: DOCUMENT
+    kind: scanned_or_crf
+    confidence: medium
+
+  # ---------------- VitalRecorder ----------------
+  - id: vital_file
+    pattern: '\.vital$'
+    source: VitalRecorder
+    stage: RAW
+    kind: vital
+    confidence: high
+
+  # ---------------- Pump ----------------
+  - id: pump_history
+    pattern: '^Perf_\d+_History\(Device\)_(?P<yymmdd>\d{6})-(?P<hhmmss>\d{6})\.csv$'
+    source: Pump
+    stage: RAW
+    kind: pump_history
+    confidence: high
+
+  # ---------------- Oximetry ----------------
+  - id: oximetry_tpad
+    pattern: '^(?P<d>\d{8})_(?P<t>\d{4})__TPAD\d+\.H\d$'
+    source: Oximetry
+    stage: RAW
+    kind: oximetry_h3
+    confidence: high
+
+  - id: oximetry_posbrain_csv
+    projects: [POSBRAIN]
+    pattern: '^posbrain [\d\s\-et]+ \d{1,2}-\d{1,2}-\d{2}.*\.csv$'
+    source: Oximetry
+    stage: RAW
+    kind: oximetry_csv
+    confidence: medium
+
+  # ---------------- Force sensor ----------------
+  - id: force_log
+    pattern: '^(direct|vl|hl)_(avec|sans)_(force|normal)\.log$'
+    source: ForceSensor
+    stage: RAW
+    kind: force_log
+    confidence: high
+
+  # ---------------- EEG (POEGEA) ----------------
+  - id: eeg_lcsv
+    pattern: '^L\d{8}(-\d+)?\.csv$'
+    source: EEG
+    stage: EXTRACTED
+    kind: eeg_csv_from_bis_lfile
+    confidence: medium
+
+  # ---------------- Photos / audio ----------------
+  - id: photo
+    pattern: '\.(jpe?g|heic|png)$'
+    source: Photos
+    stage: DOCUMENT
+    kind: photo
+    confidence: medium
+  - id: audio
+    pattern: '\.(m4a|mp3|wav)$'
+    source: Audio
+    stage: DOCUMENT
+    kind: audio
+    confidence: medium
+
+  # ---------------- Clinical / metadata ----------------
+  - id: patient_analysed
+    pattern: 'analys[eé]'
+    source: Clinical
+    stage: DERIVED
+    kind: lab_analysis
+    confidence: high
+  - id: text_report
+    pattern: '^source_files_report\.txt$'
+    source: null
+    stage: DERIVED
+    kind: lab_report
+    confidence: medium
+  - id: recap_stats
+    pattern: '_(recap|statistiques)(_\w+)?\.csv$'
+    source: null
+    stage: DERIVED
+    kind: lab_analysis
+    confidence: medium
+  - id: master_database
+    pattern: '(database|master|donn[ée]es|data_labels|liste).*\.(xlsx?|csv)$'
+    source: Clinical
+    stage: METADATA
+    kind: project_workbook
+    confidence: medium
+
+  # ---------------- Generic fall-backs (low confidence) ----------------
+  - id: generic_pdf
+    pattern: '\.pdf$'
+    source: null
+    stage: DOCUMENT
+    kind: pdf
+    confidence: low
+  - id: generic_csv
+    pattern: '\.csv$'
+    source: null
+    stage: RAW
+    kind: csv_unknown
+    confidence: low
+
+
+# Folder names that mark lab-made (derived) content wherever they appear.
+derived_folders: ["superposition", "bettercare_combined", "analyse", "analyses",
+                  "analyzeddata", "analyzed data", "analysedata", "stats", "figures"]
+
+# Folders that are NEVER research data (skip entirely).
+ignore_folders: ["documents", "documentation", "protocole", "protocol", "biblio",
+                 "presentation", "cer", "amendement", "subventions grants",
+                 "quarterly report", "randomization", "formation", "efvp",
+                 "anciennes versions", "entente"]
+
+ignore_names: [".ds_store", "thumbs.db", "desktop.ini", "version_test.csv"]
+ignore_prefixes: ["~$", "._", ".~lock"]

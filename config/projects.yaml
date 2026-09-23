@@ -1,0 +1,85 @@
+# =====================================================================
+# Every folder under Dropbox  /Liam/Projets actifs  (23 as of 2026-09-23)
+#
+#   code         canonical project code used in Azure + PostgreSQL
+#   dropbox      folder name in Dropbox (exact)
+#   status       data       -> has acquisition data, ingest it
+#                docs_only  -> regulatory / protocol documents only, skip
+#                review     -> has files that look like data, a human must
+#                              confirm the layout before upload
+#                ignore     -> not a project
+#   data_roots   folders (relative to the project folder) that contain data.
+#                Everything else in the project folder is NOT scanned.
+#   subject_patterns  regexes tried on each path segment below a data root;
+#                named group 'subject' required, 'date' optional.
+#
+# A Dropbox folder that is NOT listed here is reported as UNCONFIGURED by
+# physio.inventory_dropbox -- nothing is ever silently skipped again.
+# =====================================================================
+
+defaults:
+  subject_patterns:
+    - '^(?P<subject>\d{1,3})$'
+    - '^(?:patient|pt|sujet)[\s_]*(?P<subject>\d{1,3})(?!\d).*$'
+    - '^(?:PROMISES|VRAPS|V-RAPS|DEXREM|IPAMS|SILVR|ESMONOL|POSBRAIN|MONREPI)[\s_-]*(?P<subject>\d{1,3})(?!\d).*$'
+    - '^Patient_(?:PROMISES|Patient)_(?P<subject>\d{1,3})_.*$'
+
+projects:
+
+  # ---------------- already in Azure (Database/RawData layout) ----------------
+  DEXREM:   {dropbox: "DEXREM",   status: data, data_roots: ["Database/RawData"]}
+  ESMONOL:  {dropbox: "ESMONOL",  status: data, data_roots: ["Database/RawData"]}
+  IPAMS:    {dropbox: "IPAMS",    status: data, data_roots: ["Database/RawData"]}
+  MONREPI:  {dropbox: "MONREPI",  status: data, data_roots: ["Database/RawData"]}
+  POSBRAIN: {dropbox: "POSBRAIN", status: data, data_roots: ["Database/RawData"]}
+  PROMISES: {dropbox: "PROMISES", status: data, data_roots: ["Database/RawData"]}
+  SILVR:    {dropbox: "SILVR",    status: data, data_roots: ["Database/RawData"]}
+  V-RAPS:   {dropbox: "V-RAPS",   status: data, data_roots: ["Database/RawData"]}
+
+  # ---------------- data present, NOT yet in Azure ----------------
+  COLECTOMIE:
+    dropbox: "Colectomie en ambulatoire"
+    status: data
+    data_roots: ["Database"]              # Database/<n>/ExtractedData/{BIS,NOL,Infinity}
+    exclude_folders: ["Patient non inclus*"]
+
+  PVB-ABDO:
+    dropbox: "PVB abdo"
+    status: data
+    data_roots: ["Included patients"]     # Included patients/Patient 11 2026-06-15 AC/11/...
+    metadata_files: ["Database_PVBabdo_*.xlsx", "Liste patient_*.xlsx"]
+
+  POEGEA:
+    dropbox: "POEGEA"
+    status: review                         # files have no subject in path (L-files by date)
+    data_roots: ["Raw EEG files", "Raw L files", "Raw SPA files", "raw_EEG",
+                 "Included patients", "Database"]
+    note: "Subject must come from POEGEA-Database.xlsx (L-file date -> patient)."
+
+  INTUBATION-FORCES:
+    dropbox: "Intubation forces during laryngoscopy"
+    status: review
+    data_roots: ["database"]
+    subject_patterns:
+      - '^(?P<group>Expert|Novice) - Copy \((?P<subject>\d+)\)$'
+    note: "Operators, not patients. 'Copy (n)' naming must be confirmed."
+
+  DATA-RESEARCH:
+    dropbox: "data_research"
+    status: review
+    data_roots: ["Time Series", "Databases", "transformed_data", "Projects", "246 excluded"]
+    note: "Cross-project research store; likely derived. Confirm before upload."
+
+  # ---------------- documents only (no acquisition data today) ----------------
+  AI-VL:       {dropbox: "AI-VL",       status: docs_only}
+  CLAS:        {dropbox: "CLAS",        status: docs_only}
+  DEXBIB:      {dropbox: "DEXBIB",      status: docs_only}
+  GLIMPSE:     {dropbox: "GLIMPSE",     status: docs_only}
+  ORDAS:       {dropbox: "ORDAS",       status: docs_only}
+  PVB-VATS:    {dropbox: "PVB VATS",    status: docs_only}
+  SAFE:        {dropbox: "SAFE study",  status: docs_only}
+  SONONURSE:   {dropbox: "SonoNurse",   status: docs_only}
+  VOICE:       {dropbox: "VOICE",       status: docs_only}
+
+  # ---------------- not a project ----------------
+  SAMPLE:      {dropbox: "**Sample Folder**", status: ignore}

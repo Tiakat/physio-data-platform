@@ -73,7 +73,7 @@ devices:
     keep_variables: [ART_SYS, ART_DIA, ART_MEAN, PA_SYS, PA_DIA, PA_MEAN,
                      NBP_SYS, NBP_MEAN, HR, SPO2, ETCO2, CVP, MAC, ET_SEVO, ET_DES]
     required_variables: [ART_MEAN]
-    expected_interval_s: 1
+    expected_interval_s: 0.005
 
   bettercare:
     delimiter: ";"
@@ -87,10 +87,10 @@ devices:
       start_from_filename: true
       start_regex: '\.(1\d{15})\.'
       timezone: "America/Montreal"
-    downsample_to_hz: 1          # 199 of 200 rows are empty; keep the second that carries values
+    # Native BetterCare resolution is preserved at ~200 Hz during ingestion.
     keep_variables: [ART_SYS, ART_DIA, ART_MEAN, PA_SYS, PA_DIA, PA_MEAN, HR, SPO2, CVP]
     required_variables: [ART_MEAN]
-    expected_interval_s: 1
+    expected_interval_s: 0.005
 
   nol:
     parser_options:

@@ -117,10 +117,16 @@ def parse(path, profile, cfg):
         "OBSERVATION_DATETIME",
     )
 
-    # Read the complete source table.
+    # Infinity exports may use different delimiters.
+    with open(path, "r", encoding=encoding, errors="replace") as f:
+        header = f.readline()
+
+    candidates = [";", ",", "\t", "|"]
+    actual_delimiter = max(candidates, key=header.count)
+
     frame = pd.read_csv(
         path,
-        sep=delimiter,
+        sep=actual_delimiter,
         encoding=encoding,
         low_memory=False,
     )
@@ -153,11 +159,11 @@ def parse(path, profile, cfg):
     )
 
     # Convert source wall-clock timestamps to UTC.
+    raw_time = frame[actual_time_col].astype("string")
+    raw_time = raw_time.str.split(".", n=1).str[0]
+
     ts = to_utc(
-        frame[actual_time_col]
-        .astype(str)
-        .str.split(".")
-        .str[0],
+        raw_time,
         time_cfg.get(
             "format",
             "%Y%m%d%H%M%S",

@@ -17,7 +17,6 @@ if str(ROOT) not in sys.path:
 from db.database import engine
 
 
-PROJECT = "V-RAPS"
 PIPELINE_VERSION = "0.1.0"
 STAGE = "signal_ingestion"
 
@@ -371,7 +370,7 @@ def update_recording_status(
         },
     )
 
-def create_processing_run(conn, recording_id: int) -> int:
+def create_processing_run(conn, recording_id: int, project: str) -> int:
     row = conn.execute(
         text(
             """
@@ -404,7 +403,7 @@ def create_processing_run(conn, recording_id: int) -> int:
             "pipeline_version": PIPELINE_VERSION,
             "parameters": json.dumps(
                 {
-                    "project": PROJECT,
+                    "project": project,
                 }
             ),
         },
@@ -438,7 +437,7 @@ def finish_processing_run(
     )
 
 
-def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
+def process_entry(conn, project: str, entry: dict[str, Any]) -> tuple[int, int]:
     sha256 = entry.get("sha256")
     parquet_rel = entry.get("parquet")
 
@@ -448,7 +447,7 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
     if not parquet_rel:
         raise ValueError("Catalog entry has no parquet path")
 
-    parquet_path = ROOT / "local_store" / PROJECT / parquet_rel
+    parquet_path = ROOT / "local_store" / project / parquet_rel
 
     if not parquet_path.exists():
         raise FileNotFoundError(
@@ -479,7 +478,7 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
     validation_checks = entry.get("validation_checks", [])
     qc_flags = entry.get("qc_flags", [])
 
-    run_id = create_processing_run(conn, recording_id)
+    run_id = create_processing_run(conn, recording_id, project)
 
     # The processing run must survive even if ingestion fails.
     # Commit the running record before doing the actual work.
@@ -544,68 +543,71 @@ def process_entry(conn, entry: dict[str, Any]) -> tuple[int, int]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest parsed V-RAPS signals into PostgreSQL.")
-    parser.add_argument("--recording-id", type=int, help="Process only the specified database recording ID.")
-    args = parser.parse_args()
+    local_store = ROOT / "local_store"
 
-    catalog_path = ROOT / "local_store" / PROJECT / "catalog.json"
+    project_catalogs = sorted(
+        path for path in local_store.glob("*/catalog.json")
+        if path.is_file()
+    )
 
-    entries = load_catalog(catalog_path)
+    if not project_catalogs:
+        raise FileNotFoundError(
+            f"No project catalogs found under {local_store}"
+        )
 
     total_validation = 0
     total_qc = 0
     processed = 0
     failed = 0
 
-    parsed_count = 0
-
     with engine.connect() as conn:
-        for entry in entries:
-            if entry.get("parse_status") != "parsed":
-                continue
+        for catalog_path in project_catalogs:
+            project = catalog_path.parent.name
 
-            if not entry.get("parquet"):
-                continue
+            print()
+            print("=" * 70)
+            print(f"PROJECT: {project}")
+            print("=" * 70)
 
+            entries = load_catalog(catalog_path)
 
-            if args.recording_id is not None:
-                sha256 = entry.get("sha256")
-                if not sha256:
+            for entry in entries:
+                if entry.get("parse_status") != "parsed":
                     continue
 
-                db_recording_id = find_recording_id(conn, sha256)
-
-                if db_recording_id != args.recording_id:
+                if not entry.get("parquet"):
                     continue
 
-            patient = entry.get("patient", "?")
-            device = entry.get("device", "?")
+                patient = entry.get("patient", "?")
+                device = entry.get("device", "?")
 
-            try:
-                validation_count, qc_count = process_entry(
-                    conn,
-                    entry,
-                )
+                try:
+                    validation_count, qc_count = process_entry(
+                        conn,
+                        project,
+                        entry,
+                    )
 
-                total_validation += validation_count
-                total_qc += qc_count
-                processed += 1
+                    total_validation += validation_count
+                    total_qc += qc_count
+                    processed += 1
 
-                print(
-                    f"{patient} {device}: "
-                    f"validation inserted {validation_count}, "
-                    f"qc inserted {qc_count}"
-                )
+                    print(
+                        f"{patient} {device}: "
+                        f"validation inserted {validation_count}, "
+                        f"qc inserted {qc_count}"
+                    )
 
-            except Exception as exc:
-                failed += 1
+                except Exception as exc:
+                    failed += 1
 
-                print(
-                    f"{patient} {device}: ERROR: {exc}"
-                )
+                    print(
+                        f"{patient} {device}: ERROR: {exc}"
+                    )
 
     print()
     print("Summary")
+    print(f"  projects found:        {len(project_catalogs)}")
     print(f"  processed:             {processed}")
     print(f"  failed:                {failed}")
     print(f"  validation inserted:   {total_validation}")

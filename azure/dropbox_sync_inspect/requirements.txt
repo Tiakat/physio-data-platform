@@ -1,0 +1,4 @@
+azure-functions
+dropbox
+azure-identity
+azure-storage-blob

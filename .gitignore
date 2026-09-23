@@ -116,3 +116,21 @@ dist/
 Thumbs.dbazure/dropbox_sync/.venv312/
 
 azure/dropbox_sync/.venv312/
+
+# ============================================================
+# Phase outputs containing lab-data paths (patient folders/initials)
+# ============================================================
+azure_full_inventory.csv
+*_inventory.csv
+*_inventory.tsv
+reports/phase*/
+data/_ingestion/
+azure/dropbox_sync/sync_state/
+azure/dropbox_sync/sync_reports/
+azure/**/.venv*/
+*.zip
+
+# Backups
+*.bak
+*-backup
+*-backup*

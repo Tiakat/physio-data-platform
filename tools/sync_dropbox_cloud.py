@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import hashlib
 import json
 import os
@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-DROPBOX_ROOT = "/Liam/Projects actifs"
+DROPBOX_ROOT = "/Liam/Projets actifs"
 
 STATE_DIR = Path("sync_state")
 REPORT_DIR = Path("sync_reports")
@@ -60,7 +60,7 @@ def get_azure_container():
     if not account:
         raise RuntimeError("AZURE_STORAGE_ACCOUNT is missing")
 
-    credential = DefaultAzureCredential()
+    credential = os.getenv("AZURE_STORAGE_KEY")
 
     transport = RequestsTransport(
         connection_timeout=300,
@@ -76,7 +76,29 @@ def get_azure_container():
     return blob_service.get_container_client(container_name)
 
 
+def list_dropbox_projects(dbx):
+    """Discover all project folders directly from online Dropbox."""
+    root = DROPBOX_ROOT
+
+    result = dbx.files_list_folder(root)
+
+    projects = []
+
+    while True:
+        for entry in result.entries:
+            if isinstance(entry, dropbox.files.FolderMetadata):
+                projects.append(entry.name)
+
+        if not result.has_more:
+            break
+
+        result = dbx.files_list_folder_continue(result.cursor)
+
+    return sorted(projects)
+
+
 def list_dropbox_files(dbx, project):
+    """Recursively discover every file in a project's online RawData tree."""
     root = f"{DROPBOX_ROOT}/{project}/Database/RawData"
 
     print("\nScanning Dropbox:")
@@ -100,9 +122,6 @@ def list_dropbox_files(dbx, project):
 
             relative = entry.path_display[len(root):].lstrip("/")
 
-            if relative.startswith("RawData/"):
-                continue
-
             files.append(
                 {
                     "dropbox_path": entry.path_display,
@@ -122,7 +141,6 @@ def list_dropbox_files(dbx, project):
         )
 
     return files
-
 
 def stream_dropbox_file(dbx, dropbox_path):
     _, response = dbx.files_download(dropbox_path)
@@ -550,7 +568,8 @@ def main():
 
     parser.add_argument(
         "--project",
-        default="V-RAPS",
+        default=None,
+        help="Sync one project; omit to sync all projects",
     )
 
     parser.add_argument(
@@ -571,189 +590,206 @@ def main():
 
     args = parser.parse_args()
 
-    project = args.project
-
     dbx = get_dropbox_client()
 
-    if args.dry_run:
+    if args.project:
+        projects = [args.project]
+    else:
+        print("\nDiscovering projects in online Dropbox:")
+        print(DROPBOX_ROOT)
+        projects = list_dropbox_projects(dbx)
 
+    print("\n" + "=" * 70)
+    print("PROJECT DISCOVERY")
+    print("=" * 70)
+    print(f"Projects discovered: {len(projects)}")
+
+    for project in projects:
+        print(f"  {project}")
+
+    if args.dry_run:
         print(
             "\nDRY RUN: no files will be "
             "downloaded or uploaded."
         )
-
+        container = None
     else:
-
         container = get_azure_container()
 
-    files = list_dropbox_files(
-        dbx,
-        project,
-    )
+    for project in projects:
 
-    print("\n" + "=" * 70)
-    print("DISCOVERY")
-    print("=" * 70)
+        print("\n" + "=" * 70)
+        print(f"PROJECT: {project}")
+        print("=" * 70)
 
-    print(
-        f"Discovered files: {len(files)}"
-    )
-
-    if args.only:
-
-        files = [
-            item
-            for item in files
-            if args.only in item["relative_path"]
-        ]
-
-        print(
-            f"After --only filter: {len(files)}"
-        )
-
-    if args.limit is not None:
-
-        if args.limit < 0:
-            parser.error(
-                "--limit must be >= 0"
+        try:
+            files = list_dropbox_files(
+                dbx,
+                project,
             )
 
-        files = files[:args.limit]
-
-        print(
-            f"After --limit: {len(files)}"
-        )
-
-    results = []
-
-    if args.dry_run:
-
-        for item in files:
-
-            results.append(
-                {
-                    "relative_path": item[
-                        "relative_path"
-                    ],
-                    "status": "WOULD_SYNC",
-                    "size": item["size"],
-                    "dropbox_content_hash": item[
-                        "dropbox_content_hash"
-                    ],
-                    "modified": item["modified"],
-                }
-            )
-
+            print("\n" + "=" * 70)
+            print("DISCOVERY")
+            print("=" * 70)
             print(
-                f"WOULD_SYNC: "
-                f"{item['relative_path']} "
-                f"({item['size']} bytes)"
+                f"Project: {project}"
+            )
+            print(
+                f"Discovered files: {len(files)}"
             )
 
-    else:
+            if args.only:
+                files = [
+                    item
+                    for item in files
+                    if args.only in item["relative_path"]
+                ]
 
-        print("\nStarting ingestion...")
-
-        for item in files:
-
-            try:
-
-                result = upload_file(
-                    dbx,
-                    container,
-                    project,
-                    item,
+                print(
+                    f"After --only filter: {len(files)}"
                 )
 
-                results.append(
-                    {
-                        "relative_path": item[
-                            "relative_path"
-                        ],
-                        "status": result[
-                            "status"
-                        ],
-                        "size": item["size"],
-                        "dropbox_content_hash": item[
-                            "dropbox_content_hash"
-                        ],
-                        "modified": item["modified"],
-                        **{
-                            key: value
-                            for key, value in result.items()
-                            if key != "status"
-                        },
-                    }
+            if args.limit is not None:
+
+                if args.limit < 0:
+                    parser.error(
+                        "--limit must be >= 0"
+                    )
+
+                files = files[:args.limit]
+
+                print(
+                    f"After --limit: {len(files)}"
                 )
 
-            except Exception as exc:
+            results = []
 
-                print("STATUS: FAILED")
-                print(f"ERROR: {exc}")
+            if args.dry_run:
 
-                results.append(
-                    {
-                        "relative_path": item[
-                            "relative_path"
-                        ],
-                        "status": "FAILED",
-                        "size": item["size"],
-                        "dropbox_content_hash": item[
-                            "dropbox_content_hash"
-                        ],
-                        "modified": item["modified"],
-                        "error": str(exc),
-                    }
-                )
+                for item in files:
 
-    save_state(
-        project,
-        results,
-    )
+                    results.append(
+                        {
+                            "relative_path": item[
+                                "relative_path"
+                            ],
+                            "status": "WOULD_SYNC",
+                            "size": item["size"],
+                            "dropbox_content_hash": item[
+                                "dropbox_content_hash"
+                            ],
+                            "modified": item["modified"],
+                        }
+                    )
 
-    report_file = (
-        REPORT_DIR
-        / f"{project}_cloud_sync.json"
-    )
+                    print(
+                        f"WOULD_SYNC: "
+                        f"{item['relative_path']} "
+                        f"({item['size']} bytes)"
+                    )
 
-    report_file.write_text(
-        json.dumps(
-            results,
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
+            else:
 
-    print("\n" + "=" * 70)
+                print("\nStarting ingestion...")
 
-    if args.dry_run:
-        print("DRY RUN SUMMARY")
-    else:
-        print("INGESTION SUMMARY")
+                for item in files:
 
-    print("=" * 70)
+                    try:
 
-    counts = {}
+                        result = upload_file(
+                            dbx,
+                            container,
+                            project,
+                            item,
+                        )
 
-    for result in results:
+                        results.append(
+                            {
+                                "relative_path": item[
+                                    "relative_path"
+                                ],
+                                "status": result[
+                                    "status"
+                                ],
+                                "size": item["size"],
+                                "dropbox_content_hash": item[
+                                    "dropbox_content_hash"
+                                ],
+                                "modified": item["modified"],
+                                **{
+                                    key: value
+                                    for key, value in result.items()
+                                    if key != "status"
+                                },
+                            }
+                        )
 
-        status = result["status"]
+                    except Exception as exc:
 
-        counts[status] = (
-            counts.get(status, 0) + 1
-        )
+                        print("STATUS: FAILED")
+                        print(f"ERROR: {exc}")
 
-    for status, count in sorted(
-        counts.items()
-    ):
+                        results.append(
+                            {
+                                "relative_path": item[
+                                    "relative_path"
+                                ],
+                                "status": "FAILED",
+                                "size": item["size"],
+                                "dropbox_content_hash": item[
+                                    "dropbox_content_hash"
+                                ],
+                                "modified": item["modified"],
+                                "error": str(exc),
+                            }
+                        )
 
-        print(
-            f"{status}: {count}"
-        )
+            save_state(
+                project,
+                results,
+            )
 
-    print(
-        f"\nReport: {report_file}"
-    )
+            report_file = (
+                REPORT_DIR
+                / f"{project}_cloud_sync.json"
+            )
+
+            report_file.write_text(
+                json.dumps(
+                    results,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+
+            print("\n" + "=" * 70)
+
+            if args.dry_run:
+                print("DRY RUN SUMMARY")
+            else:
+                print("INGESTION SUMMARY")
+
+            print("=" * 70)
+
+            counts = {}
+
+            for result in results:
+                status = result["status"]
+                counts[status] = counts.get(status, 0) + 1
+
+            print(f"Project: {project}")
+            print(f"Files: {len(results)}")
+
+            for status, count in sorted(counts.items()):
+                print(f"{status}: {count}")
+
+        except Exception as exc:
+
+            print("\n" + "=" * 70)
+            print(f"PROJECT FAILED: {project}")
+            print("=" * 70)
+            print(f"ERROR: {exc}")
+
 
 
 if __name__ == "__main__":

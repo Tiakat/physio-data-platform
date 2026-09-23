@@ -9,7 +9,7 @@ $p = @(); if ($Project) { $p = @("--project", $Project) }
 python -m physio.inventory_dropbox @p
 python -m physio.inventory_azure
 python -m physio.reconcile
-Get-Content reports\phase2\reconciliation_summary.md
+Get-Content -Encoding UTF8 reports\phase2\reconciliation_summary.md
 
 if ($Upload) {
     python -m physio.sync @p
@@ -17,7 +17,7 @@ if ($Upload) {
     # refresh the picture after uploading
     python -m physio.inventory_azure
     python -m physio.reconcile
-    Get-Content reports\phase2\reconciliation_summary.md
+    Get-Content -Encoding UTF8 reports\phase2\reconciliation_summary.md
 } else {
     python -m physio.sync @p --dry-run
     Write-Host "`nDry run only. Re-run with -Upload to upload the MISSING files."

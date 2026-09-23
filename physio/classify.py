@@ -233,7 +233,12 @@ class Classifier:
         # 7) proposed canonical location (NOT applied, only proposed)
         anchor = max(subj_idx, src_idx,
                      max((i for i, f in enumerate(folders) if norm(f) in WRAPPERS), default=-1))
-        tail = folders[anchor + 1:] + [fname]
+        # keep session/device sub-folders, drop anything that only repeats
+        # subject, source or wrapper information (e.g. ".../17/DEXREM 17/...")
+        def redundant(f):
+            return (norm(f) in WRAPPERS or self.alias.get(norm(f))
+                    or any(rx.match(f.strip()) for rx in rxs))
+        tail = [f for f in folders[anchor + 1:] if not redundant(f)] + [fname]
         layer = LAYER.get(res.stage)
         if layer and project:
             res.canonical_path = "/".join(

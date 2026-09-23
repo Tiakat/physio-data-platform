@@ -9,8 +9,6 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config"
-DROPBOX_ROOT = os.getenv("DROPBOX_ROOT") or "/Liam/Projets actifs"
-DBX_BLOCK = 4 * 1024 * 1024          # Dropbox content_hash block size
 
 
 def load_env():
@@ -19,6 +17,11 @@ def load_env():
         load_dotenv(ROOT / ".env")
     except ImportError:
         pass
+
+
+load_env()
+DROPBOX_ROOT = (os.getenv("DROPBOX_ROOT") or "/Liam/Projets actifs").rstrip("/")
+DBX_BLOCK = 4 * 1024 * 1024          # Dropbox content_hash block size
 
 
 def load_projects() -> dict:

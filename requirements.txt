@@ -30,3 +30,5 @@ dropbox>=12.2
 # Utilities
 python-dotenv>=1.0
 watchdog>=4.0
+azure-identity>=1.15
+pytest>=8

@@ -1,0 +1,52 @@
+# =====================================================================
+# Lab Dropbox template (LIAM). Every study folder must look like this.
+# physio.organize moves files into it and fixes folder spelling/case.
+# =====================================================================
+root: /Liam
+top_folders: [Admin, Template de labo, Workflow, Archives, Projets actifs]
+studies_root: /Liam/Projets actifs
+# studies whose DATA files are never moved (not a study, or layout not confirmed);
+# their documents are still organised.
+data_frozen: [data_research, Intubation forces during laryngoscopy, POEGEA]
+# data_research: not a study (copies of other projects) | Intubation: Expert/Novice share numbers
+# POEGEA: "SOURCE DO NOT MODIFY" originals + working copies, L-files not linked to patients
+archives_root: /Liam/Archives            # <study>/Anciens documents
+
+study:
+  - Database/RawData                      # /<n>/Photos  /<n>/ExtractedData/<device>
+  - Database/AnalyzedData                 # /<n>
+  - Documents/Version finale approuvée/FIC
+  - Documents/Version finale approuvée/CRF
+  - Documents/Version finale approuvée/Short
+  - Documents/Version finale approuvée/Protocol
+  - Documents/Soumission ethique/Soumission initiale   # approval letter sits in Soumission ethique/
+  - Documents/Contrats legaux
+
+# classifier source -> folder under RawData/<n>/ExtractedData/
+devices:
+  BetterCare: BetterCare
+  Infinity: Infinity
+  NOL: NOL
+  BIS: BIS
+  Pump: Pump
+  NMT: TOF
+  Oximetry: Oximetry
+  Audio: Audio
+  EEG: EEG
+  VitalRecorder: VitalRecorder
+  ForceSensor: ForceSensor
+
+# ---------------- document rules (first match wins) -----------------
+# matched against the lower-cased, accent-stripped "folders/filename"
+documents:
+  old_versions: '(^|/)(anciennes? versions?|old versions?|archives?|ancien)(/|$)'
+  amendment: '(^|/)[^/]*(amendement|ammendement|amendment)[^/]*(/|$)'
+  approval_name: '(approbation|approval|acceptation|lettre d.?approbation|avis favorable|certificat d.?ethique)'
+  final_version: '(version finale|version final|doument version finale|approuves? cer|accepte cer|versions? finales?)'
+  ethics: '(^|/)[^/]*(ethique|comite|\bcer\b|\bces\b|reponse cer|corrections? cer|commentaire|depot initial|a soumettre|soumis \d|soumis \w+ version)[^/]*(/|$)'
+  contracts: '(contrat|contract|entente|convention|agreement)'
+  fic: '(\bfic\b|consentement|consent|\bicf\b|formulaire d.?information)'
+  crf: '(\bcrf\b|case report)'
+  short: '(short)'
+  protocol: '(protocol|protocole)'
+  never_touch: '(^|/)(\.rproj\.user|\.git|node_modules|__pycache__|[^/]*do not modify[^/]*|[^/]*ne pas modifier[^/]*)(/|$)'

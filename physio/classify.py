@@ -67,6 +67,8 @@ class Result:
     in_source_folder: bool = False
     loose: bool = False                       # not inside any recognised source folder
     canonical_path: str | None = None
+    tail: str | None = None                   # sub-path kept below <subject>/<source>
+    pre: str | None = None                    # meaningful folders ABOVE the subject folder
     notes: list = field(default_factory=list)
 
     def row(self) -> dict:
@@ -239,6 +241,9 @@ class Classifier:
             return (norm(f) in WRAPPERS or self.alias.get(norm(f))
                     or any(rx.match(f.strip()) for rx in rxs))
         tail = [f for f in folders[anchor + 1:] if not redundant(f)] + [fname]
+        res.tail = "/".join(tail)
+        if subj_idx > 0:
+            res.pre = "/".join(f for f in folders[:subj_idx] if not redundant(f)) or None
         layer = LAYER.get(res.stage)
         if layer and project:
             res.canonical_path = "/".join(

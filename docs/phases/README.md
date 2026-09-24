@@ -11,6 +11,7 @@
 | 7 | Standardisation + processing (Parquet, versioned pipelines) | | |
 | 8 | QC layers (ingestion, structural, signal, human review) | | |
 | 9 | Web / analysis interface | | |
+| 5b | **Dropbox organised like the lab template, automatic watcher (Azure dropped)** | ✅ code | [PHASE5](PHASE5_DROPBOX_ORGANIZER.md) |
 
 Rules: RawData is immutable · identity = content hash · nothing is deleted before
 reconciliation + hash validation · project specifics live in `config/`, not in code.

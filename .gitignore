@@ -134,3 +134,7 @@ azure/**/.venv*/
 *.bak
 *-backup
 *-backup*
+
+# Organizer reports / logs (patient paths)
+reports/organize/
+data/_organize/

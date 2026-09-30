@@ -1,0 +1,12 @@
+# ETT / BioDASh source folders -> platform project codes.
+#
+# ETT has no project concept: one target folder per sync, everything lands
+# flat under parquet_zip/. The platform owns the project mapping, so each
+# configured ETT destination folder maps to exactly one project profile.
+#
+# Add one entry per ETT target folder you sync from. The `prefix` is the
+# top-level folder name under the --source root passed to tools/ingest_ett.py.
+sources:
+  # Example: ETT drops new exams into Dropbox/Liam/Projets actifs/parquet_zip/
+  - prefix: parquet_zip
+    project: ETT_GENERAL

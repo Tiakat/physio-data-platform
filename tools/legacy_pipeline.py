@@ -273,6 +273,18 @@ def select_batch(project: dict, entries: List[dict],
 
 
 # ---------------------------------------------------------------------------
+# Dropbox download helper
+# ---------------------------------------------------------------------------
+
+def _download_file(dbx, dropbox_path: str, local_path: str) -> None:
+    """Download a Dropbox file to a local path (streamed, constant memory)."""
+    _, resp = dbx.files_download(dropbox_path)
+    with open(local_path, "wb") as fh:
+        for chunk in resp.iter_content(1 << 20):
+            fh.write(chunk)
+
+
+# ---------------------------------------------------------------------------
 # Azure helpers (encrypted)
 # ---------------------------------------------------------------------------
 
@@ -331,8 +343,6 @@ def ingest_project(dbx, project: dict, account: str,
     if not batch_a and not batch_b:
         return done
 
-    from tools.sync_dropbox_cloud import download_file
-
     with tempfile.TemporaryDirectory(prefix=f"ingest_{code}_") as tmp:
         tmpdir = Path(tmp)
 
@@ -342,7 +352,7 @@ def ingest_project(dbx, project: dict, account: str,
             for e in batch_a:
                 dest = srcdir / e["relpath"]
                 dest.parent.mkdir(parents=True, exist_ok=True)
-                download_file(dbx, project["dropbox_root"] + "/" + e["relpath"], str(dest))
+                _download_file(dbx, project["dropbox_root"] + "/" + e["relpath"], str(dest))
             _parse_and_store_parquet(code, srcdir, batch_a, account, done, tmpdir)
 
         # --- tier B / unprofiled: download, encrypt bytes, upload ------------
@@ -350,7 +360,7 @@ def ingest_project(dbx, project: dict, account: str,
             dest = tmpdir / "b" / e["relpath"]
             dest.parent.mkdir(parents=True, exist_ok=True)
             try:
-                download_file(dbx, project["dropbox_root"] + "/" + e["relpath"], str(dest))
+                _download_file(dbx, project["dropbox_root"] + "/" + e["relpath"], str(dest))
                 data = dest.read_bytes()
                 blob = f"{code}/{BYTES_DIR}/{e['relpath']}.enc"
                 azure_upload_encrypted(account, RAW_PREFIX, blob, data, _sha256_bytes(data))
@@ -445,7 +455,7 @@ def _parse_and_store_parquet(code: str, srcdir: Path, batch: List[dict],
 # ---------------------------------------------------------------------------
 
 def run_ingest(dbx, account: str, state: dict) -> dict:
-    from tools.sync_dropbox_cloud import ensure_container  # noqa
+    from tools import azure_auth
 
     budget_gb = float(os.getenv("LEGACY_BUDGET_GB", "3"))
     budget_bytes = int(budget_gb * (1024 ** 3))
@@ -458,7 +468,7 @@ def run_ingest(dbx, account: str, state: dict) -> dict:
         print("[ingest] no data projects selected", flush=True)
         return state
 
-    ensure_container(account, RAW_PREFIX)
+    azure_auth.ensure_container(azure_auth.get_blob_service_client(account), RAW_PREFIX)
 
     legacy = state.setdefault("legacy", {})
     for proj in projects:

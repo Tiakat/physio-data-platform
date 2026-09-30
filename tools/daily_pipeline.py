@@ -127,32 +127,96 @@ def mirror_ett(dbx, account: str, state: dict) -> dict:
 # B. Ingest new ETT deliveries (decrypt -> parse)
 # ---------------------------------------------------------------------------
 
-def process_ett_batch(account: str, state: dict) -> dict:
-    from tools.ingest_ett import ingest_one_delivery
+def _upload_tree_encrypted(account: str, local_root: Path, container: str,
+                         prefix: str = "") -> int:
+    """Upload every file under local_root to container, Fernet-encrypted."""
+    from tools.crypto import encrypt_bytes
+    import hashlib
+    n = 0
+    for f in sorted(local_root.rglob("*")):
+        if not f.is_file():
+            continue
+        rel = f.relative_to(local_root).as_posix()
+        blob = f"{prefix}{rel}.enc" if prefix else f"{rel}.enc"
+        data = f.read_bytes()
+        _blob(account, container, blob).upload_blob(
+            encrypt_bytes(data), overwrite=True,
+            metadata={"enc": "fernet",
+                      "sha256": hashlib.sha256(data).hexdigest()})
+        n += 1
+    return n
 
+
+def _signal_summary(out_root: Path, entry: dict) -> list:
+    """Compact per-signal stats for the feed, from the local features file."""
+    import pandas as pd
+    feat_rel = entry.get("features", "")
+    if not feat_rel:
+        return []
+    fp = out_root / feat_rel
+    if not fp.exists():
+        return []
+    df = pd.read_parquet(fp)
+    return [{
+        "signal": str(r["signal"]), "sensor": str(r["sensor"]),
+        "n": int(r["n"]), "n_null": int(r["n_null"]),
+        "duration_s": float(r["duration_s"]),
+    } for _, r in df.iterrows()]
+
+
+def process_ett_batch(account: str, state: dict) -> dict:
     raw = state.get("ett_raw", {})
     done = state.setdefault("ett_processed", {})
     exams = state.setdefault("ett_exams", {})
 
     new = [name for name in raw if name not in done]
     print(f"[ett] {len(new)} new deliveries to ingest", flush=True)
-    for name in new:
-        info = raw[name]
-        print(f"[ett] ingesting {name}", flush=True)
-        with tempfile.TemporaryDirectory(prefix="ett_") as tmp:
-            zpath = Path(tmp) / name
+    if not new:
+        return state
+
+    from tools.ingest_ett import ingest_one, load_catalog, project_for
+
+    with tempfile.TemporaryDirectory(prefix="ett_") as tmp:
+        tmpdir = Path(tmp)
+        # Recreate the Dropbox source layout so project_for maps correctly:
+        # <src>/parquet_zip/<name>  (prefix "parquet_zip" -> ETT_GENERAL)
+        src_root = tmpdir / "src"
+        incoming = src_root / "parquet_zip"
+        incoming.mkdir(parents=True)
+        out_root = tmpdir / "store"
+        catalog = load_catalog(out_root / "catalog.json")
+        quarantine_root = out_root / "quarantine"
+        source_map = {"parquet_zip": "ETT_GENERAL"}
+
+        for name in new:
+            info = raw[name]
+            print(f"[ett] ingesting {name}", flush=True)
+            zpath = incoming / name
             token = _blob(account, RAW, info["blob"]).download_blob().readall()
             zpath.write_bytes(decrypt_bytes(token))
             try:
-                result = ingest_one_delivery(zpath, account, PROCESSED)
-            except Exception as exc:
+                project = project_for(zpath, src_root, source_map, None)
+                entry = ingest_one(zpath, project=project, out_root=out_root,
+                                   catalog=catalog, quarantine_root=quarantine_root)
+            except Exception as exc:  # noqa: BLE001 -- keep pipeline alive
                 print(f"[ett] FAILED {name}: {exc}", flush=True)
                 done[name] = {"status": "failed", "error": str(exc)[:500]}
                 continue
-        for exam in result.get("exams", []):
-            exams[exam["exam_id"]] = exam
-        done[name] = {"status": "ok", "exams": [e["exam_id"] for e in result.get("exams", [])]}
-        print(f"[ett] done {name}: {len(result.get('exams', []))} exams", flush=True)
+
+            if entry.get("status") == "ingested":
+                entry["signal_summary"] = _signal_summary(out_root, entry)
+                n_up = _upload_tree_encrypted(account, out_root / "processed",
+                                              PROCESSED)
+                print(f"[ett] uploaded {n_up} processed blobs (encrypted)",
+                      flush=True)
+            elif entry.get("status") == "quarantined":
+                _upload_tree_encrypted(account, quarantine_root, PROCESSED,
+                                       prefix="_quarantine/")
+
+            exams[entry.get("exam_guid", name)] = entry
+            done[name] = {"status": entry.get("status"),
+                          "exam_guid": entry.get("exam_guid")}
+            print(f"[ett] {name}: {entry.get('status')}", flush=True)
     return state
 
 
@@ -161,23 +225,52 @@ def process_ett_batch(account: str, state: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def build_ett_feed(state: dict) -> dict:
-    from tools.build_feed import summarize_exam
+    from tools.build_feed import _suppress
     exams = state.get("ett_exams", {})
-    cards = [summarize_exam(e) for e in exams.values()]
     by_project: dict[str, list] = {}
-    for c in cards:
-        by_project.setdefault(c["project"], []).append(c)
+    for e in exams.values():
+        if e.get("status") != "ingested":
+            continue
+        by_project.setdefault(e["project"], []).append(e)
     projects = []
     for proj, items in sorted(by_project.items()):
-        subjects = {i["exam_id"] for i in items}
+        sig_agg: dict[str, dict] = {}
+        for e in items:
+            for s in e.get("signal_summary", []):
+                a = sig_agg.setdefault(s["signal"],
+                                       {"n_exams": 0, "total_hours": 0.0,
+                                        "n": 0, "n_null": 0})
+                a["n_exams"] += 1
+                a["total_hours"] += s["duration_s"] / 3600
+                a["n"] += s["n"]
+                a["n_null"] += s["n_null"]
+        signals = {}
+        for sig, a in sorted(sig_agg.items()):
+            if _suppress(a["n_exams"]) is None:
+                continue
+            signals[sig] = {
+                "n_exams": a["n_exams"],
+                "total_hours": round(a["total_hours"], 1),
+                "null_fraction": round(a["n_null"] / a["n"], 4) if a["n"] else 0.0,
+            }
+        verdicts: dict[str, int] = {}
+        for e in items:
+            v = e.get("validation_verdict", "UNKNOWN")
+            verdicts[v] = verdicts.get(v, 0) + 1
+        n = len(items)
         projects.append({
             "code": proj, "kind": "ett",
-            "n_exams": len(items), "n_subjects": len(subjects),
-            "signals": sorted({s for i in items for s in i.get("signals", [])}),
-            "exams": items,
+            "n_exams": _suppress(n),
+            "suppressed": _suppress(n) is None,
+            "total_rows": _suppress(sum(e.get("rows", 0) for e in items)),
+            "validation_verdicts": {k: _suppress(v)
+                                    for k, v in verdicts.items()},
+            "signals": signals,
         })
     return {"generated_at": datetime.now(timezone.utc).isoformat(),
             "projects": projects}
+
+
 
 
 def publish_feed(account: str, feed: dict) -> None:

@@ -21,10 +21,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Run daily pipeline
         env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
-          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+            AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+            DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+            DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+            DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
         run: python -m tools.daily_pipeline

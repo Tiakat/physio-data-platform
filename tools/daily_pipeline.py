@@ -1,205 +1,210 @@
-"""Daily pipeline: Dropbox ETT deliveries -> Azure raw -> ingest/QC -> processed -> website feed.
-
-One command runs the whole chain end to end, on a schedule, with no human
-in the loop:
-
-    python -m tools.daily_pipeline
-
-Designed to run INSIDE Azure as a Container Apps Job (cron trigger) with a
-system-assigned managed identity holding "Storage Blob Data Contributor" on
-the storage account. No SAS, no keys. It also runs on a workstation after
-``az login``.
+"""Daily pipeline: Dropbox -> Azure (ENCRYPTED) -> feed.
 
 Stages:
-  A. Mirror new ``*.parquet.zip`` deliveries from Dropbox
-     ``<ETt_DROPBOX_ROOT>/<ETT_PREFIX>/`` into the immutable ``rawdata``
-     container: ``ett/incoming/<filename>`` (byte-identical, sha256 metadata).
-  B. Ingest every mirrored delivery not yet processed via tools/ingest_ett.py
-     into a local store, then upload the processed tree
-     (``processed/<project>/<exam_guid>/...``) and quarantine records.
-  C. Rebuild the de-identified website feed via tools/build_feed.py and
-     publish ``reports/feed/feed.json`` (+ per-project) to the ``reports``
-     container, which is what ``PHYSIO_FEED_URL`` on the website points at.
+  A. Mirror ETT deliveries: Dropbox -> rawdata/ett/incoming/*.parquet.zip.enc
+     (encrypted; Dropbox remains the source until direct ETT->Azure lands).
+  B. Ingest new ETT deliveries: decrypt -> parse -> processed/<EXAM>/...
+  C. Legacy ingest (ALL data projects): Dropbox signal files ->
+     encrypted parquet in rawdata/<CODE>/ (tools/legacy_pipeline.py).
+  D. Build the de-identified website feed -> reports/feed/ (plaintext).
 
-Idempotency: pipeline state lives in ``processed/_pipeline/state.json`` and
-ingest_ett.py keeps its own catalog; re-running only processes new deliveries.
+Everything in rawdata/ and processed/ is Fernet-encrypted (PIPELINE_DATA_KEY).
+Only reports/ (de-identified aggregates) stays plaintext for the website.
 
-Env:
-  DROPBOX_APP_KEY / DROPBOX_APP_SECRET / DROPBOX_REFRESH_TOKEN
-  AZURE_STORAGE_ACCOUNT            (default: labdataplatform)
-  ETT_DROPBOX_ROOT                 (default: /Liam/Projets actifs)
-  ETT_PREFIX                       (default: parquet_zip)
-  ETT_PROJECT                      (optional: force project code)
+State lives at processed/_pipeline/state.json.enc (encrypted).
 """
+
 from __future__ import annotations
 
-import argparse
-import hashlib
+import io
 import json
 import os
-import subprocess
 import sys
 import tempfile
+import zipfile
+from datetime import datetime, timezone
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT))
-
-from azure.storage.blob import ContentSettings
 
 import dropbox
 
-from tools.azure_auth import ensure_container, get_blob_service_client  # noqa: E402
-from tools.sync_dropbox_cloud import get_dropbox_client  # noqa: E402
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
 
-RAW_CONTAINER = "rawdata"
-PROCESSED_CONTAINER = "processed"
-REPORTS_CONTAINER = "reports"
-STATE_BLOB = "_pipeline/state.json"
-INCOMING_PREFIX = "ett/incoming/"
+from tools import azure_auth, sync_dropbox_cloud  # noqa: E402
+from tools.crypto import decrypt_bytes, encrypt_bytes  # noqa: E402
 
-
-def log(msg: str) -> None:
-    print(f"[daily-pipeline] {msg}", flush=True)
-
-
-def sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(4 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
+ACCOUNT = os.getenv("AZURE_STORAGE_ACCOUNT", "labdataplatform")
+RAW = "rawdata"
+PROCESSED = "processed"
+REPORTS = "reports"
+ETT_PREFIX = "ett/incoming/"
+STATE_BLOB = "processed/_pipeline/state.json.enc"
+STATE_BLOB_LEGACY_PLAINTEXT = "processed/_pipeline/state.json"  # one-time migration
 
 
-def upload_dir(container, local_dir: Path, prefix: str) -> int:
-    """Upload every file under local_dir to <prefix>/<relative path>."""
-    n = 0
-    for path in sorted(local_dir.rglob("*")):
-        if not path.is_file():
+# ---------------------------------------------------------------------------
+# State (encrypted)
+# ---------------------------------------------------------------------------
+
+def _blob(account: str, container: str, blob: str):
+    return azure_auth.get_blob_service_client(account).get_blob_client(
+        container=container, blob=blob)
+
+
+def load_state(account: str) -> dict:
+    for name in (STATE_BLOB, STATE_BLOB_LEGACY_PLAINTEXT):
+        try:
+            data = _blob(account, PROCESSED, name).download_blob().readall()
+            if name.endswith(".enc"):
+                data = decrypt_bytes(data)
+            return json.loads(data.decode("utf-8"))
+        except Exception:
             continue
-        rel = path.relative_to(local_dir).as_posix()
-        blob = container.get_blob_client(f"{prefix}{rel}")
-        ctype = "application/json" if path.suffix == ".json" else "application/octet-stream"
-        with open(path, "rb") as fh:
-            blob.upload_blob(fh, overwrite=True,
-                             content_settings=ContentSettings(content_type=ctype))
-        n += 1
-    return n
+    return {"ett_raw": {}, "ett_processed": {}, "ett_exams": {}, "legacy": {}}
 
 
-def load_state(container) -> dict:
+def save_state(account: str, state: dict) -> None:
+    token = encrypt_bytes(json.dumps(state, indent=1).encode("utf-8"))
+    _blob(account, PROCESSED, STATE_BLOB).upload_blob(
+        token, overwrite=True, metadata={"enc": "fernet"})
+
+
+# ---------------------------------------------------------------------------
+# A. Mirror ETT deliveries (encrypted)
+# ---------------------------------------------------------------------------
+
+def _sha256_stream(resp) -> tuple[str, bytes]:
+    import hashlib
+    h = hashlib.sha256()
+    buf = io.BytesIO()
+    for chunk in resp.iter_content(1 << 20):
+        h.update(chunk)
+        buf.write(chunk)
+    return h.hexdigest(), buf.getvalue()
+
+
+def mirror_ett(dbx, account: str, state: dict) -> dict:
+    root = "/Liam/Projets actifs/parquet_zip"
+    print(f"[ett] listing {root}", flush=True)
     try:
-        data = container.get_blob_client(STATE_BLOB).download_blob().readall()
-        return json.loads(data)
-    except Exception:
-        return {"raw": {}, "processed": [], "quarantined": []}
-
-
-def save_state(container, state: dict) -> None:
-    container.get_blob_client(STATE_BLOB).upload_blob(
-        json.dumps(state, indent=2).encode(), overwrite=True)
-
-
-def run(cmd: list[str]) -> None:
-    log("+ " + " ".join(cmd))
-    r = subprocess.run(cmd, cwd=REPO_ROOT)
-    if r.returncode != 0:
-        raise RuntimeError(f"command failed ({r.returncode}): {' '.join(cmd)}")
-
-
-def main() -> None:
-    ap = argparse.ArgumentParser(description="Daily ETT pipeline: Dropbox -> Azure -> feed.")
-    ap.add_argument("--workdir", default=None, help="local scratch dir (default: temp)")
-    ap.add_argument("--limit", type=int, default=0, help="process at most N new deliveries")
-    args = ap.parse_args()
-
-    dropbox_root = os.getenv("ETT_DROPBOX_ROOT", "/Liam/Projets actifs")
-    prefix = os.getenv("ETT_PREFIX", "parquet_zip")
-    forced_project = os.getenv("ETT_PROJECT")
-
-    workdir = Path(args.workdir) if args.workdir else Path(tempfile.mkdtemp(prefix="ett_pipe_"))
-    incoming_dir = workdir / "incoming"
-    store_dir = workdir / "store"
-    feed_dir = workdir / "feed"
-    incoming_dir.mkdir(parents=True, exist_ok=True)
-
-    log("authenticating (Dropbox + Azure)...")
-    dbx = get_dropbox_client()
-    svc = get_blob_service_client()
-    raw_c = ensure_container(svc, RAW_CONTAINER)
-    proc_c = ensure_container(svc, PROCESSED_CONTAINER)
-    rep_c = ensure_container(svc, REPORTS_CONTAINER)
-
-    state = load_state(proc_c)
-
-    # ---- Stage A: mirror new deliveries into immutable raw ----
-    log(f"listing Dropbox {dropbox_root}/{prefix}/ ...")
-    try:
-        entries = dbx.files_list_folder(f"{dropbox_root}/{prefix}").entries
+        res = dbx.files_list_folder(root)
     except dropbox.exceptions.ApiError as e:
-        # No deliveries yet (vendor hasn't created the folder): not a failure.
         if e.error.is_path() and e.error.get_path().is_not_found():
-            log("Dropbox folder not found — nothing to mirror yet")
-            entries = []
-        else:
-            raise
-    zips = sorted(e.name for e in entries if e.name.endswith(".parquet.zip"))
-    log(f"{len(zips)} deliveries in Dropbox")
-    new = [z for z in zips if z not in state["raw"]]
-    if args.limit:
-        new = new[: args.limit]
-    log(f"{len(new)} new deliveries to mirror")
+            print("[ett] folder not found yet, skipping", flush=True)
+            return state
+        raise
+    files = [m for m in res.entries
+             if isinstance(m, dropbox.files.FileMetadata)
+             and m.name.endswith(".parquet.zip")]
+    print(f"[ett] {len(files)} deliveries in Dropbox", flush=True)
 
+    raw = state.setdefault("ett_raw", {})
+    for meta in files:
+        prev = raw.get(meta.name)
+        if prev and prev.get("rev") == meta.rev:
+            continue
+        print(f"[ett] downloading {meta.name} ({meta.size / 1e9:.2f} GB)", flush=True)
+        _, resp = dbx.files_download(meta.path_display)
+        digest, data = _sha256_stream(resp)
+        blob = ETT_PREFIX + meta.name + ".enc"
+        _blob(account, RAW, blob).upload_blob(
+            encrypt_bytes(data), overwrite=True,
+            metadata={"enc": "fernet", "sha256": digest})
+        raw[meta.name] = {"sha256": digest, "size": meta.size, "rev": meta.rev,
+                          "blob": blob,
+                          "mirrored_at": datetime.now(timezone.utc).isoformat()}
+        print(f"[ett] mirrored+encrypted {meta.name}", flush=True)
+    return state
+
+
+# ---------------------------------------------------------------------------
+# B. Ingest new ETT deliveries (decrypt -> parse)
+# ---------------------------------------------------------------------------
+
+def process_ett_batch(account: str, state: dict) -> dict:
+    from tools.ingest_ett import ingest_one_delivery
+
+    raw = state.get("ett_raw", {})
+    done = state.setdefault("ett_processed", {})
+    exams = state.setdefault("ett_exams", {})
+
+    new = [name for name in raw if name not in done]
+    print(f"[ett] {len(new)} new deliveries to ingest", flush=True)
     for name in new:
-        local = incoming_dir / name
-        log(f"downloading {name} ...")
-        dbx.files_download_to_file(str(local), f"{dropbox_root}/{prefix}/{name}")
-        digest = sha256_file(local)
-        blob = raw_c.get_blob_client(INCOMING_PREFIX + name)
-        with open(local, "rb") as fh:
-            blob.upload_blob(fh, overwrite=True, metadata={"sha256": digest})
-        state["raw"][name] = {"sha256": digest, "blob": INCOMING_PREFIX + name}
-        log(f"mirrored -> rawdata/{INCOMING_PREFIX}{name}")
-    save_state(proc_c, state)
+        info = raw[name]
+        print(f"[ett] ingesting {name}", flush=True)
+        with tempfile.TemporaryDirectory(prefix="ett_") as tmp:
+            zpath = Path(tmp) / name
+            token = _blob(account, RAW, info["blob"]).download_blob().readall()
+            zpath.write_bytes(decrypt_bytes(token))
+            try:
+                result = ingest_one_delivery(zpath, account, PROCESSED)
+            except Exception as exc:
+                print(f"[ett] FAILED {name}: {exc}", flush=True)
+                done[name] = {"status": "failed", "error": str(exc)[:500]}
+                continue
+        for exam in result.get("exams", []):
+            exams[exam["exam_id"]] = exam
+        done[name] = {"status": "ok", "exams": [e["exam_id"] for e in result.get("exams", [])]}
+        print(f"[ett] done {name}: {len(result.get('exams', []))} exams", flush=True)
+    return state
 
-    # ---- Stage B: ingest new deliveries ----
-    processed_names = set(state.get("processed", []))
-    to_ingest = sorted(n for n in state["raw"] if n not in processed_names)
-    log(f"{len(to_ingest)} deliveries to ingest")
-    if to_ingest:
-        for name in to_ingest:
-            local = incoming_dir / name
-            if not local.exists():
-                with open(local, "wb") as fh:
-                    raw_c.get_blob_client(INCOMING_PREFIX + name).download_blob().readinto(fh)
-        cmd = [sys.executable, "-m", "tools.ingest_ett",
-               "--source", str(incoming_dir), "--out", str(store_dir)]
-        if forced_project:
-            cmd += ["--project", forced_project]
-        run(cmd)
 
-        catalog = json.loads((store_dir / "catalog.json").read_text())
-        uploaded = 0
-        for exam_guid, entry in catalog.items():
-            exam_dir = store_dir / "processed" / entry["project"] / exam_guid
-            if exam_dir.exists():
-                uploaded += upload_dir(proc_c, exam_dir, f"{entry['project']}/{exam_guid}/")
-        # quarantine records, if any
-        qdir = store_dir / "quarantine"
-        if qdir.exists():
-            upload_dir(proc_c, qdir, "quarantine/")
-        state["processed"] = sorted(set(state.get("processed", [])) | set(to_ingest))
-        save_state(proc_c, state)
-        log(f"uploaded {uploaded} processed files")
+# ---------------------------------------------------------------------------
+# D. Feed (de-identified; plaintext for the website)
+# ---------------------------------------------------------------------------
 
-        # ---- Stage C: rebuild + publish the de-identified feed ----
-        run([sys.executable, "-m", "tools.build_feed",
-             "--store", str(store_dir), "--out", str(feed_dir)])
-        n_feed = upload_dir(rep_c, feed_dir, "feed/")
-        log(f"published {n_feed} feed files to reports/feed/ (PHYSIO_FEED_URL target)")
+def build_ett_feed(state: dict) -> dict:
+    from tools.build_feed import summarize_exam
+    exams = state.get("ett_exams", {})
+    cards = [summarize_exam(e) for e in exams.values()]
+    by_project: dict[str, list] = {}
+    for c in cards:
+        by_project.setdefault(c["project"], []).append(c)
+    projects = []
+    for proj, items in sorted(by_project.items()):
+        subjects = {i["exam_id"] for i in items}
+        projects.append({
+            "code": proj, "kind": "ett",
+            "n_exams": len(items), "n_subjects": len(subjects),
+            "signals": sorted({s for i in items for s in i.get("signals", [])}),
+            "exams": items,
+        })
+    return {"generated_at": datetime.now(timezone.utc).isoformat(),
+            "projects": projects}
 
-    log("done.")
+
+def publish_feed(account: str, feed: dict) -> None:
+    payload = json.dumps(feed, indent=1).encode("utf-8")
+    _blob(account, REPORTS, "feed/feed.json").upload_blob(payload, overwrite=True)
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+def main() -> int:
+    print("[pipeline] starting", flush=True)
+    dbx = sync_dropbox_cloud.get_dropbox_client()
+    sync_dropbox_cloud.ensure_container(ACCOUNT, RAW)
+    sync_dropbox_cloud.ensure_container(ACCOUNT, PROCESSED)
+    sync_dropbox_cloud.ensure_container(ACCOUNT, REPORTS)
+
+    state = load_state(ACCOUNT)
+    state = mirror_ett(dbx, ACCOUNT, state)
+    state = process_ett_batch(ACCOUNT, state)
+
+    from tools import legacy_pipeline
+    state = legacy_pipeline.run_ingest(dbx, ACCOUNT, state)
+
+    feed = build_ett_feed(state)
+    publish_feed(ACCOUNT, feed)
+    print(f"[pipeline] feed published: {len(feed['projects'])} ETT projects", flush=True)
+
+    save_state(ACCOUNT, state)
+    print("[pipeline] done", flush=True)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

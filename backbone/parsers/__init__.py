@@ -13,13 +13,14 @@ The parser is responsible for the strange parts of one file format and nothing
 else. Everything downstream sees the same rectangular, standard shape.
 """
 
-from . import bettercare, infinity, nol_medasense, pump  # noqa: F401
+from . import bettercare, ett, infinity, nol_medasense, pump  # noqa: F401
 
 REGISTRY = {
     "infinity": infinity.parse,
     "bettercare": bettercare.parse,
     "nol_medasense": nol_medasense.parse,
     "pump": pump.parse,
+    "ett": ett.parse,
 }
 
 SNIFFERS = {
@@ -27,6 +28,7 @@ SNIFFERS = {
     "bettercare": bettercare.sniff_header,
     "nol_medasense": nol_medasense.sniff_header,
     "pump": pump.sniff_header,
+    "ett": ett.sniff_header,
 }
 
 

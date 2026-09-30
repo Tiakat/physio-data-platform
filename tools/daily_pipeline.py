@@ -69,6 +69,12 @@ def save_state(account: str, state: dict) -> None:
         token, overwrite=True, metadata={"enc": "fernet"})
 
 
+def _ensure_containers(account: str) -> None:
+    svc = azure_auth.get_blob_service_client(account)
+    for name in (RAW, PROCESSED, REPORTS):
+        azure_auth.ensure_container(svc, name)
+
+
 # ---------------------------------------------------------------------------
 # A. Mirror ETT deliveries (encrypted)
 # ---------------------------------------------------------------------------
@@ -186,9 +192,7 @@ def publish_feed(account: str, feed: dict) -> None:
 def main() -> int:
     print("[pipeline] starting", flush=True)
     dbx = sync_dropbox_cloud.get_dropbox_client()
-    sync_dropbox_cloud.ensure_container(ACCOUNT, RAW)
-    sync_dropbox_cloud.ensure_container(ACCOUNT, PROCESSED)
-    sync_dropbox_cloud.ensure_container(ACCOUNT, REPORTS)
+    _ensure_containers(ACCOUNT)
 
     state = load_state(ACCOUNT)
     state = mirror_ett(dbx, ACCOUNT, state)

@@ -5,16 +5,21 @@ Corrected design (2026-09-30, K's call):
 * Azure NEVER holds plaintext patient data.  Every blob in ``rawdata`` is
   Fernet-encrypted; only the pipeline scripts (which hold PIPELINE_DATA_KEY)
   can read it back.
-* Signal files are parsed to standardized parquet, THEN encrypted.
+* Signal files are parsed with the project's real parser
+  (``tools/run_local.py`` + ``profiles/<code>.yaml``), THEN encrypted
   (``<CODE>/parquet/<device>_<sha8>.parquet.enc``).  Blob names carry no
   patient codes — patient linkage lives in the encrypted catalog/state.
 * Files that cannot be parsed yet (BIS, device files, projects without a
-  parser profile) are stored as ENCRYPTED SOURCE BYTES
+  profile) are stored as ENCRYPTED SOURCE BYTES
   (``<CODE>/raw/<relpath>.enc``) so nothing is lost; they are re-ingested
   as parquet once a parser exists.
 * Documents (ethics PDFs, spreadsheets, ...) and junk files are NEVER sent
   to Azure.  They stay in Dropbox.
 * Dropbox is the read-only raw source and is never modified.
+
+Projects come from ``config/projects.yaml`` (dict keyed by code, with
+``status``, ``dropbox`` folder name, ``data_roots`` and ``exclude_folders``).
+Only ``status: data`` projects are ingested.
 
 State (encrypted ``processed/_pipeline/state.json.enc``) records, per source
 file: source sha256, stored blob, plaintext sha256, parse outcome.  Re-runs
@@ -24,6 +29,7 @@ system of record).
 
 from __future__ import annotations
 
+import fnmatch
 import hashlib
 import json
 import os
@@ -37,64 +43,25 @@ import dropbox
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+DROPBOX_ROOT = "/Liam/Projets actifs"
 
 # ---------------------------------------------------------------------------
 # Classification
 # ---------------------------------------------------------------------------
 
 # Documents that must never go to Azure (ethics paperwork, spreadsheets, ...).
+# NOTE: .csv files ARE data for our parsers, so they are not documents.
 DOCUMENT_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".odt", ".rtf",
-    ".xls", ".xlsx", ".ods", ".csv",  # NOTE: .csv re-added below for data
+    ".xls", ".xlsx", ".ods",
     ".ppt", ".pptx", ".odp",
 }
-# .csv files ARE data for our parsers, so they are not documents.
-DOCUMENT_EXTENSIONS.discard(".csv")
 
 JUNK_NAMES = {".ds_store", "thumbs.db", "desktop.ini"}
 
 RAW_PREFIX = "rawdata"          # container
 PARQUET_DIR = "parquet"         # rawdata/<CODE>/parquet/...
 BYTES_DIR = "raw"               # rawdata/<CODE>/raw/... (encrypted source bytes)
-
-STATE_BLOB = "processed/_pipeline/state.json.enc"
-
-
-# ---------------------------------------------------------------------------
-# Project selection — ALL data projects, never hard-coded
-# ---------------------------------------------------------------------------
-
-def load_projects_config() -> List[dict]:
-    with open(REPO_ROOT / "config" / "projects.yaml", encoding="utf-8") as fh:
-        return yaml.safe_load(fh)["projects"]
-
-
-def load_profile(code: str) -> Optional[dict]:
-    path = REPO_ROOT / "config" / "profiles" / f"{code.lower().replace(' ', '-')}.yaml"
-    if not path.exists():
-        return None
-    with open(path, encoding="utf-8") as fh:
-        return yaml.safe_load(fh)
-
-
-def profile_tier(profile: Optional[dict], filename: str) -> str:
-    """Return the tier ('a', 'b', 'c') of a file per the project profile.
-
-    Projects without a profile return 'u' (unprofiled).
-    """
-    if not profile:
-        return "u"
-    tiers = (profile.get("acquisition") or {}).get("tiers", {})
-    for tier_name, tier in tiers.items():
-        for pat in tier.get("include", []) or []:
-            if _glob_match(filename, pat):
-                return tier_name
-    return "b"
-
-
-def _glob_match(filename: str, pattern: str) -> bool:
-    import fnmatch
-    return fnmatch.fnmatch(filename.lower(), pattern.lower())
 
 
 def is_document(relpath: str) -> bool:
@@ -103,6 +70,30 @@ def is_document(relpath: str) -> bool:
 
 def is_junk(name: str) -> bool:
     return name.lower() in JUNK_NAMES
+
+
+def _excluded(relpath: str, patterns: List[str]) -> bool:
+    parts = relpath.replace("\\", "/").split("/")
+    return any(fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(p.lower(), pat.lower())
+               for p in parts for pat in patterns)
+
+
+# ---------------------------------------------------------------------------
+# Project selection — ALL data projects from config/projects.yaml
+# ---------------------------------------------------------------------------
+
+def load_projects_config() -> dict:
+    """Return the projects dict from config/projects.yaml (code -> entry)."""
+    with open(REPO_ROOT / "config" / "projects.yaml", encoding="utf-8") as fh:
+        return yaml.safe_load(fh)["projects"]
+
+
+def load_profile(code: str) -> Optional[dict]:
+    path = REPO_ROOT / "profiles" / f"{code.lower()}.yaml"
+    if not path.exists():
+        return None
+    with open(path, encoding="utf-8") as fh:
+        return yaml.safe_load(fh)
 
 
 def select_projects(dbx) -> Tuple[List[dict], List[str]]:
@@ -117,28 +108,27 @@ def select_projects(dbx) -> Tuple[List[dict], List[str]]:
         w.strip().upper() for w in wanted_raw.split(",") if w.strip()
     }
 
+    cfg = load_projects_config()
     projects: List[dict] = []
-    for entry in load_projects_config():
-        code = entry["code"]
-        if entry.get("status") != "data":
+    for code, entry in cfg.items():
+        if not isinstance(entry, dict) or entry.get("status") != "data":
             continue
         if wanted is not None and code.upper() not in wanted:
             continue
-        profile = load_profile(code)
-        roots = entry.get("data_roots") or ["."]
-        dropbox_root = "/Liam/Projets actifs/" + entry["dropbox"] + "/" + roots[0]
         projects.append({
             "code": code,
-            "dropbox_root": dropbox_root,
-            "profile": profile,
-            "tier_a_devices": _tier_a_devices(profile),
+            "dropbox_base": f"{DROPBOX_ROOT}/{entry['dropbox']}",
+            "data_roots": entry.get("data_roots") or ["."],
+            "exclude_folders": entry.get("exclude_folders") or [],
+            "profile": load_profile(code),
         })
 
     # Auto-discovery: warn about Dropbox folders with no config entry.
     unconfigured: List[str] = []
     try:
-        res = dbx.files_list_folder("/Liam/Projets actifs")
-        known = {e["dropbox"] for e in load_projects_config()}
+        res = dbx.files_list_folder(DROPBOX_ROOT)
+        known = {e["dropbox"] for e in cfg.values()
+                 if isinstance(e, dict) and "dropbox" in e}
         unconfigured = [
             e.name for e in res.entries
             if isinstance(e, dropbox.files.FolderMetadata) and e.name not in known
@@ -146,16 +136,6 @@ def select_projects(dbx) -> Tuple[List[dict], List[str]]:
     except Exception:
         pass  # listing the root is best-effort; never block ingestion
     return projects, unconfigured
-
-
-def _tier_a_devices(profile: Optional[dict]) -> List[str]:
-    if not profile:
-        return []
-    tiers = (profile.get("acquisition") or {}).get("tiers", {})
-    devices = []
-    for dev in (tiers.get("a") or {}).get("devices", []) or []:
-        devices.append(dev)
-    return devices
 
 
 # ---------------------------------------------------------------------------
@@ -188,91 +168,6 @@ def list_dropbox_tree(dbx, root: str) -> List[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Batching — group-aware (BetterCare multi-file recordings stay atomic)
-# ---------------------------------------------------------------------------
-
-def group_key(code: str, relpath: str) -> str:
-    parts = relpath.replace("\\", "/").split("/")
-    if code.upper() == "V-RAPS" and len(parts) >= 2 and parts[0].isdigit():
-        return parts[0]
-    if len(parts) >= 2 and parts[0].lower().startswith("p-"):
-        return parts[0]
-    return relpath
-
-
-def classify_entries(project: dict, entries: List[dict]) -> Tuple[List[dict], List[dict]]:
-    """Split entries into (parseable tier-A, storable-as-bytes).
-
-    Documents and junk are dropped in both cases.
-    """
-    profile = project["profile"]
-    tier_a, as_bytes = [], []
-    for e in entries:
-        if is_junk(e["name"]) or is_document(e["relpath"]):
-            continue
-        tier = profile_tier(profile, e["name"])
-        if tier == "a":
-            tier_a.append(e)
-        elif tier in ("b", "u"):
-            as_bytes.append(e)
-        # tier 'c' -> dropped
-    return tier_a, as_bytes
-
-
-def select_batch(project: dict, entries: List[dict],
-                 done: Dict[str, dict], budget_bytes: int) -> Tuple[List[dict], List[dict]]:
-    """Select new/changed entries within budget.
-
-    Tier-A entries are selected in whole recording groups (never split a
-    BetterCare multi-file recording across runs).  Tier-B bytes are selected
-    individually.
-    """
-    tier_a, as_bytes = classify_entries(project, entries)
-
-    # --- tier A: group-atomic selection ------------------------------------
-    groups: Dict[str, List[dict]] = {}
-    for e in tier_a:
-        groups.setdefault(group_key(project["code"], e["relpath"]), []).append(e)
-
-    def group_dirty(g: List[dict]) -> bool:
-        for e in g:
-            prev = done.get(e["relpath"])
-            if prev is None:
-                return True
-            if prev.get("kind") == "failed":
-                return True
-            if prev.get("rev") != e["rev"]:
-                return True  # source changed in Dropbox -> re-ingest
-        return False
-
-    chosen_a: List[dict] = []
-    used = 0
-    for _gkey in sorted(groups):
-        g = groups[_gkey]
-        if not group_dirty(g):
-            continue
-        gsize = sum(e["size"] for e in g)
-        if used + gsize > budget_bytes and chosen_a:
-            break
-        chosen_a.extend(g)
-        used += gsize
-
-    # --- tier B bytes: individual selection ---------------------------------
-    remaining = budget_bytes - used
-    chosen_b: List[dict] = []
-    for e in sorted(as_bytes, key=lambda x: x["relpath"]):
-        prev = done.get(e["relpath"])
-        if prev and prev.get("kind") != "failed" and prev.get("rev") == e["rev"]:
-            continue  # already stored and unchanged
-        if e["size"] > remaining and chosen_b:
-            break
-        chosen_b.append(e)
-        remaining -= e["size"]
-
-    return chosen_a, chosen_b
-
-
-# ---------------------------------------------------------------------------
 # Dropbox download helper
 # ---------------------------------------------------------------------------
 
@@ -290,8 +185,6 @@ def _download_file(dbx, dropbox_path: str, local_path: str) -> None:
 
 def _blob_client(account: str, container: str, blob: str):
     from tools import azure_auth
-    from azure.storage.blob import BlobClient
-    from tools.crypto import encrypt_bytes  # noqa: F401 (imported for clarity)
     svc = azure_auth.get_blob_service_client(account)
     return svc.get_blob_client(container=container, blob=blob)
 
@@ -299,155 +192,178 @@ def _blob_client(account: str, container: str, blob: str):
 def azure_upload_encrypted(account: str, container: str, blob: str,
                            plaintext: bytes, plaintext_sha256: str) -> None:
     from tools.crypto import encrypt_bytes
-    from azure.core.exceptions import ResourceExistsError
     token = encrypt_bytes(plaintext)
     client = _blob_client(account, container, blob)
-    try:
-        client.upload_blob(
-            token, overwrite=True,
-            metadata={"enc": "fernet", "sha256": plaintext_sha256},
-        )
-    except ResourceExistsError:
-        pass
-
-
-def azure_blob_exists(account: str, container: str, blob: str) -> bool:
-    try:
-        return _blob_client(account, container, blob).exists()
-    except Exception:
-        return False
-
-
-# ---------------------------------------------------------------------------
-# Ingest
-# ---------------------------------------------------------------------------
-
-def _sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for chunk in iter(lambda: fh.read(1 << 20), b""):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def ingest_project(dbx, project: dict, account: str,
-                   done: Dict[str, dict], budget_bytes: int) -> Dict[str, dict]:
-    code = project["code"]
-    print(f"[ingest] {code}: listing {project['dropbox_root']}", flush=True)
-    entries = list_dropbox_tree(dbx, project["dropbox_root"])
-    print(f"[ingest] {code}: {len(entries)} files in Dropbox", flush=True)
-
-    batch_a, batch_b = select_batch(project, entries, done, budget_bytes)
-    print(f"[ingest] {code}: {len(batch_a)} tier-A files, "
-          f"{len(batch_b)} as-bytes files selected", flush=True)
-    if not batch_a and not batch_b:
-        return done
-
-    with tempfile.TemporaryDirectory(prefix=f"ingest_{code}_") as tmp:
-        tmpdir = Path(tmp)
-
-        # --- tier A: download, parse to parquet, encrypt, upload -------------
-        if batch_a:
-            srcdir = tmpdir / "src"
-            for e in batch_a:
-                dest = srcdir / e["relpath"]
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                _download_file(dbx, project["dropbox_root"] + "/" + e["relpath"], str(dest))
-            _parse_and_store_parquet(code, srcdir, batch_a, account, done, tmpdir)
-
-        # --- tier B / unprofiled: download, encrypt bytes, upload ------------
-        for e in batch_b:
-            dest = tmpdir / "b" / e["relpath"]
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                _download_file(dbx, project["dropbox_root"] + "/" + e["relpath"], str(dest))
-                data = dest.read_bytes()
-                blob = f"{code}/{BYTES_DIR}/{e['relpath']}.enc"
-                azure_upload_encrypted(account, RAW_PREFIX, blob, data, _sha256_bytes(data))
-                done[e["relpath"]] = {
-                    "rev": e["rev"], "sha256": _sha256_bytes(data), "size": e["size"],
-                    "kind": "bytes", "stored": blob,
-                }
-                print(f"[ingest] {code}: stored bytes {e['relpath']}", flush=True)
-            except Exception as exc:
-                done[e["relpath"]] = {"kind": "failed", "error": str(exc)[:300]}
-                print(f"[ingest] {code}: FAILED bytes {e['relpath']}: {exc}", flush=True)
-
-    return done
+    client.upload_blob(
+        token, overwrite=True,
+        metadata={"enc": "fernet", "sha256": plaintext_sha256},
+    )
 
 
 def _sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _parse_and_store_parquet(code: str, srcdir: Path, batch: List[dict],
-                             account: str, done: Dict[str, dict], tmpdir: Path) -> None:
-    """Run the existing parser (tools/run_local.py), then encrypt+upload each
-    resulting parquet.  Blob names carry NO patient codes.
+# ---------------------------------------------------------------------------
+# Ingest
+# ---------------------------------------------------------------------------
+
+def _store_bytes(code: str, path: Path, e: dict, account: str,
+                 done: Dict[str, dict]) -> None:
+    """Encrypt the source file as-is and upload to <CODE>/raw/."""
+    try:
+        data = path.read_bytes()
+        blob = f"{code}/{BYTES_DIR}/{e['relpath']}.enc"
+        azure_upload_encrypted(account, RAW_PREFIX, blob, data,
+                               _sha256_bytes(data))
+        done[e["relpath"]] = {
+            "status": "ok", "rev": e["rev"], "sha256": _sha256_bytes(data),
+            "size": e["size"], "kind": "bytes", "stored": blob,
+        }
+    except Exception as exc:  # noqa: BLE001 -- record, keep going
+        done[e["relpath"]] = {"status": "failed", "error": str(exc)[:300]}
+        print(f"[ingest] {code}: FAILED bytes {e['relpath']}: {exc}", flush=True)
+
+
+def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
+                     done: Dict[str, dict], tmpdir: Path) -> None:
+    """Run the project's real parser (tools/run_local.py), then encrypt and
+    upload each resulting parquet.  Blob names carry NO patient codes.
+    Files the parser cannot handle fall back to encrypted source bytes.
     """
-    from tools.run_local import load_profile as _lp  # noqa
-    outdir = tmpdir / "parsed"
-    cmd = [sys.executable, "-m", "tools.run_local", "--profile", code.lower().replace(" ", "-"),
-           "--root", str(srcdir), "--out", str(outdir)]
-    print(f"[ingest] {code}: parsing with {' '.join(cmd[3:])}", flush=True)
+    store = tmpdir / "store"
+    cmd = [sys.executable, "-m", "tools.run_local",
+           "--project", code, "--root", str(srcdir), "--out", str(store)]
+    print(f"[ingest] {code}: parsing {len(batch)} files with run_local",
+          flush=True)
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5400)
     if proc.returncode != 0:
-        print(f"[ingest] {code}: parser failed:\n{proc.stderr[-4000:]}", flush=True)
+        print(f"[ingest] {code}: parser failed, storing as bytes:\n"
+              f"{proc.stderr[-2000:]}", flush=True)
         for e in batch:
-            done[e["relpath"]] = {"kind": "failed", "error": "run_local failed"}
+            _store_bytes(code, srcdir / e["relpath"], e, account, done)
         return
 
-    catalog_path = None
-    for cand in sorted(outdir.rglob("catalog.json")):
-        catalog_path = cand
-        break
-    if catalog_path is None:
-        print(f"[ingest] {code}: no catalog.json produced by parser", flush=True)
+    catalogs = sorted(store.rglob("catalog.json"))
+    if not catalogs:
+        print(f"[ingest] {code}: no catalog.json from parser, storing as bytes",
+              flush=True)
         for e in batch:
-            done[e["relpath"]] = {"kind": "failed", "error": "no catalog from run_local"}
+            _store_bytes(code, srcdir / e["relpath"], e, account, done)
         return
+
+    catalog_path = catalogs[0]
+    out_root = catalog_path.parent
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
-    parquet_dir = catalog_path.parent / "parquet"
+    by_file = {c.get("file", ""): c for c in catalog}
 
-    parquet_by_source: Dict[str, str] = {}
-    for entry in catalog:
-        if entry.get("parquet"):
-            parquet_by_source.setdefault(entry.get("file", ""), entry["parquet"])
-
-    n_ok = n_fail = 0
+    n_parquet = n_bytes = 0
     for e in batch:
         rel = e["relpath"]
-        pkey = parquet_by_source.get(rel)
-        if not pkey:
-            done[rel] = {"kind": "failed", "error": "no parquet produced"}
-            n_fail += 1
-            continue
-        pfile = parquet_dir / pkey
-        if not pfile.exists():
-            done[rel] = {"kind": "failed", "error": "parquet missing"}
-            n_fail += 1
-            continue
-        data = pfile.read_bytes()
-        digest = _sha256_bytes(data)
-        # Blob name: device + content hash — no patient codes.
-        device = pkey.split("_")[1] if "_" in pkey else "sig"
-        blob = f"{code}/{PARQUET_DIR}/{device}_{digest[:8]}.parquet.enc"
-        try:
-            azure_upload_encrypted(account, RAW_PREFIX, blob, data, digest)
-            done[rel] = {"rev": e["rev"], "sha256": digest, "size": e["size"],
-                         "kind": "parquet", "stored": blob}
-            n_ok += 1
-        except Exception as exc:
-            done[rel] = {"kind": "failed", "error": str(exc)[:300]}
-            n_fail += 1
-    print(f"[ingest] {code}: parquet stored={n_ok} failed={n_fail}", flush=True)
+        c = by_file.get(rel) or {}
+        pkey = c.get("parquet")
+        pfile = out_root / pkey if pkey else None
+        if pfile is not None and pfile.exists():
+            data = pfile.read_bytes()
+            digest = _sha256_bytes(data)
+            device = str(c.get("device") or "other").lower()
+            blob = _parquet_blob_name(code, device, digest)
+            try:
+                azure_upload_encrypted(account, RAW_PREFIX, blob, data, digest)
+                done[rel] = {
+                    "status": "ok", "rev": e["rev"], "sha256": digest,
+                    "size": e["size"], "kind": "parquet", "stored": blob,
+                }
+                n_parquet += 1
+            except Exception as exc:  # noqa: BLE001
+                done[rel] = {"status": "failed", "error": str(exc)[:300]}
+        else:
+            _store_bytes(code, srcdir / rel, e, account, done)
+            n_bytes += 1
+    print(f"[ingest] {code}: parquet stored={n_parquet} as-bytes={n_bytes}",
+          flush=True)
 
     # Encrypted catalog (patient linkage stays encrypted, never in blob names).
-    if catalog_path.exists():
-        from tools.crypto import encrypt_bytes
-        raw = catalog_path.read_bytes()
-        azure_upload_encrypted(account, RAW_PREFIX,
-                               f"{code}/catalog.json.enc", raw, _sha256_bytes(raw))
+    raw = catalog_path.read_bytes()
+    azure_upload_encrypted(account, RAW_PREFIX, f"{code}/catalog.json.enc",
+                           raw, _sha256_bytes(raw))
+
+
+def _select_new(candidates: List[dict], done: Dict[str, dict],
+                budget_bytes: int) -> Tuple[List[dict], int]:
+    """Select new/changed/previously-failed entries within budget.
+
+    Entries already stored with an unchanged Dropbox revision are skipped;
+    changed revisions are re-ingested.
+    """
+    selected: List[dict] = []
+    used = 0
+    for e in sorted(candidates, key=lambda x: x["relpath"]):
+        prev = done.get(e["relpath"])
+        if prev and prev.get("status") == "ok" and prev.get("rev") == e["rev"]:
+            continue  # already stored and unchanged
+        if used + e["size"] > budget_bytes and selected:
+            break
+        selected.append(e)
+        used += e["size"]
+    return selected, used
+
+
+def _parquet_blob_name(code: str, device: str, digest: str) -> str:
+    """Blob name for a parsed parquet: device + content hash, no patient codes."""
+    return f"{code}/{PARQUET_DIR}/{device}_{digest[:8]}.parquet.enc"
+
+
+def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
+                   budget_bytes: int) -> Tuple[Dict[str, dict], int]:
+    """Ingest one project.  Returns (done, bytes selected)."""
+    code = project["code"]
+
+    entries: List[dict] = []
+    for root in project["data_roots"]:
+        base = project["dropbox_base"] if root == "." else \
+            f"{project['dropbox_base']}/{root}"
+        print(f"[ingest] {code}: listing {base}", flush=True)
+        for e in list_dropbox_tree(dbx, base):
+            e["dbx_path"] = f"{base}/{e['relpath']}"
+            if root != ".":
+                e["relpath"] = f"{root}/{e['relpath']}"
+            entries.append(e)
+    print(f"[ingest] {code}: {len(entries)} files in Dropbox", flush=True)
+
+    excl = project["exclude_folders"]
+    candidates = [e for e in entries
+                  if not is_junk(e["name"]) and not is_document(e["relpath"])
+                  and not _excluded(e["relpath"], excl)]
+
+    selected, used = _select_new(candidates, done, budget_bytes)
+    print(f"[ingest] {code}: {len(selected)} files selected "
+          f"({used / 1e9:.2f} GB)", flush=True)
+    if not selected:
+        return done, 0
+
+    with tempfile.TemporaryDirectory(prefix=f"ingest_{code}_") as tmp:
+        tmpdir = Path(tmp)
+        srcdir = tmpdir / "src"
+        for e in selected:
+            dest = srcdir / e["relpath"]
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                _download_file(dbx, e["dbx_path"], str(dest))
+            except Exception as exc:  # noqa: BLE001
+                done[e["relpath"]] = {"status": "failed",
+                                      "error": f"download: {exc}"[:300]}
+        downloaded = [e for e in selected if (srcdir / e["relpath"]).exists()]
+
+        if project["profile"] and downloaded:
+            _parse_and_store(code, srcdir, downloaded, account, done, tmpdir)
+        else:
+            if not project["profile"]:
+                print(f"[ingest] {code}: no parser profile, storing as "
+                      f"encrypted bytes", flush=True)
+            for e in downloaded:
+                _store_bytes(code, srcdir / e["relpath"], e, account, done)
+    return done, used
 
 
 # ---------------------------------------------------------------------------
@@ -468,12 +384,20 @@ def run_ingest(dbx, account: str, state: dict) -> dict:
         print("[ingest] no data projects selected", flush=True)
         return state
 
-    azure_auth.ensure_container(azure_auth.get_blob_service_client(account), RAW_PREFIX)
+    azure_auth.ensure_container(azure_auth.get_blob_service_client(account),
+                                RAW_PREFIX)
 
     legacy = state.setdefault("legacy", {})
+    remaining = budget_bytes
     for proj in projects:
         code = proj["code"]
         entry = legacy.setdefault(code, {})
         done = entry.setdefault("files", {})
-        entry["files"] = ingest_project(dbx, proj, account, done, budget_bytes)
+        entry["files"], used = ingest_project(dbx, proj, account, done,
+                                              remaining)
+        remaining = max(0, remaining - used)
+        if remaining == 0:
+            print("[ingest] budget exhausted, remaining projects deferred",
+                  flush=True)
+            break
     return state

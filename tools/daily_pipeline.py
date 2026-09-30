@@ -46,6 +46,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from azure.storage.blob import ContentSettings
+
 import dropbox
 
 from tools.azure_auth import ensure_container, get_blob_service_client  # noqa: E402
@@ -136,12 +137,12 @@ def main() -> None:
     try:
         entries = dbx.files_list_folder(f"{dropbox_root}/{prefix}").entries
     except dropbox.exceptions.ApiError as e:
+        # No deliveries yet (vendor hasn't created the folder): not a failure.
         if e.error.is_path() and e.error.get_path().is_not_found():
             log("Dropbox folder not found — nothing to mirror yet")
             entries = []
         else:
             raise
-
     zips = sorted(e.name for e in entries if e.name.endswith(".parquet.zip"))
     log(f"{len(zips)} deliveries in Dropbox")
     new = [z for z in zips if z not in state["raw"]]

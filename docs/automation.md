@@ -61,16 +61,37 @@ Azure `reports` container with public read (or behind the site's proxy);
 set `PHYSIO_FEED_URL` in liam-v2's `.env` to the `feed.json` URL.
 The physio-data page fetches it server-side, revalidated hourly.
 
+## Running it on a schedule, inside Azure (production)
+
+`python -m tools.daily_pipeline` runs all three stages unattended:
+
+1. mirrors new `*.parquet.zip` from Dropbox → `rawdata/ett/incoming/`
+   (immutable, sha256 in blob metadata),
+2. ingests them with `tools/ingest_ett` → uploads `processed/<project>/<exam>/...`,
+3. rebuilds the feed with `tools/build_feed` → publishes `reports/feed/*.json`.
+
+State lives in `processed/_pipeline/state.json`; re-runs only touch new
+deliveries. Auth uses `tools/azure_auth.py`: storage key → SAS → 
+`DefaultAzureCredential`. On a workstation run `az login` once and no
+secret is needed at all.
+
+Recommended deployment — **Azure Container Apps Job** with a cron trigger
+(`0 12 * * 1-5`, i.e. 08:00 EDT Mon–Fri; note cron is UTC so winter runs at
+07:00 EST unless adjusted) and a **system-assigned managed identity** with
+"Storage Blob Data Contributor" on `labdataplatform`. The job then needs no
+SAS and no key — managed identity is the permanent fix for the 403s. Startup
+command clones this repo and runs `python -m tools.daily_pipeline`; Dropbox
+credentials go in as job secrets.
+
 ## What still needs a human
 
 1. **Azure access**: the stored SAS gets 403 on every request. Rotate the
    storage key (the 2026-09-30 SAS was pasted in chat) and mint a
    least-privilege credential, or finish setup in portal.azure.com.
    Until then, run stages 1–2 against a local `--out` dir.
+   **Permanent fix**: deploy the Container Apps Job with a managed identity
+   (above) — SAS tokens disappear from the picture entirely.
 2. **ETT sample**: the vendor will provide a test/de-identified dataset.
    Re-run `tools/ingest_ett --dry-run` on it before trusting the mapping.
 3. **REB/privacy sign-off** before any identifiable hospital data is
    processed outside the lab's controlled environment.
-4. **Scheduler**: pick one — Windows Task Scheduler (today), Azure
-   Container Instance on a timer, or Prefect Cloud. The CLIs are
-   scheduler-agnostic on purpose.

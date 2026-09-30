@@ -7,9 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import dropbox
-from azure.core.pipeline.transport import RequestsTransport
-from azure.identity import DefaultAzureCredential
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient  # noqa: F401 (kept for backwards compat)
 from dotenv import load_dotenv
 
 
@@ -54,26 +52,14 @@ def get_dropbox_client():
 
 
 def get_azure_container():
-    account = os.getenv("AZURE_STORAGE_ACCOUNT")
+    from tools.azure_auth import ensure_container, get_blob_service_client
+
+    account = os.getenv("AZURE_STORAGE_ACCOUNT", "labdataplatform")
     container_name = os.getenv("AZURE_CONTAINER_RAW", "rawdata")
 
-    if not account:
-        raise RuntimeError("AZURE_STORAGE_ACCOUNT is missing")
+    blob_service = get_blob_service_client(account)
 
-    credential = os.getenv("AZURE_STORAGE_KEY")
-
-    transport = RequestsTransport(
-        connection_timeout=300,
-        read_timeout=300,
-    )
-
-    blob_service = BlobServiceClient(
-        account_url=f"https://{account}.blob.core.windows.net",
-        credential=credential,
-        transport=transport,
-    )
-
-    return blob_service.get_container_client(container_name)
+    return ensure_container(blob_service, container_name)
 
 
 def list_dropbox_projects(dbx):

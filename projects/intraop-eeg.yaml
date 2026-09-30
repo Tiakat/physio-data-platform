@@ -1,0 +1,36 @@
+# Intraoperative frontal EEG (BIS Vista monitor) during propofol-remifentanil TIVA.
+# Processing: Tiakat/intraop-eeg-pipeline (eegpipe) via adapters/intraop_eeg.py
+project: intraop-eeg
+description: "Intraoperative frontal EEG: filtering, artifact rejection, spectral/PAC metrics per anesthetic phase."
+version: 1
+
+dropbox:
+  # TODO: set the real Dropbox folder for this project.
+  source_dir: "/Projets actifs/intraop-eeg/raw"
+  file_pattern: "*.csv"
+  recursive: true
+
+staging_dir: "./staging"
+
+sampling_rate_hz: 128.0
+channels: ["Fp1", "Fp2"]
+
+processing:
+  adapter: "adapters.intraop_eeg:process_patient"
+  chunk_seconds: 600.0
+  seed: 0
+
+outputs:
+  root: "./processed"
+  write_clean_signals: true
+  write_features: true
+
+website:
+  feed_dir: "./website"
+  figures: ["overview", "traces_by_phase", "spectra", "evolution", "pac"]
+
+notes:
+  # Clinical landmarks live in a sidecar JSON next to each raw file:
+  #   <patient>.landmarks.json -> {"induction_s": 1234, "incision_s": 1560, ...}
+  # Without it, all windows fall in a single "unknown" phase.
+  landmarks_sidecar: "<stem>.landmarks.json"

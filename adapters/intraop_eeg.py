@@ -55,7 +55,6 @@ def _read_recording(raw_path: str, cfg) -> tuple[np.ndarray, dict]:
 
 def process_patient(raw_path: str, cfg, out_dir: str, log) -> dict:
     from eegpipe.pipeline import process_recording
-    from physio_platform import store
 
     eeg_uv, meta = _read_recording(raw_path, cfg)
     fs = meta["fs"]
@@ -66,20 +65,20 @@ def process_patient(raw_path: str, cfg, out_dir: str, log) -> dict:
     res = process_recording(eeg_uv, landmarks, fs=fs,
                             seed=cfg.processing.seed)
 
-    pid = Path(raw_path).stem
-    fp = cfg.fingerprint
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
 
     if cfg.outputs.write_clean_signals:
         t = np.arange(eeg_uv.shape[0]) / fs
         sig = pd.DataFrame({"t_s": t})
         for i, ch in enumerate(meta["channels"]):
             sig[ch] = res.cleaned[:, i]
-        store.write_signals(cfg.outputs.root, cfg.name, fp, pid, sig)
+        sig.to_parquet(out / "signals.parquet", index=False)
 
     if cfg.outputs.write_features:
         feats = res.metrics.copy()
-        feats["patient_id"] = pid
-        store.write_features(cfg.outputs.root, cfg.name, fp, pid, feats)
+        feats["patient_id"] = Path(raw_path).stem
+        feats.to_parquet(out / "features.parquet", index=False)
 
     # figures: eegpipe's plotting helpers (each saves to a path)
     try:

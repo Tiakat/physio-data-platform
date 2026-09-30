@@ -1,7 +1,8 @@
 """Tests for the encrypted-parquet ingest (stage 1).
 
-Covers: document/junk exclusion, tier classification, group-atomic batching,
-budget selection, blob-name privacy (no patient codes), and state shape.
+Covers: document/junk exclusion, exclude-folder patterns, incremental
+selection (new/changed/failed vs unchanged), budget selection, blob-name
+privacy (no patient codes), and state shape.
 Pure logic — no Dropbox/Azure/network.
 """
 
@@ -42,12 +43,11 @@ sys.modules["dropbox.exceptions"] = _exceptions
 
 from tools.legacy_pipeline import (  # noqa: E402
     DOCUMENT_EXTENSIONS,
-    classify_entries,
-    group_key,
+    _excluded,
+    _parquet_blob_name,
+    _select_new,
     is_document,
     is_junk,
-    profile_tier,
-    select_batch,
 )
 
 
@@ -61,85 +61,54 @@ def test_documents_and_junk_excluded():
     assert not is_junk("NOL.csv")
 
 
-def test_profile_tier():
-    profile = {"acquisition": {"tiers": {
-        "a": {"include": ["*.csv"]},
-        "c": {"include": ["*.pdf", "*.med"]},
-    }}}
-    assert profile_tier(profile, "NOL.csv") == "a"
-    assert profile_tier(profile, "notes.pdf") == "c"
-    assert profile_tier(profile, "weird.xyz") == "b"
-    assert profile_tier(None, "anything.csv") == "u"
+def test_exclude_folders():
+    pats = ["Patient non inclus*"]
+    assert _excluded("Database/Patient non inclus 5/NOL.csv", pats)
+    assert _excluded("Database/patient non inclus 12/x.csv", pats)
+    assert not _excluded("Database/Patient 3/NOL.csv", pats)
+    assert not _excluded("Database/RawData/1/x.csv", [])
 
 
-def test_classify_entries_keeps_signal_files_only():
-    project = {"code": "V-RAPS", "profile": {"acquisition": {"tiers": {
-        "a": {"include": ["NOL*.csv", "Infinity*.csv"]},
-        "c": {"include": ["*.pdf"]},
-    }}}}
+def test_select_new_skips_unchanged():
     entries = [
-        {"relpath": "12/NOL.csv", "name": "NOL.csv", "size": 10, "rev": "r1"},
-        {"relpath": "12/notes.pdf", "name": "notes.pdf", "size": 5, "rev": "r2"},
-        {"relpath": "12/.DS_Store", "name": ".DS_Store", "size": 1, "rev": "r3"},
-        {"relpath": "12/readme.txt", "name": "readme.txt", "size": 2, "rev": "r4"},
+        {"relpath": "a/HR.csv", "name": "HR.csv", "size": 100, "rev": "r2"},
+        {"relpath": "b/HR.csv", "name": "HR.csv", "size": 100, "rev": "r1"},
     ]
-    tier_a, as_bytes = classify_entries(project, entries)
-    assert [e["name"] for e in tier_a] == ["NOL.csv"]
-    # readme.txt is tier-b data-ish -> stored as encrypted bytes; pdf/junk dropped
-    assert [e["name"] for e in as_bytes] == ["readme.txt"]
+    done = {"a/HR.csv": {"status": "ok", "rev": "r2", "kind": "parquet"}}
+    sel, used = _select_new(entries, done, 10 ** 9)
+    assert [e["relpath"] for e in sel] == ["b/HR.csv"]
+    assert used == 100
 
 
-def test_bettercare_group_atomic():
-    project = {"code": "V-RAPS", "profile": {"acquisition": {"tiers": {
-        "a": {"include": ["*.csv"]},
-    }}}}
-    entries = [
-        {"relpath": "12/Extracted data/Better Care/a.csv", "name": "a.csv", "size": 2_000_000_000, "rev": "r1"},
-        {"relpath": "12/Extracted data/Better Care/b.csv", "name": "b.csv", "size": 2_000_000_000, "rev": "r2"},
-    ]
-    # budget fits only one group-member: group must stay whole -> nothing chosen
-    batch_a, _ = select_batch(project, entries, {}, budget_bytes=3_000_000_000)
-    assert batch_a == [] or len(batch_a) == 2
-    # budget fits the whole group -> both chosen
-    batch_a, _ = select_batch(project, entries, {}, budget_bytes=5_000_000_000)
-    assert len(batch_a) == 2
-
-
-def test_changed_source_reingested():
-    project = {"code": "IPAMS", "profile": {"acquisition": {"tiers": {
-        "a": {"include": ["*.csv"]},
-    }}}}
+def test_select_new_reingests_changed_and_failed():
     entries = [{"relpath": "P-01/HR.csv", "name": "HR.csv", "size": 100, "rev": "r2"}]
-    # same rev recorded -> skipped
-    done = {"P-01/HR.csv": {"kind": "parquet", "sha256": "old", "rev": "r2"}}
-    batch_a, batch_b = select_batch(project, entries, done, budget_bytes=10 ** 9)
-    assert batch_a == [] and batch_b == []
-    # source changed in Dropbox (new rev) -> re-ingested
-    done2 = {"P-01/HR.csv": {"kind": "parquet", "sha256": "old", "rev": "r1"}}
-    batch_a, _ = select_batch(project, entries, done2, budget_bytes=10 ** 9)
-    assert len(batch_a) == 1
-    # old record without rev -> re-ingested once to stamp the rev
-    done3 = {"P-01/HR.csv": {"kind": "parquet", "sha256": "old"}}
-    batch_a, _ = select_batch(project, entries, done3, budget_bytes=10 ** 9)
-    assert len(batch_a) == 1
-    # failed entries are retried
-    done4 = {"P-01/HR.csv": {"kind": "failed", "error": "x", "rev": "r2"}}
-    batch_a, _ = select_batch(project, entries, done4, budget_bytes=10 ** 9)
-    assert len(batch_a) == 1
+    # changed rev -> re-ingest
+    sel, _ = _select_new(entries, {"P-01/HR.csv": {"status": "ok", "rev": "r1"}}, 10 ** 9)
+    assert len(sel) == 1
+    # failed -> retry even with same rev
+    sel, _ = _select_new(entries, {"P-01/HR.csv": {"status": "failed", "rev": "r2"}}, 10 ** 9)
+    assert len(sel) == 1
+    # record without rev -> re-ingest once to stamp it
+    sel, _ = _select_new(entries, {"P-01/HR.csv": {"status": "ok"}}, 10 ** 9)
+    assert len(sel) == 1
 
 
-def test_group_key_vraps_patient_folder():
-    assert group_key("V-RAPS", "12/Extracted data/NOL.csv") == "12"
-    assert group_key("IPAMS", "P-01/HR.csv") == "P-01"
-    assert group_key("IPAMS", "HR.csv") == "HR.csv"
+def test_select_new_respects_budget():
+    entries = [
+        {"relpath": "a.csv", "name": "a.csv", "size": 2_000_000_000, "rev": "r1"},
+        {"relpath": "b.csv", "name": "b.csv", "size": 2_000_000_000, "rev": "r1"},
+    ]
+    sel, used = _select_new(entries, {}, 3_000_000_000)
+    assert len(sel) == 1 and used == 2_000_000_000
+    sel, _ = _select_new(entries, {}, 5_000_000_000)
+    assert len(sel) == 2
 
 
 def test_blob_names_carry_no_patient_codes():
-    # Convention enforced in _parse_and_store_parquet: blob names are
-    # <device>_<sha8>.parquet.enc — patient codes live only in the
-    # encrypted catalog/state.
-    device, digest = "infinity", "abc123def456"
-    blob = f"V-RAPS/parquet/{device}_{digest[:8]}.parquet.enc"
+    # Blob names are <device>_<sha8>.parquet.enc — patient codes live only
+    # in the encrypted catalog/state, never in blob names.
+    blob = _parquet_blob_name("V-RAPS", "infinity", "abc123def456")
+    assert blob == "V-RAPS/parquet/infinity_abc123de.parquet.enc"
     assert "P-" not in blob and "/12/" not in blob
     assert blob.endswith(".parquet.enc")
 
@@ -147,13 +116,15 @@ def test_blob_names_carry_no_patient_codes():
 def test_state_shape():
     # state["legacy"][code]["files"][relpath] = {...}
     state = {"legacy": {"V-RAPS": {"files": {
-        "12/NOL.csv": {"sha256": "abc", "size": 10, "kind": "parquet",
-                       "stored": "V-RAPS/parquet/nol_abc12345.parquet.enc"},
-        "12/notes.pdf": {"kind": "skipped-document"},
+        "Database/RawData/12/NOL.csv": {
+            "status": "ok", "rev": "r2", "sha256": "abc", "size": 10,
+            "kind": "parquet",
+            "stored": "V-RAPS/parquet/nol_abc12345.parquet.enc"},
     }}}}
     files = state["legacy"]["V-RAPS"]["files"]
-    assert files["12/NOL.csv"]["stored"].endswith(".enc")
-    assert files["12/notes.pdf"]["kind"] == "skipped-document"
+    rec = files["Database/RawData/12/NOL.csv"]
+    assert rec["stored"].endswith(".enc")
+    assert rec["status"] == "ok"
 
 
 TESTS = [v for k, v in sorted(globals().items())

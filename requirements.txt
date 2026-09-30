@@ -1,19 +1,34 @@
 # Core
+pandas>=2.1
 numpy>=1.26
-pandas>=2.0
-pyarrow>=14.0
+pyarrow>=14
+pyyaml>=6
 scipy>=1.11
-pyyaml>=6.0
 
-# Intraop-EEG adapter: Katia's audited pipeline (filtering, artifact
-# rejection, spectral/PAC metrics). Public methods repo, no patient data.
-eegpipe @ git+https://github.com/Tiakat/intraop-eeg-pipeline.git
+# Validation and pipeline
+pandera>=0.18
+prefect>=3.0
 
-# Dropbox ingest
-dropbox>=12.0
+# Database
+sqlalchemy>=2.0
+psycopg[binary]>=3.3,<4
 
-# Figures (used by eegpipe plots)
-matplotlib>=3.8
+# Interface
+streamlit>=1.38
+plotly>=5.20
+streamlit-authenticator>=0.3
 
-# Dev / CI
-pytest>=8.0
+# Statistics
+statsmodels>=0.14
+pingouin>=0.5
+
+# Storage
+azure-storage-blob>=12.19
+minio>=7.2
+dropbox>=12.2
+
+# Utilities
+python-dotenv>=1.0
+watchdog>=4.0
+azure-identity>=1.15
+pytest>=8

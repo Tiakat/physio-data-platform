@@ -30,8 +30,16 @@ def test_identifier_candidate_negative():
     assert is_identifier_candidate("SpO2") is None
 
 
+def test_identifier_candidate_bare_patient_token():
+    # Stage 2 flags the bare "patient" token; the review must not miss it.
+    assert is_identifier_candidate("patient") == "patient"
+    assert is_identifier_candidate("Patient") == "patient"
+
+
 def test_identifier_candidate_case_insensitive():
-    assert is_identifier_candidate("patient_id") == "patientid"
+    # Either the bare token or the joined form may match first; the flag is
+    # what matters, not which spelling of it.
+    assert is_identifier_candidate("patient_id") in {"patient", "patientid"}
 
 
 def test_find_identifier_candidates_sorted():

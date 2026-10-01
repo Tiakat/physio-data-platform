@@ -24,11 +24,31 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+def _write_summary(title: str, rows: list[tuple]) -> None:
+    """Append a de-identified markdown table to the GitHub job summary.
+
+    Only counts and fingerprint classes -- no paths, filenames, or values --
+    so this is safe to show in the workflow UI. No-op outside GitHub Actions.
+    """
+    dest = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not dest:
+        return
+    lines = [f"## {title}", "",
+             "| project | csvs | unparseable | fingerprint classes |",
+             "| --- | ---: | ---: | --- |"]
+    for code, n_csv, n_bad, classes in rows:
+        lines.append(f"| {code} | {n_csv} | {n_bad} | {classes} |")
+    lines.append("")
+    with open(dest, "a", encoding="utf-8") as fh:
+        fh.write("\n".join(lines))
 
 HEAD_BYTES = 65536
 ENCODINGS = ("utf-8-sig", "utf-8", "cp1252", "latin-1")
@@ -173,6 +193,7 @@ def main() -> int:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
 
     fps = []
+    summary_rows = []
     for proj in sorted(projects, key=lambda p: p["code"]):
         code = proj["code"]
         n_csv = 0
@@ -210,6 +231,9 @@ def main() -> int:
                 })
         print(f"[forensics] {code}: {n_csv} csvs, {n_bad} unparseable, "
               f"classes={classes}", flush=True)
+        summary_rows.append((code, n_csv, n_bad, classes))
+
+    _write_summary("Forensics recon (de-identified)", summary_rows)
 
     svc = azure_auth.get_blob_service_client(ACCOUNT)
     blob = f"recon/forensics_{ts}.json"

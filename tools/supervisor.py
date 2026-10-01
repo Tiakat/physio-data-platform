@@ -328,6 +328,190 @@ def render_email(audit: Dict[str, dict], run_stats: dict,
 
 
 # ---------------------------------------------------------------------------
+# Ingest health checks (run AFTER ingest).
+#
+# Each check is small, pure where possible, and never raises: a failing
+# check becomes a finding, never a crash. Findings use counts and hash
+# blob names only — safe for the plaintext digest.
+# ---------------------------------------------------------------------------
+
+def check_project_health(code: str, entry: dict) -> List[str]:
+    """Stall + failure-spike detection from the project's run history."""
+    findings: List[str] = []
+    hist = entry.get("run_history") or []
+    if not hist:
+        return findings
+    last = hist[-1]
+
+    # Stall: work remains but nothing selected, repeatedly.
+    remaining = max(0, last.get("eligible", 0) - last.get("ok_total", 0))
+    if remaining > 0 and last.get("selected", 0) == 0:
+        streak = 0
+        for rec in reversed(hist):
+            rem = max(0, rec.get("eligible", 0) - rec.get("ok_total", 0))
+            if rem > 0 and rec.get("selected", 0) == 0:
+                streak += 1
+            else:
+                break
+        if streak >= 2:
+            findings.append(
+                f"stall? {remaining} files eligible but 0 selected for "
+                f"{streak} consecutive runs — the selector may be blind "
+                f"to them")
+
+    # Failure spike: this run's failure rate far above its own history
+    # (usually a new file format appearing).
+    ok_new = last.get("ok_new", 0)
+    failed_new = last.get("failed_new", 0)
+    total_new = ok_new + failed_new
+    if failed_new >= 3 and total_new > 0:
+        rate = failed_new / total_new
+        past = []
+        for rec in hist[:-1]:
+            t = rec.get("ok_new", 0) + rec.get("failed_new", 0)
+            if t > 0:
+                past.append(rec.get("failed_new", 0) / t)
+        baseline = sorted(past)[len(past) // 2] if past else 0.0
+        if rate >= 0.25 and rate > 3 * baseline + 0.05:
+            findings.append(
+                f"failure spike: {failed_new}/{total_new} failed this run "
+                f"({rate:.0%}) vs baseline {baseline:.0%} — new file format?")
+    return findings
+
+
+def validate_parquet_samples(account: str, projects: List[dict], state: dict,
+                             per_project: int = 3) -> Tuple[List[str], int]:
+    """Download, decrypt and open a few parquet blobs per project.
+
+    Returns (findings, n_checked). Blob names are content hashes — safe.
+    """
+    from tools import azure_auth
+    from tools.crypto import decrypt_bytes
+    import io
+
+    findings: List[str] = []
+    checked = 0
+    svc = azure_auth.get_blob_service_client(account)
+    for proj in projects:
+        code = proj["code"]
+        files = (state.get("legacy", {}) or {}).get(code, {}).get("files") or {}
+        blobs = [f["stored"] for f in files.values()
+                 if isinstance(f, dict) and f.get("status") == "ok"
+                 and f.get("kind") == "parquet" and f.get("stored")]
+        for blob in blobs[-per_project:]:
+            checked += 1
+            try:
+                raw = svc.get_blob_client(
+                    container="rawdata", blob=blob).download_blob().readall()
+                import pandas as pd
+                df = pd.read_parquet(io.BytesIO(decrypt_bytes(raw)))
+                if len(df) == 0 or len(df.columns) == 0:
+                    findings.append(f"{code}: {blob} decrypted but is empty")
+            except Exception as exc:  # noqa: BLE001
+                findings.append(
+                    f"{code}: {blob} failed validation: {str(exc)[:120]}")
+    return findings, checked
+
+
+def run_health_checks(dbx, account: str, projects: List[dict], state: dict,
+                      put_encrypted: Callable[[str, bytes], None],
+                      put_plain: Callable[[str, bytes], None],
+                      email_dir: Optional[str],
+                      started_at,
+                      timeout_min: float = 120,
+                      sample_parquets: bool = True) -> dict:
+    """Post-ingest health checks. Never raises; findings go to the digest,
+    the log, and (if any) the email/issue report."""
+    import os as _os
+    from datetime import datetime as _dt, timezone as _tz
+
+    ts = _dt.now(_tz.utc).strftime("%Y%m%d_%H%M")
+    findings: Dict[str, List[str]] = {}
+    for proj in projects:
+        code = proj["code"]
+        try:
+            entry = (state.get("legacy", {}) or {}).get(code, {})
+            found = check_project_health(code, entry)
+            if found:
+                findings[code] = found
+        except Exception as exc:  # noqa: BLE001
+            findings[code] = [f"health check error: {exc}"[:150]]
+
+    pq_checked = 0
+    if sample_parquets:
+        try:
+            pq_found, pq_checked = validate_parquet_samples(
+                account, projects, state)
+            if pq_found:
+                findings["_parquet"] = pq_found
+        except Exception as exc:  # noqa: BLE001
+            findings["_parquet"] = [f"parquet sampling error: {exc}"[:150]]
+
+    elapsed_min = (_dt.now(_tz.utc) - started_at).total_seconds() / 60
+    timeout_finding = None
+    if elapsed_min > 0.85 * timeout_min:
+        timeout_finding = (f"run at {elapsed_min:.0f}/{timeout_min:.0f} min "
+                           f"({elapsed_min / timeout_min:.0%}) of the "
+                           f"workflow timeout — backlog may not fit")
+
+    digest_projects = {}
+    for proj in projects:
+        code = proj["code"]
+        last = (state.get("legacy", {}) or {}).get(code, {}).get("last_run", {})
+        digest_projects[code] = {
+            "eligible": last.get("eligible", 0),
+            "selected": last.get("selected", 0),
+            "ok_new": last.get("ok_new", 0),
+            "failed_new": last.get("failed_new", 0),
+            "ok_total": last.get("ok_total", 0),
+            "budget_capped": last.get("budget_capped", False),
+        }
+    digest = {"generated_utc": ts, "elapsed_min": round(elapsed_min, 1),
+              "parquet_samples_checked": pq_checked,
+              "projects": digest_projects, "findings": findings,
+              "timeout": timeout_finding}
+    put_plain(f"supervisor/health_{ts}.json",
+              json.dumps(digest, indent=1).encode("utf-8"))
+
+    n_find = sum(len(v) for v in findings.values()) + \
+        (1 if timeout_finding else 0)
+    print(f"[supervisor] health: {n_find} findings, "
+          f"{pq_checked} parquet samples checked, "
+          f"elapsed {elapsed_min:.0f} min", flush=True)
+    for code in sorted(findings):
+        for f in findings[code]:
+            print(f"[supervisor] health {code}: {f}", flush=True)
+    if timeout_finding:
+        print(f"[supervisor] health: {timeout_finding}", flush=True)
+
+    if n_find and email_dir:
+        _os.makedirs(email_dir, exist_ok=True)
+        section = ["", "", "== Ingest health ==", ""]
+        if timeout_finding:
+            section.append(f"- {timeout_finding}")
+        for code in sorted(findings):
+            for f in findings[code]:
+                section.append(f"- {code}: {f}")
+        section.append("")
+        body_path = _os.path.join(email_dir, "body.txt")
+        existing = ""
+        if _os.path.exists(body_path):
+            with open(body_path, encoding="utf-8") as fh:
+                existing = fh.read()
+        with open(body_path, "w", encoding="utf-8") as fh:
+            fh.write(existing + "\n".join(section))
+        subj_path = _os.path.join(email_dir, "subject.txt")
+        if _os.path.exists(subj_path):
+            with open(subj_path, encoding="utf-8") as fh:
+                subj = fh.read().strip() + " + ingest health"
+        else:
+            subj = f"[Supervisor] ingest health {ts} — {n_find} findings"
+        with open(subj_path, "w", encoding="utf-8") as fh:
+            fh.write(subj)
+    return digest
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 

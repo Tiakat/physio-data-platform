@@ -14,6 +14,9 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    permissions:
+      contents: read
+      issues: write
     env:
       AZURE_STORAGE_ACCOUNT: labdataplatform
       AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
@@ -43,20 +46,24 @@ jobs:
           pip install -r requirements.txt
       - name: Run daily pipeline
         run: python -m tools.daily_pipeline
-      # Supervisor email: sent ONLY when a project deviates from the lab
-      # template (the pipeline writes supervisor_out/body.txt only then).
-      # Needs repo secrets: MAIL_USERNAME, MAIL_PASSWORD (Gmail app password),
-      # MAIL_TO (defaults to MAIL_USERNAME).
-      - name: Email supervisor report
+      # Supervisor report: filed as a GitHub issue ONLY when a project
+      # deviates from the lab template (the pipeline writes
+      # supervisor_out/body.txt only then). No email credentials needed:
+      # GitHub notifies you through your normal repo notifications.
+      # An existing open supervisor issue gets a new comment instead of
+      # opening duplicates; close it once you've fixed the folders.
+      - name: File supervisor report
         if: hashFiles('supervisor_out/body.txt') != ''
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.MAIL_USERNAME }}
-          password: ${{ secrets.MAIL_PASSWORD }}
-          subject: file://supervisor_out/subject.txt
-          body: file://supervisor_out/body.txt
-          to: ${{ secrets.MAIL_TO }}
-          from: Lab Pipeline Supervisor <${{ secrets.MAIL_USERNAME }}>
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create supervisor --color "d73a4a" \
+            --description "Lab-template deviations found by the supervisor" || true
+          OPEN=$(gh issue list --label supervisor --state open --json number -q '.[0].number')
+          if [ -n "$OPEN" ]; then
+            gh issue comment "$OPEN" --body-file supervisor_out/body.txt
+            echo "Updated issue #$OPEN"
+          else
+            gh issue create --title "Supervisor: Dropbox audit $(date -u +%F) — template deviations" \
+              --body-file supervisor_out/body.txt --label supervisor
+          fi

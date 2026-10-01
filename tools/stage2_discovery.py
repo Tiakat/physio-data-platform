@@ -478,6 +478,18 @@ def run_discovery(account: str, state: dict, repo_root: str | Path,
             "n_columns": rep["n_columns"],
             "by_class": rep["by_class"],
             "signals": rep["signals"],
+            # Per-signal aggregates for the website feed (standard names +
+            # counts/fractions only — no patient data, safe for plaintext).
+            "signal_detail": {
+                name: {
+                    "files_seen": rep["columns"][name].get("files_seen_in", 0),
+                    "mean_missing_frac": (rep["missingness"].get(name)
+                                          or {}).get("mean_missing_frac"),
+                    "worst_kind": (rep["missingness"].get(name)
+                                   or {}).get("worst_kind"),
+                }
+                for name in rep["signals"]
+            },
             "n_unknown": len(unknowns),
             "schema_drift": len(rep["schema_drift"]),
             "time_range": rep["time_range"],

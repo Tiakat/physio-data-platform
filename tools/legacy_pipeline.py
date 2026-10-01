@@ -142,6 +142,19 @@ def select_projects(dbx) -> Tuple[List[dict], List[str]]:
 # Dropbox listing (paginated, recursive)
 # ---------------------------------------------------------------------------
 
+def _log_parent_contents(dbx, root: str) -> None:
+    """Best-effort: when a data root is missing, show what the parent
+    folder actually contains so a wrong folder name is diagnosable."""
+    parent = root.rsplit("/", 1)[0]
+    try:
+        res = dbx.files_list_folder(parent)
+        names = sorted(e.name for e in res.entries
+                       if isinstance(e, dropbox.files.FolderMetadata))
+        print(f"[ingest] contents of {parent}: {names}", flush=True)
+    except Exception:
+        pass  # never block ingestion on diagnostics
+
+
 def list_dropbox_tree(dbx, root: str) -> List[dict]:
     entries: List[dict] = []
     try:
@@ -149,6 +162,7 @@ def list_dropbox_tree(dbx, root: str) -> List[dict]:
     except dropbox.exceptions.ApiError as e:
         if e.error.is_path() and e.error.get_path().is_not_found():
             print(f"[ingest] folder not found, skipping: {root}", flush=True)
+            _log_parent_contents(dbx, root)
             return []
         raise
     while True:

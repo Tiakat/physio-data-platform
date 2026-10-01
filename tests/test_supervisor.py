@@ -175,6 +175,82 @@ def test_render_email_only_when_attention_needed():
         "Nothing was moved" in body
 
 
+def test_health_no_history_no_findings():
+    from tools.supervisor import check_project_health
+    assert check_project_health("X", {}) == []
+    assert check_project_health("X", {"run_history": []}) == []
+
+
+def _rec(eligible, selected, ok_new, failed_new, ok_total):
+    return {"ts": "20261001_1200", "eligible": eligible,
+            "selected": selected, "ok_new": ok_new,
+            "failed_new": failed_new, "ok_total": ok_total}
+
+
+def test_health_stall_needs_two_consecutive_runs():
+    from tools.supervisor import check_project_health
+    one = {"run_history": [_rec(100, 0, 0, 0, 40)]}
+    assert check_project_health("X", one) == []  # single run: no finding yet
+    two = {"run_history": [_rec(100, 0, 0, 0, 40),
+                           _rec(100, 0, 0, 0, 40)]}
+    f = check_project_health("X", two)
+    assert len(f) == 1 and "stall" in f[0] and "60" in f[0]
+
+
+def test_health_complete_project_is_not_a_stall():
+    from tools.supervisor import check_project_health
+    entry = {"run_history": [_rec(50, 0, 0, 0, 50),
+                             _rec(50, 0, 0, 0, 50)]}
+    assert check_project_health("X", entry) == []
+
+
+def test_health_failure_spike():
+    from tools.supervisor import check_project_health
+    clean_hist = [_rec(100, 20, 20, 0, 20 + 20 * i) for i in range(3)]
+    spike = _rec(100, 10, 5, 5, 80)
+    f = check_project_health("X", {"run_history": clean_hist + [spike]})
+    assert len(f) == 1 and "spike" in f[0]
+    # low failure rate: no finding
+    ok_run = _rec(100, 10, 9, 1, 80)
+    assert check_project_health(
+        "X", {"run_history": clean_hist + [ok_run]}) == []
+
+
+def test_run_health_checks_digest_and_email(tmp_path=None):
+    import tempfile
+    from datetime import datetime, timezone
+    from tools.supervisor import run_health_checks
+    tmp = tempfile.mkdtemp()
+    # pre-existing audit email files (clean audit -> none written; make one)
+    with open(os.path.join(tmp, "body.txt"), "w") as fh:
+        fh.write("audit body\n")
+    with open(os.path.join(tmp, "subject.txt"), "w") as fh:
+        fh.write("audit subject")
+    uploaded = {}
+
+    def put_plain(name, data):
+        uploaded[name] = data
+
+    state = {"legacy": {"STALLED": {
+        "files": {},
+        "run_history": [_rec(100, 0, 0, 0, 40),
+                        _rec(100, 0, 0, 0, 40)],
+        "last_run": _rec(100, 0, 0, 0, 40),
+    }}}
+    started = datetime.now(timezone.utc)
+    d = run_health_checks(None, "acct", [{"code": "STALLED"}],
+                          state, lambda n, d: None, put_plain,
+                          tmp, started, sample_parquets=False)
+    assert d["projects"]["STALLED"]["ok_total"] == 40
+    assert "STALLED" in d["findings"]
+    assert any(n.startswith("supervisor/health_") for n in uploaded)
+    body = open(os.path.join(tmp, "body.txt")).read()
+    assert "audit body" in body and "== Ingest health ==" in body
+    assert "stall" in body
+    subj = open(os.path.join(tmp, "subject.txt")).read()
+    assert subj == "audit subject + ingest health"
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

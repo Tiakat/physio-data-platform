@@ -23,8 +23,10 @@ jobs:
       PIPELINE_DATA_KEY: ${{ secrets.PIPELINE_DATA_KEY }}
       # Ingest ALL data projects (not just V-RAPS). Comma-separated codes or "all".
       LEGACY_PROJECTS: all
-      # Encrypted-parquet ingest budget per run (GB of source data).
-      LEGACY_BUDGET_GB: "3"
+      # Encrypted-parquet ingest budget PER PROJECT per run (GB of source data).
+      # One run walks ALL projects; the 120-min timeout is the backstop, and
+      # state is saved after each project so scheduled runs resume on their own.
+      LEGACY_BUDGET_GB: "10"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -140,17 +140,51 @@ def test_classify_run_counts_ok_and_failed():
     assert s["projects"]["DEXREM"] == {"ok": 2, "failed": 1}
 
 
-TESTS = [v for k, v in sorted(globals().items())
-         if k.startswith("test_") and callable(v)]
+
+
+def test_suggest_home_devices_and_docs():
+    from tools.supervisor import suggest_home
+    assert suggest_home("NOL") == "Database/ExtractedData/NOL/"
+    assert suggest_home("bis") == "Database/ExtractedData/BIS/"
+    assert suggest_home("Soumission ethique") == \
+        "Documents/Soumission ethique/"
+    assert suggest_home("Patient 12") == \
+        "Database/RawData/12/  (or AnalyzedData — please decide)"
+    assert suggest_home("random stuff") is None
+
+
+def test_render_email_only_when_attention_needed():
+    from tools.supervisor import render_email
+    clean = {"DEXREM": {"unreachable": False, "missing": [],
+                       "unexpected": [], "stray_files": 0,
+                       "layout_note": ""}}
+    assert render_email(clean, {"files_ok": 5, "files_failed": 0},
+                        "20261001_1200") is None
+    bad = {"DEXREM": {"unreachable": False, "missing": ["documents/"],
+                      "unexpected": ["NOL/"],
+                      "stray_files": 0, "layout_note": ""}}
+    out = render_email(bad, {"files_ok": 5, "files_failed": 0},
+                       "20261001_1200")
+    assert out is not None
+    subject, body = out
+    assert "deviate" in subject and "1 project" in subject
+    assert "== DEXREM ==" in body
+    assert "NOL" in body and "Database/ExtractedData/NOL/" in body
+    assert "Missing section: documents/" in body
+    assert "nothing was moved" in body.lower() or \
+        "Nothing was moved" in body
+
 
 if __name__ == "__main__":
+    tests = [v for k, v in sorted(globals().items())
+             if k.startswith("test_") and callable(v)]
     failed = 0
-    for t in TESTS:
+    for t in tests:
         try:
             t()
             print(f"PASS {t.__name__}")
         except AssertionError as e:
             failed += 1
             print(f"FAIL {t.__name__}: {e}")
-    print(f"{len(TESTS) - failed}/{len(TESTS)} passed")
+    print(f"{len(tests) - failed}/{len(tests)} passed")
     sys.exit(1 if failed else 0)

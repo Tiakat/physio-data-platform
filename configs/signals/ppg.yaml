@@ -1,0 +1,46 @@
+# PPG / plethysmograph processing config
+signal: PPG
+status: draft
+category: B  # raw waveform
+channels:
+  - PLETH
+  - PPG
+validity:
+  unit: device-specific  # raw optical units; amplitude not comparable across devices
+  zero_is_valid: false
+artifact_detection:
+  - name: flatline
+    method: sliding variance below epsilon
+    params: {window_s: 2.0}
+    flag: FLATLINE
+  - name: saturation_clipping
+    method: samples at ADC rail
+    params: {min_consecutive: 5}
+    flag: SATURATION
+  - name: motion_artifact
+    method: amplitude/spectral deviation vs local context + low perfusion flag
+    params: {z_window_s: 10.0}
+    flag: DEVICE_ARTIFACT
+filter:
+  method: bandpass
+  params: {low_hz: 0.5, high_hz: 8.0, order: 4}
+  note: >-
+    Baseline wander removal + high-frequency noise. Cutoffs adjustable per
+    project; never the ECG band.
+features:
+  - pulse_peaks
+  - pulse_rate
+  - pulse_amplitude
+  - pulse_interval
+normalization:
+  policy: none
+  rationale: Raw optical amplitude is device-specific; keep native, normalize only derived features if justified.
+missing_data:
+  structural: Probe off finger or low-perfusion periods are structural/expected, not failures.
+graphs:
+  priority: primary
+  views: [raw_vs_filtered_overlay, full_recording, zoomed_window, quality_flags]
+cross_validation:
+  - derive: pulse_rate
+    compare_with: HR
+    note: Pulse rate vs ECG-derived HR disagreement flags periods for review.

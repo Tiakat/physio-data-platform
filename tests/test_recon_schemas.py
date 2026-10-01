@@ -86,3 +86,27 @@ def test_extract_columns_content_unparseable():
     cols, reason, detail = extract_columns("\n***\n", ";", 0)
     assert cols is None
     assert reason == "content_unparseable"
+
+
+def test_offset_recovery_recovers_header_at_line_1():
+    from tools.recon_schemas import columns_with_offset_recovery
+    cols, recovered, why = columns_with_offset_recovery("\nTime;HR\n", ";", 0)
+    assert cols == ["Time", "HR"]
+    assert recovered == "1"
+    assert why == ""
+
+
+def test_offset_recovery_passes_through_normal_header():
+    from tools.recon_schemas import columns_with_offset_recovery
+    cols, recovered, why = columns_with_offset_recovery("Time;HR\n", ";", 0)
+    assert cols == ["Time", "HR"]
+    assert recovered is None
+    assert why == ""
+
+
+def test_offset_recovery_still_fails_unparseable():
+    from tools.recon_schemas import columns_with_offset_recovery
+    cols, recovered, why = columns_with_offset_recovery("\n***\n", ";", 0)
+    assert cols is None
+    assert recovered is None
+    assert why == "content_unparseable"

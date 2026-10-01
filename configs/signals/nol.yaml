@@ -1,0 +1,43 @@
+# NOL processing config (derived index, NOT a 0-100 numeric variable)
+signal: NOL
+status: draft
+category: D  # derived physiological index
+channels:
+  - NOL
+validity:
+  unit: index
+  range: [0, 100]  # from profiles/_variables.yaml
+  zero_is_valid: true
+  note: Retain NOL quality information, source physiological signals, and timestamp alongside the index.
+artifact_detection:
+  - name: out_of_range
+    method: index validity range
+    flag: INVALID_RANGE
+  - name: low_quality
+    method: device quality indicator below threshold where available
+    flag: LOW_QUALITY
+filter:
+  method: none_default
+  note: No filtering by default; NOL is an event-response index. Smoothing only if the analysis question justifies it.
+normalization:
+  policy: none
+  rationale: Native 0-100 index retained; baseline/change features computed instead of rescaling.
+features:
+  - baseline_nol
+  - max_nol
+  - mean_nol
+  - median_nol
+  - auc
+  - change_from_baseline
+  - response_to_event
+  - response_duration
+missing_data:
+  note: >-
+    NOL requires its source signals; missing source = not-applicable, not missing.
+    Byte-identical NOL exports across patients have been observed: hash-check and report, never silently dedupe.
+graphs:
+  priority: primary
+  views: [time_series_with_events, quality_flags]
+cross_validation:
+  - correlate_with: [HR, ART_MEAN, BIS]
+    note: Only where scientifically justified for the project; never blind all-pairs correlation.

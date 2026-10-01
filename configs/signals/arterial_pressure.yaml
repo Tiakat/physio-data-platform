@@ -7,9 +7,7 @@ channels:
   - ART
 validity:
   unit: mmHg
-  range: [20, 300]
-  zero_is_valid: false
-  note: Damping, whip artifact and catheter flushes are the dominant artifacts, not white noise.
+  note: Range and zero semantics come from profiles/_variables.yaml (single source of truth). Damping, whip artifact and catheter flushes are the dominant artifacts, not white noise.
 artifact_detection:
   - name: flatline
     method: sliding variance below epsilon (transducer disconnect)

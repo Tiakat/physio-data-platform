@@ -256,6 +256,13 @@ def main() -> int:
           f"{sum(u['n_unmapped'] for u in unmapped)} unmapped columns, "
           f"{sum(s['n_single_patient_columns'] for s in single)} "
           f"single-patient columns", flush=True)
+    # Privacy-safe: column *names* and counts only, never values. Logged so
+    # the identifier review can be completed from the job log.
+    for c in ident:
+        print(f"[review] identifier candidate: {c['project']} / "
+              f"{c['source']} / {c['original_column']!r} "
+              f"(token={c['matched_token']}, "
+              f"patients={c['available_patients']})", flush=True)
     return 0
 
 

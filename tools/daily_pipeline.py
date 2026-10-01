@@ -291,7 +291,24 @@ def main() -> int:
     state = mirror_ett(dbx, ACCOUNT, state)
     state = process_ett_batch(ACCOUNT, state)
 
-    from tools import legacy_pipeline
+    from tools import legacy_pipeline, supervisor
+    # Supervisor FIRST (K's rule: check Dropbox against the lab template
+    # before processing). Read-only audit; never blocks the pipeline.
+    try:
+        _projects, _new_folders = legacy_pipeline.select_projects(dbx)
+        supervisor.run_supervisor(
+            dbx, _projects, state,
+            put_encrypted=lambda name, data: _blob(
+                ACCOUNT, REPORTS, name).upload_blob(
+                    encrypt_bytes(data), overwrite=True,
+                    metadata={"enc": "fernet"}),
+            put_plain=lambda name, data: _blob(
+                ACCOUNT, REPORTS, name).upload_blob(data, overwrite=True),
+            new_folders=_new_folders,
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[supervisor] skipped (non-blocking): {exc}", flush=True)
+
     # Save state after EACH project: if the 120-min timeout hits mid-run,
     # the next scheduled run resumes on its own instead of redoing everything.
     state = legacy_pipeline.run_ingest(

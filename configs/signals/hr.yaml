@@ -1,0 +1,40 @@
+# HR parameter processing config (monitor-derived, NOT a waveform)
+signal: HR
+status: draft
+category: C  # physiological parameter
+channels:
+  - HR
+validity:
+  unit: bpm
+  range: [20, 250]  # from profiles/_variables.yaml
+  zero_is_valid: false
+  note: Zero HR in a living patient recording is invalid, not missing-turned-zero.
+artifact_detection:
+  - name: out_of_range
+    method: physiological validity range
+    flag: INVALID_RANGE
+  - name: short_spike
+    method: robust deviation vs local median with rate-of-change limit
+    params: {window_s: 30.0, max_change_bpm_per_s: 20.0}
+    flag: SPIKE
+    note: A jump 70->140 may be physiology; 70->4000 is artifact. Context decides.
+filter:
+  method: robust_smoothing
+  params: {method: hampel, window_s: 10.0, n_sigma: 3.0}
+  note: >-
+    Light robust smoothing ONLY on the parameter, never ECG-style filtering.
+    Original HR always retained as HR_raw.
+normalization:
+  policy: conditional
+  rationale: May use z-score or baseline normalization for cross-patient trajectory comparison; retain bpm for clinical readouts.
+features:
+  - mean_hr
+  - hr_variability_from_parameter
+missing_data:
+  note: Blanks between ~1 Hz samples in mixed-rate files (BetterCare) are structural, not missing.
+graphs:
+  priority: primary
+  views: [time_series, quality_flags]
+cross_validation:
+  - derive: hr_derived  # from ECG config
+    compare_with: HR

@@ -1,0 +1,51 @@
+# Arterial pressure waveform processing config
+signal: ARTERIAL_PRESSURE
+status: draft
+category: B  # raw waveform (PRES ART / ART)
+channels:
+  - PRES ART
+  - ART
+validity:
+  unit: mmHg
+  range: [20, 300]
+  zero_is_valid: false
+  note: Damping, whip artifact and catheter flushes are the dominant artifacts, not white noise.
+artifact_detection:
+  - name: flatline
+    method: sliding variance below epsilon (transducer disconnect)
+    params: {window_s: 2.0}
+    flag: FLATLINE
+  - name: flush_artifact
+    method: square-wave / sustained high pressure with sharp edges (line flush)
+    params: {min_duration_s: 1.0}
+    flag: DEVICE_ARTIFACT
+  - name: damping
+    method: pulse pressure collapse vs local context
+    params: {z_window_s: 60.0}
+    flag: LOW_QUALITY
+filter:
+  method: lowpass
+  params: {high_hz: 25.0, order: 4}
+  note: Preserve waveform morphology for beat detection; no high-pass (baseline is physiology).
+features:
+  - systolic_pressure
+  - diastolic_pressure
+  - mean_pressure
+  - pulse_pressure
+  - beat_to_beat_variability
+normalization:
+  policy: none
+  rationale: Pressures retain mmHg; clinically meaningful units are never normalized away.
+missing_data:
+  structural: No arterial line for the patient is structural missingness, not a failure.
+graphs:
+  priority: primary
+  views: [raw_vs_filtered_overlay, full_recording, zoomed_window, quality_flags]
+cross_validation:
+  - derive: mean_pressure
+    compare_with: ART_MEAN  # monitor parameter
+    note: Waveform-derived MAP vs monitor ART M disagreement becomes a QC flag.
+  - derive: systolic_pressure
+    compare_with: ART_SYS
+  - derive: diastolic_pressure
+    compare_with: ART_DIA

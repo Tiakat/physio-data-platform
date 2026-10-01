@@ -393,7 +393,7 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
 def run_ingest(dbx, account: str, state: dict, progress_cb=None) -> dict:
     """Ingest every selected data project.
 
-    The budget (LEGACY_BUDGET_GB, default 10) applies PER PROJECT, not per
+    The budget (LEGACY_BUDGET_GB, default 4) applies PER PROJECT, not per
     run: one run walks all projects, and the 120-minute workflow timeout is
     the backstop.  After each project, ``progress_cb(state)`` is called so
     the caller can persist state incrementally — a timed-out run loses at
@@ -402,7 +402,7 @@ def run_ingest(dbx, account: str, state: dict, progress_cb=None) -> dict:
     """
     from tools import azure_auth
 
-    budget_gb = float(os.getenv("LEGACY_BUDGET_GB", "10"))
+    budget_gb = float(os.getenv("LEGACY_BUDGET_GB", "4"))
     budget_bytes = int(budget_gb * (1024 ** 3))
 
     projects, unconfigured = select_projects(dbx)

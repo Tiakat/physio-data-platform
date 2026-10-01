@@ -93,6 +93,24 @@ def parse_header_line(line: str, delimiter: str | None) -> list[str] | None:
     return best
 
 
+def columns_with_offset_recovery(
+        text: str, delimiter: str | None,
+        header_row: int) -> tuple[list[str] | None, str | None, str]:
+    """Return (columns, recovered_offset, failure_reason).
+
+    When the real header sits below the configured row, it is recovered and
+    parsed there (recovered_offset = line index); the columns are kept with
+    full provenance instead of the file being failed.
+    """
+    cols, why, detail = extract_columns(text, delimiter, header_row)
+    if not cols and why == "header_offset":
+        cols = parse_header_line(text.splitlines()[int(detail)], delimiter)
+        return cols, detail, ""
+    if not cols:
+        return None, None, why
+    return cols, None, ""
+
+
 def extract_columns(text: str, delimiter: str | None,
                     header_row: int) -> tuple[list[str] | None, str, str]:
     """Return (columns, failure_reason, detail). Reason/detail are '' on success.
@@ -175,12 +193,12 @@ def main() -> int:
         if text is None:
             record_failure("decode_error")
             return
-        cols, why, detail = extract_columns(text, delimiter, header_row)
+        cols, recovered, why = columns_with_offset_recovery(
+            text, delimiter, header_row)
+        if recovered is not None:
+            with lock:
+                offset_hist[recovered] = offset_hist.get(recovered, 0) + 1
         if not cols:
-            if why == "header_offset":
-                # A real header exists below the configured row: record where.
-                with lock:
-                    offset_hist[detail] = offset_hist.get(detail, 0) + 1
             record_failure(f"no_header:{why}")
             return
         try:
@@ -385,8 +403,10 @@ def main() -> int:
     print(f"[schemas] census complete: {len(all_columns_rows)} occurrences, "
           f"{n_cols} unique (project, source, column), "
           f"{n_dup_files} files with duplicate column names, "
-          f"{failed} header reads failed ({reasons}; top extensions: "
-          f"{exts or 'none'}; header offsets: {offsets or 'none'}), "
+          f"{failed} header reads failed ({reasons or 'none'}; top extensions: "
+          f"{exts or 'none'}), "
+          f"{sum(offset_hist.values())} headers recovered from offset rows "
+          f"({offsets or 'none'}), "
           f"{skipped_binary} non-csv files skipped (binaries need parsers)",
           flush=True)
     return 0

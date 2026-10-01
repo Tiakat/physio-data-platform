@@ -17,7 +17,7 @@ artifact_detection:
     flag: LOW_QUALITY
     note: Retain SQI, EMG, suppression ratio alongside BIS; they decide reliability.
 filter:
-  method: short_smoothing_if_justified
+  method: robust_smoothing
   params: {window_s: 15.0}
   note: Only light smoothing; BIS is already a processed index. Never waveform filtering.
 normalization:

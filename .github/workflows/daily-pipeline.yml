@@ -63,6 +63,12 @@ jobs:
           if [ -n "$OPEN" ]; then
             gh issue comment "$OPEN" --body-file supervisor_out/body.txt
             echo "Updated issue #$OPEN"
+          else
+            gh issue create --label supervisor \
+              --title "Supervisor: lab-template deviations" \
+              --body-file supervisor_out/body.txt
+            echo "Filed new supervisor issue"
+          fi
   # ------------------------------------------------------------------
   # Stage 2 (phases 1-4): dataset discovery, integrity, column-level data
   # dictionary, linkage assessment. Reads the encrypted parquets from

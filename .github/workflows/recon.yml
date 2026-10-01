@@ -17,6 +17,7 @@ on:
           - formats
           - inventory-raw
           - layouts
+          - schemas
 
 concurrency:
   group: physio-recon
@@ -25,7 +26,7 @@ concurrency:
 jobs:
   recon:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     env:
@@ -51,6 +52,8 @@ jobs:
             python -m tools.recon_formats
           elif [ "${{ inputs.task }}" = "inventory-raw" ]; then
             python -m tools.recon_raw_inventory
+          elif [ "${{ inputs.task }}" = "schemas" ]; then
+            python -m tools.recon_schemas
           else
             python -m tools.recon_layouts
           fi

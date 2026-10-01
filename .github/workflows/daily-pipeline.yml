@@ -63,7 +63,49 @@ jobs:
           if [ -n "$OPEN" ]; then
             gh issue comment "$OPEN" --body-file supervisor_out/body.txt
             echo "Updated issue #$OPEN"
+  # ------------------------------------------------------------------
+  # Stage 2 (phases 1-4): dataset discovery, integrity, column-level data
+  # dictionary, linkage assessment. Reads the encrypted parquets from
+  # rawdata, writes processed/stage2/. Separate job => its own 120-minute
+  # timeout, independent of the ingest job.
+  # ------------------------------------------------------------------
+  process:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    needs: run
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run stage 2 discovery
+        env:
+          AZURE_STORAGE_ACCOUNT: labdataplatform
+          AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+          PIPELINE_DATA_KEY: ${{ secrets.PIPELINE_DATA_KEY }}
+          STAGE2_SAMPLE_N: "20"
+        run: python -m tools.stage2_discovery
+      # Stage 2 findings (e.g. identifier-class columns inside a standardized
+      # parquet) go to a labeled issue, same pattern as the supervisor.
+      - name: File stage 2 report
+        if: hashFiles('stage2_out/body.txt') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh label create stage2 --color "0e8a16" \
+            --description "Findings from stage 2 processing" || true
+          OPEN=$(gh issue list --label stage2 --state open --json number -q '.[0].number')
+          if [ -n "$OPEN" ]; then
+            gh issue comment "$OPEN" --body-file stage2_out/body.txt
+            echo "Updated issue #$OPEN"
           else
-            gh issue create --title "Supervisor: Dropbox audit $(date -u +%F) — template deviations" \
-              --body-file supervisor_out/body.txt --label supervisor
+            gh issue create --title "Stage 2: discovery findings $(date -u +%F)" \
+              --body-file stage2_out/body.txt --label stage2
           fi

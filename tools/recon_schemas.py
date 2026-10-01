@@ -117,12 +117,22 @@ def main() -> int:
 
     occurrences: list[dict] = []      # rows for all_columns.csv
     failed = 0
+    fail_reasons = {"download_error": 0, "decode_error": 0, "no_header": 0}
+    fail_extensions = {}  # extension -> count (privacy-safe: no paths)
     skipped_binary = 0
     lock = threading.Lock()
 
     def scan_file(code: str, profile: dict, tier_a: list[tuple[str, str]],
                   root: str, rel: str, name: str, dbx_path: str):
         nonlocal failed
+
+        def record_failure(reason: str):
+            nonlocal failed
+            with lock:
+                failed += 1
+                fail_reasons[reason] += 1
+                ext = Path(name).suffix.lower() or "<noext>"
+                fail_extensions[ext] = fail_extensions.get(ext, 0) + 1
         device = None
         for pattern, dev in tier_a:
             if fnmatch(name, pattern):
@@ -141,18 +151,15 @@ def main() -> int:
         try:
             raw = head_bytes(dbx, dbx_path)
         except Exception:
-            with lock:
-                failed += 1
+            record_failure("download_error")
             return
         text = decode_head(raw)
         if text is None:
-            with lock:
-                failed += 1
+            record_failure("decode_error")
             return
         cols = extract_columns(text, delimiter, header_row)
         if not cols:
-            with lock:
-                failed += 1
+            record_failure("no_header")
             return
         try:
             patient = find_patient(profile, Path(rel))
@@ -346,10 +353,15 @@ def main() -> int:
 
     n_cols = len(by_col)
     n_dup_files = sum(len(d["files"]) for d in dupes.values())
+    reasons = ", ".join(f"{k}={v}" for k, v in fail_reasons.items())
+    exts = ", ".join(f"{e}={c}"
+                     for e, c in sorted(fail_extensions.items(),
+                                        key=lambda kv: -kv[1])[:10])
     print(f"[schemas] census complete: {len(all_columns_rows)} occurrences, "
           f"{n_cols} unique (project, source, column), "
           f"{n_dup_files} files with duplicate column names, "
-          f"{failed} header reads failed, "
+          f"{failed} header reads failed ({reasons}; top extensions: "
+          f"{exts or 'none'}), "
           f"{skipped_binary} non-csv files skipped (binaries need parsers)",
           flush=True)
     return 0

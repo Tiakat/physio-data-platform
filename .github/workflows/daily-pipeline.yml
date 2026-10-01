@@ -24,9 +24,10 @@ jobs:
       # Ingest ALL data projects (not just V-RAPS). Comma-separated codes or "all".
       LEGACY_PROJECTS: all
       # Encrypted-parquet ingest budget PER PROJECT per run (GB of source data).
-      # One run walks ALL projects; the 120-min timeout is the backstop, and
-      # state is saved after each project so scheduled runs resume on their own.
-      LEGACY_BUDGET_GB: "10"
+      # Kept small (4): the runner was SIGTERM-killed (exit 143) on a 10.6 GB
+      # DEXREM batch, likely disk exhaustion. One run walks ALL projects and
+      # state is saved after each project, so scheduled runs resume on their own.
+      LEGACY_BUDGET_GB: "4"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

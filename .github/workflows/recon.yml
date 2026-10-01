@@ -18,6 +18,7 @@ on:
           - inventory-raw
           - layouts
           - schemas
+          - review-dictionary
 
 concurrency:
   group: physio-recon
@@ -54,6 +55,8 @@ jobs:
             python -m tools.recon_raw_inventory
           elif [ "${{ inputs.task }}" = "schemas" ]; then
             python -m tools.recon_schemas
+          elif [ "${{ inputs.task }}" = "review-dictionary" ]; then
+            python -m tools.review_dictionary
           else
             python -m tools.recon_layouts
           fi

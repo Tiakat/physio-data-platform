@@ -24,10 +24,16 @@ REPORTS = "reports"
 
 # Tokens that suggest a column carries identifying information. Matching is a
 # *candidate* flag for human review, never an automatic classification.
+# This set is the union of the review heuristics and the Stage 2 classifier's
+# _IDENTIFIER_TOKENS (tools/stage2_discovery.py): both must agree, otherwise a
+# column flagged in parquets is missed in the raw-header review.
 IDENTIFIER_TOKENS = {
     "patientid", "patient_id", "subjectid", "subject_id", "mrn",
     "medicalrecordnumber", "name", "firstname", "lastname", "dob",
     "dateofbirth", "birthdate", "birth_date", "patientname",
+    # bare tokens from the Stage 2 classifier:
+    "patient", "subject", "guid", "uuid", "ipp", "nhs", "fullname",
+    "surname",
 }
 
 _SPLIT = re.compile(r"[^a-z0-9]+")

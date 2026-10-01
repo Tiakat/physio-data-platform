@@ -390,10 +390,19 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
 # Entry point
 # ---------------------------------------------------------------------------
 
-def run_ingest(dbx, account: str, state: dict) -> dict:
+def run_ingest(dbx, account: str, state: dict, progress_cb=None) -> dict:
+    """Ingest every selected data project.
+
+    The budget (LEGACY_BUDGET_GB, default 10) applies PER PROJECT, not per
+    run: one run walks all projects, and the 120-minute workflow timeout is
+    the backstop.  After each project, ``progress_cb(state)`` is called so
+    the caller can persist state incrementally — a timed-out run loses at
+    most the in-progress project, and the next scheduled run resumes where
+    it left off on its own.
+    """
     from tools import azure_auth
 
-    budget_gb = float(os.getenv("LEGACY_BUDGET_GB", "3"))
+    budget_gb = float(os.getenv("LEGACY_BUDGET_GB", "10"))
     budget_bytes = int(budget_gb * (1024 ** 3))
 
     projects, unconfigured = select_projects(dbx)
@@ -408,16 +417,14 @@ def run_ingest(dbx, account: str, state: dict) -> dict:
                                 RAW_PREFIX)
 
     legacy = state.setdefault("legacy", {})
-    remaining = budget_bytes
     for proj in projects:
         code = proj["code"]
         entry = legacy.setdefault(code, {})
         done = entry.setdefault("files", {})
         entry["files"], used = ingest_project(dbx, proj, account, done,
-                                              remaining)
-        remaining = max(0, remaining - used)
-        if remaining == 0:
-            print("[ingest] budget exhausted, remaining projects deferred",
-                  flush=True)
-            break
+                                              budget_bytes)
+        print(f"[ingest] {code}: done ({used / 1e9:.2f} GB this run)",
+              flush=True)
+        if progress_cb is not None:
+            progress_cb(state)
     return state

@@ -52,24 +52,37 @@ def test_decode_head_cp1252_fallback():
 def test_extract_columns_header_row_offset():
     # Some exports put metadata lines above the real header.
     text = "Exported by device X\nversion=2\nTime;HR;SpO2\n"
-    cols, reason = extract_columns(text, ";", 2)
+    cols, reason, detail = extract_columns(text, ";", 2)
     assert cols == ["Time", "HR", "SpO2"]
     assert reason == ""
 
 
 def test_extract_columns_too_short_returns_none():
-    cols, reason = extract_columns("only one line", ";", 3)
+    cols, reason, detail = extract_columns("only one line", ";", 3)
     assert cols is None
     assert reason == "short_head"
 
 
 def test_extract_columns_empty_file():
-    cols, reason = extract_columns("", ";", 0)
+    cols, reason, detail = extract_columns("", ";", 0)
     assert cols is None
     assert reason == "empty_file"
 
 
-def test_extract_columns_blank_header():
-    cols, reason = extract_columns("\n", ";", 0)
+def test_extract_columns_blank_file():
+    cols, reason, detail = extract_columns("\n", ";", 0)
     assert cols is None
-    assert reason == "blank_header"
+    assert reason == "blank_file"
+
+
+def test_extract_columns_header_offset_detected():
+    cols, reason, detail = extract_columns("\n\nTime;HR\n", ";", 0)
+    assert cols is None
+    assert reason == "header_offset"
+    assert detail == "2"
+
+
+def test_extract_columns_content_unparseable():
+    cols, reason, detail = extract_columns("\n***\n", ";", 0)
+    assert cols is None
+    assert reason == "content_unparseable"

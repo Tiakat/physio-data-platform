@@ -146,19 +146,26 @@ def discover_project(account: str, code: str, files: dict,
         try:
             data = _download_parquet(account, blob)
             pf = pq.ParquetFile(io.BytesIO(data))
-            names = [f.name for f in pf.schema]
+            # schema_arrow is a real pyarrow.Schema (.field() exists);
+            # pf.schema is a ParquetSchema, which has no .field() method.
+            arrow_schema = pf.schema_arrow
+            names = arrow_schema.names
             total_rows += pf.metadata.num_rows
             if pf.metadata.num_rows == 0:
                 empty_files += 1
             checked += 1
             for n in names:
-                col_files.setdefault(n, set()).add(blob)
                 if n not in columns:
                     cls, detail = classify_column(n, ontology)
                     columns[n] = {
                         "class": cls, "detail": detail,
-                        "arrow_type": str(pf.schema.field(n).type),
+                        "arrow_type": str(arrow_schema.field(n).type),
                     }
+                # Book-keeping only after the column is safely registered:
+                # a failure above must never leave col_files/columns
+                # inconsistent (that mismatch raised KeyError and killed
+                # whole projects in the first production run).
+                col_files.setdefault(n, set()).add(blob)
             if i < time_range_n:
                 import pandas as pd
                 idx = pd.read_parquet(io.BytesIO(data), columns=[]).index

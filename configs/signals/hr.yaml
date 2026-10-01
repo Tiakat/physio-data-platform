@@ -6,9 +6,7 @@ channels:
   - HR
 validity:
   unit: bpm
-  range: [20, 250]  # from profiles/_variables.yaml
-  zero_is_valid: false
-  note: Zero HR in a living patient recording is invalid, not missing-turned-zero.
+  note: Range and zero semantics come from profiles/_variables.yaml (single source of truth); zero HR in a living patient recording is invalid, not missing-turned-zero.
 artifact_detection:
   - name: out_of_range
     method: physiological validity range

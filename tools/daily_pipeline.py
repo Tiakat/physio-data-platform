@@ -283,6 +283,7 @@ def publish_feed(account: str, feed: dict) -> None:
 # ---------------------------------------------------------------------------
 
 def main() -> int:
+    started = datetime.now(timezone.utc)
     print("[pipeline] starting", flush=True)
     dbx = sync_dropbox_cloud.get_dropbox_client()
     _ensure_containers(ACCOUNT)
@@ -316,6 +317,25 @@ def main() -> int:
     # the next scheduled run resumes on its own instead of redoing everything.
     state = legacy_pipeline.run_ingest(
         dbx, ACCOUNT, state, progress_cb=lambda s: save_state(ACCOUNT, s))
+
+    # Supervisor health checks AFTER ingest (stall / failure-spike /
+    # parquet sampling / timeout watch). Never blocks the pipeline.
+    try:
+        supervisor.run_health_checks(
+            dbx, ACCOUNT, _projects, state,
+            put_encrypted=lambda name, data: _blob(
+                ACCOUNT, REPORTS, name).upload_blob(
+                    encrypt_bytes(data), overwrite=True,
+                    metadata={"enc": "fernet"}),
+            put_plain=lambda name, data: _blob(
+                ACCOUNT, REPORTS, name).upload_blob(data, overwrite=True),
+            email_dir=_email_dir,
+            started_at=started,
+            timeout_min=float(os.environ.get("PIPELINE_TIMEOUT_MIN", "120")),
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[supervisor] health checks skipped (non-blocking): {exc}",
+              flush=True)
 
     feed = build_ett_feed(state)
     publish_feed(ACCOUNT, feed)

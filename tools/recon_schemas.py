@@ -94,11 +94,17 @@ def parse_header_line(line: str, delimiter: str | None) -> list[str] | None:
 
 
 def extract_columns(text: str, delimiter: str | None,
-                    header_row: int) -> list[str] | None:
+                    header_row: int) -> tuple[list[str] | None, str]:
+    """Return (columns, failure_reason). Reason is '' on success."""
     lines = text.splitlines()
+    if not lines:
+        return None, "empty_file"
     if len(lines) <= header_row:
-        return None
-    return parse_header_line(lines[header_row], delimiter)
+        return None, "short_head"
+    cols = parse_header_line(lines[header_row], delimiter)
+    if not cols:
+        return None, "blank_header"
+    return cols, ""
 
 
 def main() -> int:
@@ -117,7 +123,7 @@ def main() -> int:
 
     occurrences: list[dict] = []      # rows for all_columns.csv
     failed = 0
-    fail_reasons = {"download_error": 0, "decode_error": 0, "no_header": 0}
+    fail_reasons: dict[str, int] = {}
     fail_extensions = {}  # extension -> count (privacy-safe: no paths)
     skipped_binary = 0
     lock = threading.Lock()
@@ -130,7 +136,7 @@ def main() -> int:
             nonlocal failed
             with lock:
                 failed += 1
-                fail_reasons[reason] += 1
+                fail_reasons[reason] = fail_reasons.get(reason, 0) + 1
                 ext = Path(name).suffix.lower() or "<noext>"
                 fail_extensions[ext] = fail_extensions.get(ext, 0) + 1
         device = None
@@ -157,9 +163,9 @@ def main() -> int:
         if text is None:
             record_failure("decode_error")
             return
-        cols = extract_columns(text, delimiter, header_row)
+        cols, why = extract_columns(text, delimiter, header_row)
         if not cols:
-            record_failure("no_header")
+            record_failure(f"no_header:{why}")
             return
         try:
             patient = find_patient(profile, Path(rel))

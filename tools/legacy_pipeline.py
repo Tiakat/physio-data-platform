@@ -123,16 +123,22 @@ def select_projects(dbx) -> Tuple[List[dict], List[str]]:
             "profile": load_profile(code),
         })
 
-    # Auto-discovery: warn about Dropbox folders with no config entry.
+    # Auto-discovery: warn about Dropbox folders with no config entry,
+    # and about configured projects whose Dropbox folder does not exist.
     unconfigured: List[str] = []
     try:
         res = dbx.files_list_folder(DROPBOX_ROOT)
+        actual = {e.name for e in res.entries
+                  if isinstance(e, dropbox.files.FolderMetadata)}
         known = {e["dropbox"] for e in cfg.values()
                  if isinstance(e, dict) and "dropbox" in e}
-        unconfigured = [
-            e.name for e in res.entries
-            if isinstance(e, dropbox.files.FolderMetadata) and e.name not in known
-        ]
+        unconfigured = [n for n in sorted(actual) if n not in known]
+        for p in projects:
+            want = p["dropbox_base"].rsplit("/", 1)[1]
+            if want not in actual:
+                print(f"[ingest] WARNING: configured project {p['code']} "
+                      f"expects Dropbox folder '{want}' which does not exist "
+                      f"under {DROPBOX_ROOT}", flush=True)
     except Exception:
         pass  # listing the root is best-effort; never block ingestion
     return projects, unconfigured

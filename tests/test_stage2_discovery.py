@@ -159,3 +159,81 @@ def test_empty_digest_guard_fires(monkeypatch, tmp_path):
     assert result["digest"]["projects"] == {}
     assert any("no projects discovered" in line
                for line in result["issue_lines"])
+
+
+def test_measure_timebase_detects_rate_and_gaps():
+    np = pytest.importorskip("numpy")
+    pd = pytest.importorskip("pandas")
+    import tools.stage2_discovery as sd_mod
+
+    t = np.arange(0, 10, 0.005)  # 200 Hz elapsed seconds
+    t = np.concatenate([t, [30.0, 30.005]])  # a real gap, then resume
+    tb = sd_mod._measure_timebase(pd.DataFrame({"timestamp": t}), "timestamp")
+    assert tb["nominal_hz"] == 200.0
+    assert tb["gap_fraction"] > 0
+    assert tb["total_gap_time_s"] > 15
+
+
+def test_measure_timebase_epoch_ms_and_garbage():
+    np = pytest.importorskip("numpy")
+    pd = pytest.importorskip("pandas")
+    import tools.stage2_discovery as sd_mod
+
+    t = (1_700_000_000_000 + np.arange(0, 60000, 1000)).astype(float)
+    tb = sd_mod._measure_timebase(pd.DataFrame({"timestamp": t}), "timestamp")
+    assert tb["nominal_hz"] == 1.0
+    assert "epoch_ms" in tb["time_unit"]
+
+    bad = sd_mod._measure_timebase(
+        pd.DataFrame({"timestamp": ["a", "b", "c"]}), "timestamp")
+    assert bad is None
+
+
+def test_measure_missingness_taxonomy():
+    np = pytest.importorskip("numpy")
+    pd = pytest.importorskip("pandas")
+    import tools.stage2_discovery as sd_mod
+
+    n = 500
+    df = pd.DataFrame({
+        "complete": np.ones(n),
+        "sparse": [np.nan if i % 100 == 0 else 1.0 for i in range(n)],
+        "gappy": [np.nan if 10 <= i < 25 else 1.0 for i in range(n)],
+        "gone": [np.nan] * n,
+    })
+    m = sd_mod._measure_missingness(
+        df, ["complete", "sparse", "gappy", "gone"])
+    assert m["complete"]["kind"] == "complete"
+    assert m["sparse"]["kind"] == "sparse_isolated"
+    assert m["gappy"]["kind"] == "gappy"
+    assert m["gappy"]["longest_gap_run"] == 15
+    assert m["gone"]["kind"] == "entirely_missing"
+
+
+def test_discover_project_reports_sampling_and_missingness(monkeypatch):
+    """Phases 6-7: the project report carries sampling + missingness, and
+    mixed time bases within one device are surfaced."""
+    np = pytest.importorskip("numpy")
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    import tools.stage2_discovery as sd_mod
+
+    t = np.arange(0, 5, 0.005)  # 200 Hz
+    table = pa.table({"timestamp": t,
+                      "HR": np.where(np.arange(len(t)) % 200 == 0,
+                                     np.nan, 72.0)})
+    buf = io.BytesIO()
+    pq.write_table(table, buf)
+    payload = buf.getvalue()
+    monkeypatch.setattr(sd_mod, "_download_parquet",
+                        lambda account, blob: payload)
+
+    files = {"one": {"status": "ok", "kind": "parquet",
+                     "stored": "DEXREM/parquet/bettercare_ab12cd34.parquet.enc"}}
+    rep = sd_mod.discover_project("acct", "DEXREM", files, ONTOLOGY,
+                                  sample_n=5)
+    assert rep["errors"] == []
+    assert rep["sampling"]["DEXREM/parquet/bettercare"][
+        "nominal_hz_range"] == [200.0, 200.0]
+    assert (rep["missingness"]["HR"]["worst_kind"]
+            == "sparse_isolated")

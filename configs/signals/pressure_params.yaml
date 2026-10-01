@@ -1,0 +1,49 @@
+# Invasive / non-invasive blood pressure PARAMETERS (not waveforms).
+# Systolic / diastolic / mean pressures as ~1 Hz monitor parameters
+# (Infinity 'ART M (mm(hg)^^ISO+)', BetterCare 'ART_MEAN', ...).
+# Valid intervals, units and zero semantics come from profiles/_variables.yaml
+# (the master dictionary) -- they are NOT duplicated here.
+signal: PRESSURE_PARAMS
+status: draft
+category: C  # monitor parameters (~1 Hz)
+channels:
+  - ART_SYS
+  - ART_DIA
+  - ART_MEAN
+  - PA_SYS
+  - PA_DIA
+  - PA_MEAN
+  - NBP_SYS
+  - NBP_DIA
+  - NBP_MEAN
+validity:
+  unit: mmHg
+  note: Ranges are per-channel from the dictionary (e.g. ART_MEAN 40-160 draft).
+artifact_detection:
+  - name: spike
+    method: robust deviation vs local median (MAD scale)
+    params: {window_s: 60.0, n_sigma: 5.0}
+    flag: SPIKE
+  - name: flatline
+    method: sliding variance below epsilon (transducer disconnect / cuff off)
+    params: {window_s: 5.0}
+    flag: FLATLINE
+filter:
+  method: robust_smoothing
+  params: {window_s: 10.0, n_sigma: 3.0}
+  note: Parameter-level QC only. No waveform filtering on 1 Hz parameters.
+features:
+  - pulse_pressure
+  - trend
+normalization:
+  policy: none
+  rationale: Pressures retain mmHg; clinically meaningful units are never normalized away.
+missing_data:
+  structural: No arterial line (or no NIBP cuff cycling) for the patient is structural missingness, not a failure.
+graphs:
+  priority: primary
+  views: [raw_vs_filtered_overlay, full_recording, quality_flags]
+cross_validation:
+  - derive: mean_pressure
+    compare_with: ARTERIAL_PRESSURE waveform-derived MAP
+    note: Parameter ART_MEAN vs waveform-derived MAP disagreement becomes a QC flag.

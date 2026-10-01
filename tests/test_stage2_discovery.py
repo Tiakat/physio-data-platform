@@ -122,3 +122,40 @@ def test_discover_project_survives_raw_channel_names(monkeypatch):
     assert rep["columns"]["ECG I"]["files_seen_in"] == 1
     assert rep["columns"]["HR"]["class"] == "signal"
     assert rep["columns"]["HR"]["detail"]["unit"] == "bpm"
+
+
+def test_empty_digest_guard_fires(monkeypatch, tmp_path):
+    """Guard: if projects have parquet files but discovery yields nothing,
+    the run must say so loudly (finding + flag) instead of writing a
+    clean-looking empty digest. Regression for the 2026-10-01 run that
+    exited success with an empty digest."""
+    import tools.stage2_discovery as sd_mod
+
+    def boom(account, code, files, ontology, sample_n=20):
+        raise RuntimeError("simulated per-project discovery failure")
+
+    monkeypatch.setattr(sd_mod, "discover_project", boom)
+
+    (tmp_path / "profiles").mkdir()
+    (tmp_path / "profiles" / "_variables.yaml").write_text(
+        "HR:\n  label: Heart rate\n  unit: bpm\n  min: 20\n  max: 250\n",
+        encoding="utf-8")
+
+    state = {"legacy": {"DEXREM": {"files": {
+        "a": {"status": "ok", "kind": "parquet",
+              "stored": "DEXREM/parquet/infinity_ab12cd34.parquet.enc"}}}}}
+    saved = {}
+
+    def put_plain(name, data):
+        saved[name] = data
+
+    result = sd_mod.run_discovery(
+        "acct", state, tmp_path,
+        put_encrypted=lambda n, d: None,
+        put_plain=put_plain,
+        sample_n=5)
+
+    assert result["empty_guard_fired"] is True
+    assert result["digest"]["projects"] == {}
+    assert any("no projects discovered" in line
+               for line in result["issue_lines"])

@@ -20,11 +20,31 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+def _write_summary(title: str, rows: list[tuple]) -> None:
+    """Append a de-identified markdown table to the GitHub job summary.
+
+    Only counts and class names -- no paths, filenames, or values -- so this
+    is safe to show in the workflow UI. No-op outside GitHub Actions.
+    """
+    dest = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not dest:
+        return
+    lines = [f"## {title}", "",
+             "| project | spreadsheets | name-hinted demographic | classes |",
+             "| --- | ---: | ---: | --- |"]
+    for code, n_files, n_hinted, classes in rows:
+        lines.append(f"| {code} | {n_files} | {n_hinted} | {classes} |")
+    lines.append("")
+    with open(dest, "a", encoding="utf-8") as fh:
+        fh.write("\n".join(lines))
 
 EXCEL_EXTS = (".xlsx", ".xls", ".xlsm", ".xlsb", ".ods")
 
@@ -89,6 +109,7 @@ def main() -> int:
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
 
     findings = []
+    summary_rows = []
     for proj in sorted(projects, key=lambda p: p["code"]):
         code = proj["code"]
         root = proj.get("dropbox_base") or ""
@@ -115,6 +136,9 @@ def main() -> int:
         print(f"[demographics] {code}: {n_files} spreadsheets "
               f"({n_hinted} name-hinted demographic), classes={classes}",
               flush=True)
+        summary_rows.append((code, n_files, n_hinted, classes))
+
+    _write_summary("Demographics recon (de-identified)", summary_rows)
 
     svc = azure_auth.get_blob_service_client(ACCOUNT)
     blob = f"recon/demographics_{ts}.json"

@@ -251,6 +251,14 @@ def test_run_health_checks_digest_and_email(tmp_path=None):
     assert subj == "audit subject + ingest health"
 
 
+def test_health_unsupported_does_not_trigger_stall():
+    from tools.supervisor import check_project_health
+    rec = _rec(100, 0, 0, 0, 40)
+    rec["unsupported_total"] = 60  # all remaining work awaits parsers
+    entry = {"run_history": [dict(rec), dict(rec)]}
+    assert check_project_health("X", entry) == []
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

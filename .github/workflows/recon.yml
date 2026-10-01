@@ -7,6 +7,7 @@ name: recon
 #   schemas       -> header-only column census of raw CSVs
 #   review-dictionary -> privacy-limited review of the census
 #   demographics  -> locate per-project demographic Excel files
+#   forensics     -> structural fingerprints of header-unparseable CSVs
 # Neither task moves, renames, or deletes anything.
 
 on:
@@ -24,6 +25,7 @@ on:
           - schemas
           - review-dictionary
           - demographics
+          - forensics
 
 concurrency:
   group: physio-recon
@@ -64,6 +66,8 @@ jobs:
             python -m tools.review_dictionary
           elif [ "${{ inputs.task }}" = "demographics" ]; then
             python -m tools.recon_demographics
+          elif [ "${{ inputs.task }}" = "forensics" ]; then
+            python -m tools.recon_forensics
           else
             python -m tools.recon_layouts
           fi

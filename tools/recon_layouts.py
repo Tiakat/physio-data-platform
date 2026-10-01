@@ -114,6 +114,15 @@ def main() -> int:
         }
         print(f"[recon] {code}: {n_files} files, "
               f"tierA={dict(tier_match)}, bis={bis}", flush=True)
+        print(f"[recon] {code}: data_roots={proj['data_roots']}",
+              flush=True)
+        print(f"[recon] {code}: tree_top=" +
+              json.dumps([[t, c] for t, c in tree.most_common(25)]),
+              flush=True)
+        print(f"[recon] {code}: unmatched_shapes=" +
+              json.dumps([[s, c]
+                           for s, c in unmatched_shapes.most_common(15)]),
+              flush=True)
 
     payload = json.dumps({"generated_utc": ts, "projects": result},
                          indent=1).encode("utf-8")

@@ -1,0 +1,137 @@
+# POSBRAIN. Cerebral oximetry / brain monitoring project.
+# Layout measured 2026-10-01 (recon):
+#   Database/RawData/<n>/ExtractedData/{Infinity,BetterCare,NOL,BIS,...}
+#   Database/RawData/<n>/{BIS,NOL,Infinity}   <- device dirs also at patient level
+# 584 files. tier-A matches: infinity 20, bettercare 71, nol_medasense 32.
+# BIS binaries 159 (kept, no parser yet). TPAD .H3 oximetry files kept.
+
+project:
+  code: POSBRAIN
+  name: Cerebral oximetry brain monitoring
+  organised_by: patient          # patient | device
+  retention_days: 3650
+
+# How to turn an archive path into project, participant, session, device.
+layout:
+  patient_dir_regex: '^(?P<patient>\d+)$'
+  patient_code_format: "P-{patient:0>4}"
+  device_dir_map:                # folder name, case insensitive, to device code
+    infinity: infinity
+    bettercare: bettercare
+    "better care": bettercare
+    nol: nol
+    bis: bis
+    photos: other
+    remi: pump
+    propofol: pump
+
+# What the platform does with each file type.
+tiers:
+  A_parsed:
+    - pattern: "*.infinity.data.*.csv"
+      device: infinity
+      parser: infinity
+    - pattern: "1.2.826.*.csv"
+      device: bettercare
+      parser: bettercare
+    - pattern: "*_ExcelData*.csv"
+      device: nol
+      parser: nol_medasense
+    - pattern: "Perf_*.csv"
+      device: pump
+      parser: pump
+  B_kept:                        # stored, checksummed, indexed, not parsed
+    - "POSBRAIN *.csv"           # POSBRAIN oximetry CSV exports — no parser yet
+    - "*.H3"                     # TPAD cerebral oximetry files — no parser yet
+    - "*.med"
+    - "*.enc"
+    - "*.ara"
+    - "*.o_a"
+    - "*.m_a"
+    - "*.h_a"
+    - "*.spa"
+    - "*.e_a"
+    - "*.t_a"
+    - "*.r2a"
+    - "*.f_a"
+    - "*.pdf"
+    - "*.jpeg"
+    - "*.jpg"
+    - "*.png"
+  C_ignored:
+    - ".DS_Store"
+    - "Thumbs.db"
+    - "~$*"
+    - "*.tmp"
+
+# Coverage. Which devices an analysis may require. Used by the cohort filter,
+# never used to reject a patient at ingestion.
+coverage:
+  expected: [infinity, bettercare, nol]
+  primary_analysis_requires: [infinity, bettercare]
+
+# Per device parsing rules.
+devices:
+
+  infinity:
+    delimiter: ";"
+    encoding: "utf-8"
+    time:
+      column: "OBSERVATION_DATETIME"
+      format: "%Y%m%d%H%M%S"
+      timezone: "America/Montreal"
+    keep_variables: [ART_SYS, ART_DIA, ART_MEAN, PA_SYS, PA_DIA, PA_MEAN,
+                     NBP_SYS, NBP_MEAN, HR, SPO2, ETCO2, CVP, MAC, ET_SEVO, ET_DES]
+    required_variables: [ART_MEAN]
+    expected_interval_s: 0.005
+
+  bettercare:
+    delimiter: ";"
+    encoding: "utf-8"
+    time:
+      column: "Time (msecs)"
+      kind: "elapsed_ms"
+      start_from_filename: true
+      start_regex: '\.(1\d{15})\.'
+      timezone: "America/Montreal"
+    keep_variables: [ART_SYS, ART_DIA, ART_MEAN, PA_SYS, PA_DIA, PA_MEAN, HR, SPO2, CVP]
+    required_variables: [ART_MEAN]
+    expected_interval_s: 0.005
+
+  nol:
+    parser_options:
+      block_header_row: 2        # second header row starts the time series block
+      demographics_rows: [0, 1]
+    delimiter: ","
+    encoding: "utf-8"
+    time:
+      column: "Abs Time Vector"
+      format: "%d-%b-%Y %H:%M:%S"
+      timezone: "America/Montreal"
+    keep_variables: [NOL, HR]
+    required_variables: [NOL]
+    expected_interval_s: 5
+
+  pump:
+    delimiter: ";"
+    encoding: "utf-8"
+    kind: event                  # not a regular time series
+    keep_variables: []
+
+# Quality control thresholds. Each becomes a flag, not a score.
+quality:
+  min_duration_minutes: 20
+  max_missing_fraction: 0.40
+  flat_signal_seconds: 300
+  held_channel_seconds: 10
+  max_gap_seconds: 60
+  rate_tolerance: 0.25
+
+# Preprocessing. Artefact rules are off by default and are a sensitivity analysis.
+preprocess:
+  drop_all_empty_rows: true
+  apply_physiological_mask: false
+  median_filter_window: 3
+
+# analyses: TBD — offered in the researcher interface once the first
+# discovery digest for POSBRAIN is reviewed.

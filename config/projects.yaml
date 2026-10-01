@@ -27,7 +27,7 @@ defaults:
 projects:
 
   # ---------------- already in Azure (Database/RawData layout) ----------------
-  DEXREM:   {dropbox: "DEXREM",   status: data, data_roots: ["Database/RawData"]}
+  DEXREM:   {dropbox: "DEXREM",   status: data, data_roots: ["Included patients"]}
   ESMONOL:  {dropbox: "ESMONOL",  status: data, data_roots: ["Database/RawData"]}
   IPAMS:    {dropbox: "IPAMS",    status: data, data_roots: ["Database/RawData"]}
   MONREPI:  {dropbox: "MONREPI",  status: data, data_roots: ["Database/RawData"]}

@@ -8,6 +8,10 @@ name: recon
 #   review-dictionary -> privacy-limited review of the census
 #   demographics  -> locate per-project demographic Excel files
 #   forensics     -> structural fingerprints of header-unparseable CSVs
+#   pilot-scan    -> identifier value-scan on a few decrypted parquets
+#                    (counts only, privacy-safe report)
+#   fetch-recon   -> download a reports/recon/<prefix>/ prefix from Azure
+#                    (for bringing census outputs back as an artifact)
 # Neither task moves, renames, or deletes anything.
 
 on:
@@ -26,6 +30,12 @@ on:
           - review-dictionary
           - demographics
           - forensics
+          - pilot-scan
+          - fetch-recon
+      fetch_prefix:
+        description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
+        required: false
+        default: ""
 
 concurrency:
   group: physio-recon
@@ -68,6 +78,26 @@ jobs:
             python -m tools.recon_demographics
           elif [ "${{ inputs.task }}" = "forensics" ]; then
             python -m tools.recon_forensics
+          elif [ "${{ inputs.task }}" = "pilot-scan" ]; then
+            mkdir -p recon_out
+            python -m tools.pilot_scan --per-project 2 --max-total 12 \
+              --report recon_out/pilot_scan.json || \
+              echo "pilot-scan exited $? (2 = findings need review)"
+          elif [ "${{ inputs.task }}" = "fetch-recon" ]; then
+            if [ -z "${{ inputs.fetch_prefix }}" ]; then
+              echo "fetch-recon needs the fetch_prefix input"; exit 1
+            fi
+            python -m tools.fetch_recon \
+              --prefix "${{ inputs.fetch_prefix }}" --out fetched
           else
             python -m tools.recon_layouts
           fi
+      - name: Upload recon outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recon-${{ inputs.task }}-${{ github.run_id }}
+          path: |
+            recon_out/
+            fetched/
+          if-no-files-found: ignore

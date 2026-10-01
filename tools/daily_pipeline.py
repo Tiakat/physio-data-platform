@@ -292,7 +292,10 @@ def main() -> int:
     state = process_ett_batch(ACCOUNT, state)
 
     from tools import legacy_pipeline
-    state = legacy_pipeline.run_ingest(dbx, ACCOUNT, state)
+    # Save state after EACH project: if the 120-min timeout hits mid-run,
+    # the next scheduled run resumes on its own instead of redoing everything.
+    state = legacy_pipeline.run_ingest(
+        dbx, ACCOUNT, state, progress_cb=lambda s: save_state(ACCOUNT, s))
 
     feed = build_ett_feed(state)
     publish_feed(ACCOUNT, feed)

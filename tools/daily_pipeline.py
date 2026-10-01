@@ -296,6 +296,8 @@ def main() -> int:
     # before processing). Read-only audit; never blocks the pipeline.
     try:
         _projects, _new_folders = legacy_pipeline.select_projects(dbx)
+        _email_dir = str(Path(os.environ.get("GITHUB_WORKSPACE", ".")) /
+                         "supervisor_out")
         supervisor.run_supervisor(
             dbx, _projects, state,
             put_encrypted=lambda name, data: _blob(
@@ -305,6 +307,7 @@ def main() -> int:
             put_plain=lambda name, data: _blob(
                 ACCOUNT, REPORTS, name).upload_blob(data, overwrite=True),
             new_folders=_new_folders,
+            email_dir=_email_dir,
         )
     except Exception as exc:  # noqa: BLE001
         print(f"[supervisor] skipped (non-blocking): {exc}", flush=True)

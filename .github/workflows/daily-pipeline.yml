@@ -43,3 +43,20 @@ jobs:
           pip install -r requirements.txt
       - name: Run daily pipeline
         run: python -m tools.daily_pipeline
+      # Supervisor email: sent ONLY when a project deviates from the lab
+      # template (the pipeline writes supervisor_out/body.txt only then).
+      # Needs repo secrets: MAIL_USERNAME, MAIL_PASSWORD (Gmail app password),
+      # MAIL_TO (defaults to MAIL_USERNAME).
+      - name: Email supervisor report
+        if: hashFiles('supervisor_out/body.txt') != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: file://supervisor_out/subject.txt
+          body: file://supervisor_out/body.txt
+          to: ${{ secrets.MAIL_TO }}
+          from: Lab Pipeline Supervisor <${{ secrets.MAIL_USERNAME }}>

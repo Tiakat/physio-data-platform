@@ -6,8 +6,7 @@ channels:
   - BIS
 validity:
   unit: index
-  range: [0, 100]  # from profiles/_variables.yaml
-  zero_is_valid: true  # 0 = isoelectric, valid in deep anesthesia
+  note: Range and zero semantics come from profiles/_variables.yaml (single source of truth). 0 = isoelectric, valid in deep anesthesia.
 artifact_detection:
   - name: out_of_range
     method: index validity range

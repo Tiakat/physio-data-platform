@@ -1,0 +1,53 @@
+name: recon
+
+# Manual, read-only reconnaissance. Two tasks:
+#   formats       -> what file extensions live in each project (Dropbox walk)
+#   inventory-raw -> list legacy encrypted source-byte objects in Azure
+# Neither task moves, renames, or deletes anything.
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Recon task"
+        required: true
+        default: "formats"
+        type: choice
+        options:
+          - formats
+          - inventory-raw
+
+concurrency:
+  group: physio-recon
+  cancel-in-progress: false
+
+jobs:
+  recon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      AZURE_STORAGE_ACCOUNT: labdataplatform
+      AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+      DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+      DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+      DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+      PIPELINE_DATA_KEY: ${{ secrets.PIPELINE_DATA_KEY }}
+      LEGACY_PROJECTS: all
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run recon
+        run: |
+          if [ "${{ inputs.task }}" = "formats" ]; then
+            python -m tools.recon_formats
+          else
+            python -m tools.recon_raw_inventory
+          fi

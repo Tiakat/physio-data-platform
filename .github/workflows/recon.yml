@@ -16,6 +16,7 @@ on:
         options:
           - formats
           - inventory-raw
+          - layouts
 
 concurrency:
   group: physio-recon
@@ -48,6 +49,8 @@ jobs:
         run: |
           if [ "${{ inputs.task }}" = "formats" ]; then
             python -m tools.recon_formats
-          else
+          elif [ "${{ inputs.task }}" = "inventory-raw" ]; then
             python -m tools.recon_raw_inventory
+          else
+            python -m tools.recon_layouts
           fi

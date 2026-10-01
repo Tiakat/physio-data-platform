@@ -5,6 +5,15 @@ on:
     # 12:00 UTC Mon-Fri = 08:00 EDT (07:00 EST in winter)
     - cron: "0 12 * * 1-5"
   workflow_dispatch:
+    inputs:
+      rescan_unsupported:
+        description: "Re-examine files previously marked unsupported (after adding a parser/profile)"
+        required: false
+        default: "0"
+        type: choice
+        options:
+          - "0"
+          - "1"
 
 concurrency:
   group: physio-pipeline
@@ -35,6 +44,9 @@ jobs:
       # free disk + available memory first, so a runner kill is diagnosable.
       LEGACY_BUDGET_GB: "4"
       INGEST_CHUNK_GB: "0.25"
+      # One-shot rescan of unsupported files (dispatch with rescan_unsupported=1
+      # after adding a new parser or project profile).
+      RESCAN_UNSUPPORTED: ${{ inputs.rescan_unsupported || '0' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

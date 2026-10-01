@@ -94,17 +94,28 @@ def parse_header_line(line: str, delimiter: str | None) -> list[str] | None:
 
 
 def extract_columns(text: str, delimiter: str | None,
-                    header_row: int) -> tuple[list[str] | None, str]:
-    """Return (columns, failure_reason). Reason is '' on success."""
+                    header_row: int) -> tuple[list[str] | None, str, str]:
+    """Return (columns, failure_reason, detail). Reason/detail are '' on success.
+
+    When the configured header line is blank, the head is scanned for the
+    first non-blank line: 'blank_file' (nothing but whitespace in the head),
+    'header_offset' (a parseable header sits below header_row; detail=line
+    index), or 'content_unparseable' (content exists but parses to no columns).
+    """
     lines = text.splitlines()
     if not lines:
-        return None, "empty_file"
+        return None, "empty_file", ""
     if len(lines) <= header_row:
-        return None, "short_head"
+        return None, "short_head", ""
     cols = parse_header_line(lines[header_row], delimiter)
     if not cols:
-        return None, "blank_header"
-    return cols, ""
+        for i in range(header_row + 1, len(lines)):
+            if lines[i].strip():
+                if parse_header_line(lines[i], delimiter):
+                    return None, "header_offset", str(i)
+                return None, "content_unparseable", ""
+        return None, "blank_file", ""
+    return cols, "", ""
 
 
 def main() -> int:
@@ -125,6 +136,7 @@ def main() -> int:
     failed = 0
     fail_reasons: dict[str, int] = {}
     fail_extensions = {}  # extension -> count (privacy-safe: no paths)
+    offset_hist: dict[str, int] = {}  # header-offset line index -> file count
     skipped_binary = 0
     lock = threading.Lock()
 
@@ -163,8 +175,12 @@ def main() -> int:
         if text is None:
             record_failure("decode_error")
             return
-        cols, why = extract_columns(text, delimiter, header_row)
+        cols, why, detail = extract_columns(text, delimiter, header_row)
         if not cols:
+            if why == "header_offset":
+                # A real header exists below the configured row: record where.
+                with lock:
+                    offset_hist[detail] = offset_hist.get(detail, 0) + 1
             record_failure(f"no_header:{why}")
             return
         try:
@@ -363,11 +379,14 @@ def main() -> int:
     exts = ", ".join(f"{e}={c}"
                      for e, c in sorted(fail_extensions.items(),
                                         key=lambda kv: -kv[1])[:10])
+    offsets = ", ".join(f"line{i}={c}"
+                        for i, c in sorted(offset_hist.items(),
+                                           key=lambda kv: -kv[1])[:10])
     print(f"[schemas] census complete: {len(all_columns_rows)} occurrences, "
           f"{n_cols} unique (project, source, column), "
           f"{n_dup_files} files with duplicate column names, "
           f"{failed} header reads failed ({reasons}; top extensions: "
-          f"{exts or 'none'}), "
+          f"{exts or 'none'}; header offsets: {offsets or 'none'}), "
           f"{skipped_binary} non-csv files skipped (binaries need parsers)",
           flush=True)
     return 0

@@ -246,7 +246,8 @@ def _store_bytes(code: str, path: Path, e: dict, account: str,
 
 
 def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
-                     done: Dict[str, dict], tmpdir: Path) -> None:
+                     done: Dict[str, dict], tmpdir: Path,
+                     catalog_tag: str = "") -> None:
     """Run the project's real parser (tools/run_local.py), then encrypt and
     upload each resulting parquet.  Blob names carry NO patient codes.
     Files the parser cannot handle fall back to encrypted source bytes.
@@ -304,8 +305,11 @@ def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
           flush=True)
 
     # Encrypted catalog (patient linkage stays encrypted, never in blob names).
+    # catalog_tag distinguishes per-chunk catalogs when a project is
+    # ingested in several chunks.
     raw = catalog_path.read_bytes()
-    azure_upload_encrypted(account, RAW_PREFIX, f"{code}/catalog.json.enc",
+    cname = f"catalog_{catalog_tag}.json.enc" if catalog_tag else "catalog.json.enc"
+    azure_upload_encrypted(account, RAW_PREFIX, f"{code}/{cname}",
                            raw, _sha256_bytes(raw))
 
 
@@ -334,9 +338,33 @@ def _parquet_blob_name(code: str, device: str, digest: str) -> str:
     return f"{code}/{PARQUET_DIR}/{device}_{digest[:8]}.parquet.enc"
 
 
+def _split_chunks(selected: List[dict], chunk_bytes: int) -> List[List[dict]]:
+    """Split selected files into size-bounded chunks (peak disk control)."""
+    chunks: List[List[dict]] = []
+    cur: List[dict] = []
+    cur_size = 0
+    for e in selected:
+        if cur and cur_size + e["size"] > chunk_bytes:
+            chunks.append(cur)
+            cur, cur_size = [], 0
+        cur.append(e)
+        cur_size += e["size"]
+    if cur:
+        chunks.append(cur)
+    return chunks
+
+
 def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
-                   budget_bytes: int) -> Tuple[Dict[str, dict], int]:
-    """Ingest one project.  Returns (done, bytes selected)."""
+                   budget_bytes: int, on_chunk=None) -> Tuple[Dict[str, dict], int]:
+    """Ingest one project in small disk-bounded chunks.
+
+    Each chunk is downloaded, parsed, uploaded, then wiped before the next
+    chunk starts, so peak disk stays near the chunk size even when parsed
+    parquet is much larger than the source files (e.g. compressed/encrypted
+    sources expanding into float columns).  ``on_chunk`` is called after
+    each chunk so the caller can persist state incrementally.
+    Returns (done, bytes selected).
+    """
     code = project["code"]
 
     entries: List[dict] = []
@@ -362,27 +390,37 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
     if not selected:
         return done, 0
 
-    with tempfile.TemporaryDirectory(prefix=f"ingest_{code}_") as tmp:
-        tmpdir = Path(tmp)
-        srcdir = tmpdir / "src"
-        for e in selected:
-            dest = srcdir / e["relpath"]
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                _download_file(dbx, e["dbx_path"], str(dest))
-            except Exception as exc:  # noqa: BLE001
-                done[e["relpath"]] = {"status": "failed",
-                                      "error": f"download: {exc}"[:300]}
-        downloaded = [e for e in selected if (srcdir / e["relpath"]).exists()]
+    chunk_bytes = int(float(os.getenv("INGEST_CHUNK_GB", "1")) * (1024 ** 3))
+    chunks = _split_chunks(selected, chunk_bytes)
+    for i, chunk in enumerate(chunks):
+        tag = f"c{i:02d}"
+        print(f"[ingest] {code}: chunk {tag} ({i + 1}/{len(chunks)}, "
+              f"{len(chunk)} files)", flush=True)
+        with tempfile.TemporaryDirectory(prefix=f"ingest_{code}_{tag}_") as tmp:
+            tmpdir = Path(tmp)
+            srcdir = tmpdir / "src"
+            for e in chunk:
+                dest = srcdir / e["relpath"]
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                try:
+                    _download_file(dbx, e["dbx_path"], str(dest))
+                except Exception as exc:  # noqa: BLE001
+                    done[e["relpath"]] = {"status": "failed",
+                                          "error": f"download: {exc}"[:300]}
+            downloaded = [e for e in chunk
+                          if (srcdir / e["relpath"]).exists()]
 
-        if project["profile"] and downloaded:
-            _parse_and_store(code, srcdir, downloaded, account, done, tmpdir)
-        else:
-            if not project["profile"]:
-                print(f"[ingest] {code}: no parser profile, storing as "
-                      f"encrypted bytes", flush=True)
-            for e in downloaded:
-                _store_bytes(code, srcdir / e["relpath"], e, account, done)
+            if project["profile"] and downloaded:
+                _parse_and_store(code, srcdir, downloaded, account, done,
+                                 tmpdir, catalog_tag=tag)
+            else:
+                if not project["profile"]:
+                    print(f"[ingest] {code}: no parser profile, storing as "
+                          f"encrypted bytes", flush=True)
+                for e in downloaded:
+                    _store_bytes(code, srcdir / e["relpath"], e, account, done)
+        if on_chunk is not None:
+            on_chunk()
     return done, used
 
 
@@ -421,8 +459,9 @@ def run_ingest(dbx, account: str, state: dict, progress_cb=None) -> dict:
         code = proj["code"]
         entry = legacy.setdefault(code, {})
         done = entry.setdefault("files", {})
-        entry["files"], used = ingest_project(dbx, proj, account, done,
-                                              budget_bytes)
+        entry["files"], used = ingest_project(
+            dbx, proj, account, done, budget_bytes,
+            on_chunk=(lambda: progress_cb(state)) if progress_cb else None)
         print(f"[ingest] {code}: done ({used / 1e9:.2f} GB this run)",
               flush=True)
         if progress_cb is not None:

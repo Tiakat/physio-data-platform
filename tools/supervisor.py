@@ -343,13 +343,18 @@ def check_project_health(code: str, entry: dict) -> List[str]:
         return findings
     last = hist[-1]
 
+    def _remaining(rec):
+        # Work that could still become parquet: eligible minus done minus
+        # unsupported (no parser exists for those yet).
+        return max(0, rec.get("eligible", 0) - rec.get("ok_total", 0)
+                   - rec.get("unsupported_total", 0))
+
     # Stall: work remains but nothing selected, repeatedly.
-    remaining = max(0, last.get("eligible", 0) - last.get("ok_total", 0))
+    remaining = _remaining(last)
     if remaining > 0 and last.get("selected", 0) == 0:
         streak = 0
         for rec in reversed(hist):
-            rem = max(0, rec.get("eligible", 0) - rec.get("ok_total", 0))
-            if rem > 0 and rec.get("selected", 0) == 0:
+            if _remaining(rec) > 0 and rec.get("selected", 0) == 0:
                 streak += 1
             else:
                 break
@@ -463,7 +468,9 @@ def run_health_checks(dbx, account: str, projects: List[dict], state: dict,
             "selected": last.get("selected", 0),
             "ok_new": last.get("ok_new", 0),
             "failed_new": last.get("failed_new", 0),
+            "unsupported_new": last.get("unsupported_new", 0),
             "ok_total": last.get("ok_total", 0),
+            "unsupported_total": last.get("unsupported_total", 0),
             "budget_capped": last.get("budget_capped", False),
         }
     digest = {"generated_utc": ts, "elapsed_min": round(elapsed_min, 1),

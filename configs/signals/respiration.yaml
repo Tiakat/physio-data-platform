@@ -1,0 +1,44 @@
+# Respiratory signal processing config
+signal: RESPIRATION
+status: draft
+category: B  # raw waveforms: airflow, airway pressure, CO2, pleth-derived resp
+channels:
+  - AIR FLOW
+  - AIRFLOW
+  - PAW
+  - CO2
+  - RESP
+validity:
+  unit: device-specific  # L/min, cmH2O, mmHg or % depending on channel
+  zero_is_valid: true  # zero flow at end-expiration is physiological
+  note: Unit must be established per source; never assume from the column name.
+artifact_detection:
+  - name: flatline
+    method: sliding variance below epsilon (sensor disconnect)
+    params: {window_s: 5.0}
+    flag: FLATLINE
+  - name: spike
+    method: rate-of-change vs local context
+    params: {z_window_s: 30.0}
+    flag: SPIKE
+filter:
+  method: lowpass
+  params: {high_hz: 2.0, order: 4}
+  note: Respiratory rates are < 1 Hz; preserve breath morphology, not ECG bandwidth.
+features:
+  - respiratory_rate
+  - inspiratory_duration
+  - expiratory_duration
+  - tidal_volume_proxy
+  - etco2  # from CO2 waveform breath detection
+normalization:
+  policy: none
+  rationale: Keep clinical units (mL, mmHg); normalize only for cross-patient trajectory comparison if justified.
+missing_data:
+  structural: Ventilator vs spontaneous breathing changes the signal nature; record mode as metadata.
+graphs:
+  priority: primary
+  views: [raw_vs_filtered_overlay, full_recording, zoomed_window, quality_flags]
+cross_validation:
+  - derive: respiratory_rate
+    compare_with: RR  # monitor parameter where present

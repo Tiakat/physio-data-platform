@@ -279,6 +279,20 @@ def run_discovery(account: str, state: dict, repo_root: str | Path,
 
     digest = {"generated_utc": ts, "projects": digest_projects,
               "review_queue_size": sum(len(v) for v in review.values())}
+    # Guard: never write a silently empty digest. If projects have parquet
+    # files but discovery produced nothing, that is a broken run, not a
+    # clean one — say so loudly and fail the job in main().
+    n_expected = sum(
+        1 for code in legacy
+        if sum(1 for f in (legacy[code].get("files") or {}).values()
+               if isinstance(f, dict) and f.get("status") == "ok"
+               and f.get("kind") == "parquet"))
+    empty_guard_fired = bool(n_expected and not digest_projects)
+    if empty_guard_fired:
+        msg = (f"no projects discovered although {n_expected} have parquet "
+               f"files — discovery is broken, do not trust this digest")
+        issue_lines.append(f"- {msg}")
+        print(f"[stage2] GUARD: {msg}", flush=True)
     put_plain(f"{STAGE2_PREFIX}/digest_{ts}.json",
               json.dumps(digest, indent=1).encode("utf-8"))
     put_encrypted(f"{STAGE2_PREFIX}/dictionary_{ts}.json.enc",
@@ -288,7 +302,8 @@ def run_discovery(account: str, state: dict, repo_root: str | Path,
                       encrypt_bytes(json.dumps(review, indent=1).encode("utf-8")))
         print(f"[stage2] review queue: {digest['review_queue_size']} unknown "
               f"columns need classification", flush=True)
-    return {"digest": digest, "issue_lines": issue_lines}
+    return {"digest": digest, "issue_lines": issue_lines,
+            "empty_guard_fired": empty_guard_fired}
 
 
 def main() -> int:
@@ -331,6 +346,8 @@ def main() -> int:
         print(f"[stage2] {len(lines)} findings -> stage2_out/body.txt",
               flush=True)
     print("[stage2] done", flush=True)
+    if result.get("empty_guard_fired"):
+        return 1
     return 0
 
 

@@ -71,7 +71,9 @@ GLOBAL_EXCLUDE_FOLDERS = ["Photos"]
 
 RAW_PREFIX = "rawdata"          # container
 PARQUET_DIR = "parquet"         # rawdata/<CODE>/parquet/...
-BYTES_DIR = "raw"               # rawdata/<CODE>/raw/... (encrypted source bytes)
+BYTES_DIR = "raw"               # legacy: rawdata/<CODE>/raw/... (old encrypted
+                                # source-byte uploads, pre-2026-10-01; new
+                                # unsupported files are NOT uploaded)
 
 
 def is_document(relpath: str) -> bool:
@@ -245,21 +247,15 @@ def _sha256_bytes(data: bytes) -> str:
 # Ingest
 # ---------------------------------------------------------------------------
 
-def _store_bytes(code: str, path: Path, e: dict, account: str,
-                 done: Dict[str, dict]) -> None:
-    """Encrypt the source file as-is and upload to <CODE>/raw/."""
-    try:
-        data = path.read_bytes()
-        blob = f"{code}/{BYTES_DIR}/{e['relpath']}.enc"
-        azure_upload_encrypted(account, RAW_PREFIX, blob, data,
-                               _sha256_bytes(data))
-        done[e["relpath"]] = {
-            "status": "ok", "rev": e["rev"], "sha256": _sha256_bytes(data),
-            "size": e["size"], "kind": "bytes", "stored": blob,
-        }
-    except Exception as exc:  # noqa: BLE001 -- record, keep going
-        done[e["relpath"]] = {"status": "failed", "error": str(exc)[:300]}
-        print(f"[ingest] {code}: FAILED bytes {e['relpath']}: {exc}", flush=True)
+def _mark_unsupported(code: str, e: dict, done: Dict[str, dict],
+                      reason: str) -> None:
+    """Record a file no parser can handle. NOT uploaded to Azure: raw/source
+    bytes never leave Dropbox. Left in place for future parser development;
+    skipped on later runs unless RESCAN_UNSUPPORTED=1."""
+    done[e["relpath"]] = {"status": "unsupported", "rev": e["rev"],
+                          "size": e["size"], "reason": reason}
+    print(f"[ingest] {code}: unsupported ({reason}): {e['relpath']}",
+          flush=True)
 
 
 def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
@@ -267,7 +263,8 @@ def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
                      catalog_tag: str = "") -> None:
     """Run the project's real parser (tools/run_local.py), then encrypt and
     upload each resulting parquet.  Blob names carry NO patient codes.
-    Files the parser cannot handle fall back to encrypted source bytes.
+    Files the parser cannot handle are marked unsupported and left in
+    Dropbox — raw/source bytes are never uploaded to Azure.
     """
     store = tmpdir / "store"
     cmd = [sys.executable, "-m", "tools.run_local",
@@ -276,18 +273,22 @@ def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
           flush=True)
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=5400)
     if proc.returncode != 0:
-        print(f"[ingest] {code}: parser failed, storing as bytes:\n"
-              f"{proc.stderr[-2000:]}", flush=True)
+        print(f"[ingest] {code}: parser crashed, marking batch failed "
+              f"(will retry):\n{proc.stderr[-2000:]}", flush=True)
         for e in batch:
-            _store_bytes(code, srcdir / e["relpath"], e, account, done)
+            done[e["relpath"]] = {
+                "status": "failed", "rev": e["rev"],
+                "error": f"parser crashed: {proc.stderr[-300:]}"}
         return
 
     catalogs = sorted(store.rglob("catalog.json"))
     if not catalogs:
-        print(f"[ingest] {code}: no catalog.json from parser, storing as bytes",
-              flush=True)
+        print(f"[ingest] {code}: no catalog.json from parser, marking "
+              f"batch failed (will retry)", flush=True)
         for e in batch:
-            _store_bytes(code, srcdir / e["relpath"], e, account, done)
+            done[e["relpath"]] = {
+                "status": "failed", "rev": e["rev"],
+                "error": "parser produced no catalog.json"}
         return
 
     catalog_path = catalogs[0]
@@ -295,7 +296,7 @@ def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
     catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     by_file = {c.get("file", ""): c for c in catalog}
 
-    n_parquet = n_bytes = 0
+    n_parquet = n_unsupported = 0
     for e in batch:
         rel = e["relpath"]
         c = by_file.get(rel) or {}
@@ -316,10 +317,10 @@ def _parse_and_store(code: str, srcdir: Path, batch: List[dict], account: str,
             except Exception as exc:  # noqa: BLE001
                 done[rel] = {"status": "failed", "error": str(exc)[:300]}
         else:
-            _store_bytes(code, srcdir / rel, e, account, done)
-            n_bytes += 1
-    print(f"[ingest] {code}: parquet stored={n_parquet} as-bytes={n_bytes}",
-          flush=True)
+            _mark_unsupported(code, e, done, "parser produced no parquet")
+            n_unsupported += 1
+    print(f"[ingest] {code}: parquet stored={n_parquet} "
+          f"unsupported={n_unsupported}", flush=True)
 
     # Encrypted catalog (patient linkage stays encrypted, never in blob names).
     # catalog_tag distinguishes per-chunk catalogs when a project is
@@ -334,15 +335,21 @@ def _select_new(candidates: List[dict], done: Dict[str, dict],
                 budget_bytes: int) -> Tuple[List[dict], int]:
     """Select new/changed/previously-failed entries within budget.
 
-    Entries already stored with an unchanged Dropbox revision are skipped;
-    changed revisions are re-ingested.
+    Entries already stored (ok) with an unchanged Dropbox revision are
+    skipped; changed revisions are re-ingested.  Entries marked
+    unsupported are skipped too — no parser exists for them — unless
+    RESCAN_UNSUPPORTED=1 (set after adding a new parser/profile).
     """
+    rescan = os.getenv("RESCAN_UNSUPPORTED") == "1"
     selected: List[dict] = []
     used = 0
     for e in sorted(candidates, key=lambda x: x["relpath"]):
         prev = done.get(e["relpath"])
-        if prev and prev.get("status") == "ok" and prev.get("rev") == e["rev"]:
-            continue  # already stored and unchanged
+        if prev and prev.get("rev") == e["rev"]:
+            if prev.get("status") == "ok":
+                continue  # already stored and unchanged
+            if prev.get("status") == "unsupported" and not rescan:
+                continue  # no parser yet; left in Dropbox
         if used + e["size"] > budget_bytes and selected:
             break
         selected.append(e)
@@ -424,9 +431,33 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
                   and not is_photo(e["name"])
                   and not _excluded(e["relpath"], excl)]
 
+    # No parser profile: nothing can become parquet, so nothing is
+    # downloaded or uploaded. Files are marked unsupported and left in
+    # Dropbox for future parser development.
+    if not project["profile"]:
+        n_new = 0
+        for e in candidates:
+            prev = done.get(e["relpath"])
+            if prev and prev.get("rev") == e["rev"] and \
+                    prev.get("status") == "unsupported" and \
+                    os.getenv("RESCAN_UNSUPPORTED") != "1":
+                continue
+            done[e["relpath"]] = {
+                "status": "unsupported", "rev": e["rev"], "size": e["size"],
+                "reason": "no parser profile for project"}
+            n_new += 1
+        stats = {"listed": len(entries), "eligible": len(candidates),
+                 "selected": 0, "ok_new": 0, "failed_new": 0,
+                 "unsupported_new": n_new}
+        print(f"[ingest] {code}: no parser profile — {len(candidates)} files "
+              f"marked unsupported ({n_new} new), left in Dropbox",
+              flush=True)
+        return done, 0, stats
+
     selected, used = _select_new(candidates, done, budget_bytes)
     stats = {"listed": len(entries), "eligible": len(candidates),
-             "selected": len(selected), "ok_new": 0, "failed_new": 0}
+             "selected": len(selected), "ok_new": 0, "failed_new": 0,
+             "unsupported_new": 0}
     print(f"[ingest] {code}: {len(selected)} files selected "
           f"({used / 1e9:.2f} GB)", flush=True)
     if not selected:
@@ -455,15 +486,9 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
             downloaded = [e for e in chunk
                           if (srcdir / e["relpath"]).exists()]
 
-            if project["profile"] and downloaded:
+            if downloaded:
                 _parse_and_store(code, srcdir, downloaded, account, done,
                                  tmpdir, catalog_tag=tag)
-            else:
-                if not project["profile"]:
-                    print(f"[ingest] {code}: no parser profile, storing as "
-                          f"encrypted bytes", flush=True)
-                for e in downloaded:
-                    _store_bytes(code, srcdir / e["relpath"], e, account, done)
         if on_chunk is not None:
             on_chunk()
     for e in selected:
@@ -472,6 +497,8 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
             stats["ok_new"] += 1
         elif st == "failed":
             stats["failed_new"] += 1
+        elif st == "unsupported":
+            stats["unsupported_new"] += 1
     return done, used, stats
 
 
@@ -519,8 +546,12 @@ def run_ingest(dbx, account: str, state: dict, progress_cb=None) -> dict:
         # spike detection). History is capped at 10 runs.
         ok_total = sum(1 for f in entry["files"].values()
                        if isinstance(f, dict) and f.get("status") == "ok")
+        unsupported_total = sum(
+            1 for f in entry["files"].values()
+            if isinstance(f, dict) and f.get("status") == "unsupported")
         run_rec = {"ts": datetime.now(timezone.utc).strftime("%Y%m%d_%H%M"),
                    **stats, "ok_total": ok_total,
+                   "unsupported_total": unsupported_total,
                    "budget_capped": used >= budget_bytes}
         entry["last_run"] = run_rec
         hist = entry.setdefault("run_history", [])

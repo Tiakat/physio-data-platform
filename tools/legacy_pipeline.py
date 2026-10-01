@@ -36,6 +36,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -392,7 +393,7 @@ def _split_chunks(selected: List[dict], chunk_bytes: int) -> List[List[dict]]:
 
 
 def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
-                   budget_bytes: int, on_chunk=None) -> Tuple[Dict[str, dict], int]:
+                   budget_bytes: int, on_chunk=None) -> Tuple[Dict[str, dict], int, dict]:
     """Ingest one project in small disk-bounded chunks.
 
     Each chunk is downloaded, parsed, uploaded, then wiped before the next
@@ -400,7 +401,8 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
     parquet is much larger than the source files (e.g. compressed/encrypted
     sources expanding into float columns).  ``on_chunk`` is called after
     each chunk so the caller can persist state incrementally.
-    Returns (done, bytes selected).
+    Returns (done, bytes selected, stats) where stats holds listed/eligible/
+    selected/ok_new/failed_new counts for the supervisor's health checks.
     """
     code = project["code"]
 
@@ -423,10 +425,12 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
                   and not _excluded(e["relpath"], excl)]
 
     selected, used = _select_new(candidates, done, budget_bytes)
+    stats = {"listed": len(entries), "eligible": len(candidates),
+             "selected": len(selected), "ok_new": 0, "failed_new": 0}
     print(f"[ingest] {code}: {len(selected)} files selected "
           f"({used / 1e9:.2f} GB)", flush=True)
     if not selected:
-        return done, 0
+        return done, 0, stats
 
     chunk_bytes = int(float(os.getenv("INGEST_CHUNK_GB", "1")) * (1024 ** 3))
     chunks = _split_chunks(selected, chunk_bytes)
@@ -462,7 +466,13 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
                     _store_bytes(code, srcdir / e["relpath"], e, account, done)
         if on_chunk is not None:
             on_chunk()
-    return done, used
+    for e in selected:
+        st = (done.get(e["relpath"]) or {}).get("status")
+        if st == "ok":
+            stats["ok_new"] += 1
+        elif st == "failed":
+            stats["failed_new"] += 1
+    return done, used, stats
 
 
 # ---------------------------------------------------------------------------
@@ -500,11 +510,22 @@ def run_ingest(dbx, account: str, state: dict, progress_cb=None) -> dict:
         code = proj["code"]
         entry = legacy.setdefault(code, {})
         done = entry.setdefault("files", {})
-        entry["files"], used = ingest_project(
+        entry["files"], used, stats = ingest_project(
             dbx, proj, account, done, budget_bytes,
             on_chunk=(lambda: progress_cb(state)) if progress_cb else None)
         print(f"[ingest] {code}: done ({used / 1e9:.2f} GB this run)",
               flush=True)
+        # Per-run record for the supervisor's health checks (stall/failure
+        # spike detection). History is capped at 10 runs.
+        ok_total = sum(1 for f in entry["files"].values()
+                       if isinstance(f, dict) and f.get("status") == "ok")
+        run_rec = {"ts": datetime.now(timezone.utc).strftime("%Y%m%d_%H%M"),
+                   **stats, "ok_total": ok_total,
+                   "budget_capped": used >= budget_bytes}
+        entry["last_run"] = run_rec
+        hist = entry.setdefault("run_history", [])
+        hist.append(run_rec)
+        del hist[:-10]
         if progress_cb is not None:
             progress_cb(state)
     return state

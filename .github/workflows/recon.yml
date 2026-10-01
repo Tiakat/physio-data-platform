@@ -1,8 +1,12 @@
 name: recon
 
-# Manual, read-only reconnaissance. Two tasks:
+# Manual, read-only reconnaissance. Tasks:
 #   formats       -> what file extensions live in each project (Dropbox walk)
 #   inventory-raw -> list legacy encrypted source-byte objects in Azure
+#   layouts       -> per-project folder layout vs the lab template
+#   schemas       -> header-only column census of raw CSVs
+#   review-dictionary -> privacy-limited review of the census
+#   demographics  -> locate per-project demographic Excel files
 # Neither task moves, renames, or deletes anything.
 
 on:
@@ -19,6 +23,7 @@ on:
           - layouts
           - schemas
           - review-dictionary
+          - demographics
 
 concurrency:
   group: physio-recon
@@ -57,6 +62,8 @@ jobs:
             python -m tools.recon_schemas
           elif [ "${{ inputs.task }}" = "review-dictionary" ]; then
             python -m tools.review_dictionary
+          elif [ "${{ inputs.task }}" = "demographics" ]; then
+            python -m tools.recon_demographics
           else
             python -m tools.recon_layouts
           fi

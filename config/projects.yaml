@@ -46,7 +46,7 @@ projects:
   PVB-ABDO:
     dropbox: "PVB abdo"
     status: data
-    data_roots: ["Included patients"]     # Included patients/Patient 11 2026-06-15 AC/11/...
+    data_roots: ["Database"]
     metadata_files: ["Database_PVBabdo_*.xlsx", "Liste patient_*.xlsx"]
 
   POEGEA:

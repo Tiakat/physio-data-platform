@@ -1,5 +1,6 @@
-"""Stage 2, phases 1-4: dataset discovery, integrity, column-level data
-dictionary, participant/demographic linkage assessment.
+"""Stage 2, phases 1-7: dataset discovery, integrity, column-level data
+dictionary, participant/demographic linkage assessment, sampling-rate
+detection, missing-data measurement.
 
 Reads the encrypted standardized parquets listed in the pipeline state
 (rawdata/<CODE>/parquet/<device>_<sha>.parquet.enc), samples them, and
@@ -13,6 +14,9 @@ builds a column taxonomy per project:
 - ``identifier`` matches are privacy-critical: counted, never printed with
   values; real column names stay encrypted.
 - ``unknown`` columns go to an encrypted review queue for K — never plaintext.
+
+Phases 6-7 MEASURE the data (per-signal time bases, missing-data
+taxonomy). They never filter, smooth, impute, or modify anything.
 
 Never touches Dropbox. Reads ``rawdata``, writes ``processed/stage2/``::
 
@@ -30,6 +34,7 @@ import io
 import json
 import os
 import re
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
@@ -141,6 +146,10 @@ def discover_project(account: str, code: str, files: dict,
     tmax: Optional[str] = None
     checked = 0
     errors: List[str] = []
+    sampling_acc: Dict[str, list] = defaultdict(list)
+    missing_acc: Dict[str, dict] = defaultdict(
+        lambda: {"fracs": [], "longest": 0, "kinds": set(), "device": ""})
+    measure_notes: List[str] = []
 
     for i, blob in enumerate(sampled):
         try:
@@ -178,6 +187,11 @@ def discover_project(account: str, code: str, files: dict,
                         tmax = hi_s
                 except Exception:  # noqa: BLE001 -- non-datetime index
                     pass
+            # Phases 6-7: read-only measurement on a capped slice.
+            # Never breaks discovery; problems go to measure_notes.
+            if i < _MEASURE_N:
+                _measure_blob(pf, names, ontology, _device_of(blob),
+                              sampling_acc, missing_acc, measure_notes)
         except Exception as exc:  # noqa: BLE001 -- record, keep going
             errors.append(f"{blob}: {str(exc)[:120]}")
 
@@ -188,6 +202,8 @@ def discover_project(account: str, code: str, files: dict,
     by_class: Dict[str, int] = {}
     for c in columns.values():
         by_class[c["class"]] = by_class.get(c["class"], 0) + 1
+
+    sampling, missingness = _summarise_measurement(sampling_acc, missing_acc)
 
     return {
         "n_parquet_files": len(blobs),
@@ -201,9 +217,205 @@ def discover_project(account: str, code: str, files: dict,
                           if c["class"] == "signal"),
         "schema_drift": drift,
         "time_range": [tmin, tmax],
+        "sampling": sampling,
+        "missingness": missingness,
+        "measure_notes": measure_notes,
         "errors": errors,
         "columns": columns,
     }
+
+
+# ---- Phases 6-7: read-only measurement (sampling rate, missing data) ----
+# These MEASURE the data; they never filter, smooth, impute, or modify it.
+_MEASURE_N = 5          # files per project measured in depth
+_MEASURE_ROWS = 200_000  # row cap per measured file (streamed batches)
+_MEASURE_COLS = 12       # signal-column cap per measured file
+_MEASURE_CLASSES = {"signal", "derived"}
+_MISSING_ORDER = ["complete", "sparse_isolated", "gappy", "high_missing",
+                  "entirely_missing"]
+
+
+def _measure_timebase(df, ts_col):
+    """Phase 6: sampling-rate detection from a timestamp column.
+
+    Read-only. dt = t[i+1]-t[i] on raw order; nominal rate = 1/median(dt).
+    Reports nominal vs observed, irregularity, disorder (non-positive dt)
+    and gap stats. Returns None when the column is not interpretable
+    as time. Never raises.
+    """
+    import numpy as np
+    import pandas as pd
+    try:
+        s = df[ts_col]
+        if pd.api.types.is_datetime64_any_dtype(s.dtype):
+            s = s.dropna()
+            if len(s) < 3:
+                return None
+            vals = s.astype("int64").to_numpy() / 1e9
+            unit = "datetime64"
+        else:
+            vals = pd.to_numeric(s, errors="coerce").to_numpy(dtype=float)
+            vals = vals[np.isfinite(vals)]
+            if len(vals) < 3:
+                return None
+            med_abs = float(np.median(np.abs(vals)))
+            if med_abs > 1e11:        # epoch milliseconds
+                vals = vals / 1000.0
+                unit = "epoch_ms(inferred)"
+            elif med_abs > 1e7:      # epoch seconds
+                unit = "epoch_s(inferred)"
+            else:                    # elapsed seconds
+                unit = "elapsed_s(inferred)"
+        dt = np.diff(vals)
+        if len(dt) == 0:
+            return None
+        pos = dt[dt > 0]
+        disorder = float(np.mean(dt <= 0))
+        if len(pos) < 2:
+            return {"time_unit": unit,
+                    "disorder_fraction": round(disorder, 4),
+                    "note": "too few positive diffs"}
+        med = float(np.median(pos))
+        gaps = pos[pos > 10 * med]
+        return {
+            "time_unit": unit,
+            "median_dt_s": round(med, 6),
+            "min_dt_s": round(float(pos.min()), 6),
+            "max_dt_s": round(float(pos.max()), 6),
+            "nominal_hz": round(1.0 / med, 3) if med > 0 else None,
+            "irregularity": round(float(np.mean(np.abs(pos - med)
+                                                > 0.5 * med)), 4),
+            "disorder_fraction": round(disorder, 4),
+            "gap_fraction": round(len(gaps) / len(pos), 4),
+            "total_gap_time_s": round(float(gaps.sum()), 1),
+            "n_diffs": int(len(pos)),
+        }
+    except Exception:  # noqa: BLE001 -- measurement never breaks discovery
+        return None
+
+
+def _measure_missingness(df, columns):
+    """Phase 7: per-column missing-data measurement. Read-only.
+
+    Kinds follow the pipeline taxonomy: entirely_missing (type 4),
+    high_missing (candidate structural, type 5), gappy (types 2-3),
+    sparse_isolated (type 1), complete. Never raises.
+    """
+    import numpy as np
+    out = {}
+    for col in columns:
+        try:
+            m = df[col].isna().to_numpy()
+        except Exception:  # noqa: BLE001
+            continue
+        n = len(m)
+        if n == 0:
+            continue
+        miss = float(m.mean())
+        longest = 0
+        if m.any() and not m.all():
+            code = np.diff(np.concatenate([[0], m.astype(np.int8), [0]]))
+            starts = np.where(code == 1)[0]
+            ends = np.where(code == -1)[0]
+            if len(starts) and len(ends):
+                longest = int((ends - starts).max())
+        if miss >= 1.0:
+            kind = "entirely_missing"
+        elif miss > 0.5:
+            kind = "high_missing"
+        elif longest >= 10:
+            kind = "gappy"
+        elif miss > 0:
+            kind = "sparse_isolated"
+        else:
+            kind = "complete"
+        out[col] = {"missing_frac": round(miss, 4),
+                    "longest_gap_run": longest, "kind": kind}
+    return out
+
+
+def _measure_blob(pf, names, ontology, device, sampling_acc, missing_acc,
+                  notes):
+    """Phases 6+7 on one parquet: streamed, row- and column-capped.
+
+    Never raises; any problem is recorded in notes and discovery continues.
+    """
+    import pandas as pd
+    try:
+        ts_col = None
+        measure_cols = []
+        for n in names:
+            cls, _ = classify_column(n, ontology)
+            if cls == "timestamp" and ts_col is None:
+                ts_col = n
+            elif cls in _MEASURE_CLASSES and len(measure_cols) < _MEASURE_COLS:
+                measure_cols.append(n)
+        cols = ([ts_col] if ts_col else []) + measure_cols
+        if not cols:
+            return
+        batches = []
+        n_rows = 0
+        for batch in pf.iter_batches(batch_size=50_000, columns=cols):
+            batches.append(batch.to_pandas())
+            n_rows += batch.num_rows
+            if n_rows >= _MEASURE_ROWS:
+                break
+        if not batches:
+            return
+        df = pd.concat(batches, ignore_index=True)
+        if ts_col is not None:
+            tb = _measure_timebase(df, ts_col)
+            if tb:
+                sampling_acc[device].append(tb)
+            else:
+                notes.append(f"{device}: time column not interpretable")
+        else:
+            notes.append(f"{device}: no timestamp column in measured sample")
+        if measure_cols:
+            for col, m in _measure_missingness(df, measure_cols).items():
+                acc = missing_acc[col]
+                acc["fracs"].append(m["missing_frac"])
+                acc["longest"] = max(acc["longest"], m["longest_gap_run"])
+                acc["kinds"].add(m["kind"])
+                acc["device"] = device
+    except Exception as exc:  # noqa: BLE001
+        notes.append(f"{device}: measurement skipped ({str(exc)[:80]})")
+
+
+def _summarise_measurement(sampling_acc, missing_acc):
+    """Aggregate per-blob measurements into the project report."""
+    import numpy as np
+    sampling = {}
+    for device, tbs in sampling_acc.items():
+        meds = [t["median_dt_s"] for t in tbs if t.get("median_dt_s")]
+        hzs = [t["nominal_hz"] for t in tbs if t.get("nominal_hz")]
+        hz_set = {round(h, 1) for h in hzs}
+        sampling[device] = {
+            "n_files_measured": len(tbs),
+            "median_dt_s": (round(float(np.median(meds)), 6)
+                            if meds else None),
+            "nominal_hz_range": ([round(min(hzs), 3), round(max(hzs), 3)]
+                                 if hzs else None),
+            "mixed_time_bases": len(hz_set) > 1,
+            "mean_irregularity": (round(float(np.mean(
+                [t["irregularity"] for t in tbs
+                 if "irregularity" in t])), 4) if tbs else None),
+            "mean_gap_fraction": (round(float(np.mean(
+                [t["gap_fraction"] for t in tbs
+                 if "gap_fraction" in t])), 4) if tbs else None),
+        }
+    missingness = {}
+    for col, acc in missing_acc.items():
+        kinds = [k for k in _MISSING_ORDER if k in acc["kinds"]]
+        worst = kinds[-1] if kinds else "complete"
+        missingness[col] = {
+            "device": acc["device"],
+            "mean_missing_frac": (round(sum(acc["fracs"]) / len(acc["fracs"]), 4)
+                                  if acc["fracs"] else None),
+            "max_longest_gap_run": acc["longest"],
+            "worst_kind": worst,
+        }
+    return sampling, missingness
 
 
 def assess_linkage(report: dict) -> dict:
@@ -225,7 +437,7 @@ def run_discovery(account: str, state: dict, repo_root: str | Path,
                   put_encrypted: Callable[[str, bytes], None],
                   put_plain: Callable[[str, bytes], None],
                   sample_n: int = 20) -> dict:
-    """Phases 1-4 for every project with parquet in state. Never raises."""
+    """Phases 1-7 for every project with parquet in state. Never raises."""
     from tools.crypto import encrypt_bytes
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
@@ -270,9 +482,30 @@ def run_discovery(account: str, state: dict, repo_root: str | Path,
             "schema_drift": len(rep["schema_drift"]),
             "time_range": rep["time_range"],
             "linkage_path": linkage["path"],
+            "sampling": {
+                dev: {"n_files_measured": s["n_files_measured"],
+                      "nominal_hz_range": s["nominal_hz_range"],
+                      "mixed_time_bases": s["mixed_time_bases"],
+                      "mean_gap_fraction": s["mean_gap_fraction"]}
+                for dev, s in rep["sampling"].items()},
+            "missingness_kinds": {
+                kind: sum(1 for m in rep["missingness"].values()
+                          if m["worst_kind"] == kind)
+                for kind in _MISSING_ORDER},
         }
         if linkage["finding"]:
             issue_lines.append(f"- {code}: {linkage['finding']}")
+        for dev, s in rep["sampling"].items():
+            if s["mixed_time_bases"]:
+                issue_lines.append(
+                    f"- {code}: device {dev} shows mixed time bases "
+                    f"(nominal Hz range {s['nominal_hz_range']}) — "
+                    f"one file != one sampling rate")
+        for col, m in rep["missingness"].items():
+            if m["worst_kind"] == "entirely_missing":
+                issue_lines.append(
+                    f"- {code}: column {col} entirely missing in measured "
+                    f"sample ({m['device']})")
         print(f"[stage2] {code}: {rep['n_parquet_files']} parquets, "
               f"{rep['n_columns']} columns {rep['by_class']}, "
               f"{len(unknowns)} unknown", flush=True)

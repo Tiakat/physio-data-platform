@@ -1,0 +1,34 @@
+# SpO2 parameter processing config
+signal: SPO2
+status: draft
+category: C  # physiological parameter
+channels:
+  - SPO2
+validity:
+  unit: percent
+  range: [50, 100]  # from profiles/_variables.yaml
+  zero_is_valid: false
+artifact_detection:
+  - name: out_of_range
+    method: physiological validity range
+    flag: INVALID_RANGE
+  - name: dropout
+    method: sudden fall with low perfusion / probe-off signature
+    params: {min_drop_percent: 5.0, window_s: 10.0}
+    flag: DEVICE_ARTIFACT
+  - name: short_gap
+    method: missing run shorter than threshold
+    params: {max_gap_s: 10.0}
+    flag: GAP
+filter:
+  method: robust_smoothing
+  params: {method: hampel, window_s: 10.0, n_sigma: 3.0}
+  note: Parameter-level QC only. Never waveform filtering, never interpolate long gaps silently.
+normalization:
+  policy: none
+  rationale: SpO2 is generally retained in %; normalization rarely justified.
+missing_data:
+  note: Probe-off periods are expected artifacts with a device signature; distinguish from true desaturation by context.
+graphs:
+  priority: primary
+  views: [time_series, quality_flags]

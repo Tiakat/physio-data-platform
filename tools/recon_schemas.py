@@ -106,10 +106,9 @@ def main() -> int:
     from tools import sync_dropbox_cloud
     from tools.daily_pipeline import ACCOUNT, REPORTS
     from tools import azure_auth
-    from tools.legacy_pipeline import (
-        list_dropbox_tree, select_projects, load_profile,
-    )
+    from tools.legacy_pipeline import list_dropbox_tree, select_projects
     from tools.run_local import find_patient
+    from backbone.config import load_profile
     from backbone.parsers._common import resolve_columns
 
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")

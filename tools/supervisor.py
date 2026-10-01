@@ -238,13 +238,104 @@ def classify_run(state: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Email report (real paths — the recipient is K herself, so no redaction).
+# Only generated when something actually needs her attention.
+# ---------------------------------------------------------------------------
+
+_DEVICE_HOME = {
+    "bettercare": "Database/ExtractedData/BetterCare/",
+    "infinity": "Database/ExtractedData/Infinity/",
+    "nol": "Database/ExtractedData/NOL/",
+    "bis": "Database/ExtractedData/BIS/",
+}
+
+_DOC_HOME = {
+    "version finale approuvée": "Documents/Version finale approuvée/",
+    "fic-crf-short protocol": "Documents/FIC-CRF-Short Protocol/",
+    "soumission ethique": "Documents/Soumission ethique/",
+    "contrats legaux": "Documents/Contrats legaux/",
+}
+
+_PARTICIPANT_LIKE_RE = re.compile(
+    r"^(?:patient|pt|sujet)[\s_]*(?P<n>\d{1,3})(?!\d).*$")
+
+
+def suggest_home(seg: str) -> Optional[str]:
+    """Suggest where an unexpected folder probably belongs (template terms)."""
+    low = seg.strip().lower()
+    if low in _DEVICE_HOME:
+        return _DEVICE_HOME[low]
+    if low in _DOC_HOME:
+        return _DOC_HOME[low]
+    m = _PARTICIPANT_LIKE_RE.match(low)
+    if m:
+        return f"Database/RawData/{m.group('n')}/  (or AnalyzedData — please decide)"
+    if _PARTICIPANT_RE.match(low):
+        return "Database/RawData/<n>/  (or AnalyzedData — please decide)"
+    return None
+
+
+def _needs_attention(findings: dict) -> bool:
+    return bool(findings.get("missing") or findings.get("unexpected")
+                or findings.get("stray_files") or findings.get("layout_note")
+                or findings.get("unreachable"))
+
+
+def render_email(audit: Dict[str, dict], run_stats: dict,
+                 date_str: str) -> Optional[Tuple[str, str]]:
+    """Return (subject, body) if any project needs K's attention, else None."""
+    bad = {c: f for c, f in audit.items() if _needs_attention(f)}
+    if not bad:
+        return None
+    subject = (f"[Supervisor] Dropbox audit {date_str} — "
+               f"{len(bad)} project(s) deviate from the lab template")
+    lines = [
+        "Bonjour K,",
+        "",
+        "The supervisor checked every project's Dropbox folders against the",
+        "lab template. The projects below deviate.",
+        "Nothing was moved or renamed — please fix these manually in Dropbox.",
+        "",
+    ]
+    for code in sorted(bad):
+        f = bad[code]
+        lines.append(f"== {code} ==")
+        if f.get("unreachable"):
+            lines.append(f"  Dropbox folder unreachable: {f.get('layout_note')}")
+        if f.get("layout_note"):
+            lines.append(f"  Layout: {f['layout_note']}")
+        for m in f.get("missing", []):
+            lines.append(f"  Missing section: {m}")
+        for u in f.get("unexpected", [])[:10]:
+            seg = u.rstrip("/").rsplit("/", 1)[-1]
+            sug = suggest_home(seg)
+            if sug:
+                lines.append(f"  Misplaced: '{u}'  -> suggested home: {sug}")
+            else:
+                lines.append(f"  Misplaced: '{u}'  -> please decide where it belongs")
+        if len(f.get("unexpected", [])) > 10:
+            lines.append(f"  ... and {len(f['unexpected']) - 10} more")
+        if f.get("stray_files"):
+            lines.append(f"  Stray files at top level: {f['stray_files']}")
+        lines.append("")
+    lines.append(f"Run stats: {run_stats['files_ok']} files ok, "
+                 f"{run_stats['files_failed']} failed.")
+    lines.append("Full encrypted audit: reports/supervisor/ "
+                 f"(audit_{date_str}.json.enc)")
+    lines.append("")
+    lines.append("— your supervisor (no files were touched)")
+    return subject, "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 def run_supervisor(dbx, projects: List[dict], state: dict,
                    put_encrypted: Callable[[str, bytes], None],
                    put_plain: Callable[[str, bytes], None],
-                   new_folders: Optional[List[str]] = None) -> dict:
+                   new_folders: Optional[List[str]] = None,
+                   email_dir: Optional[str] = None) -> dict:
     """Audit every project against the lab template and publish reports.
 
     ``put_encrypted`` / ``put_plain`` upload to the reports container, e.g.
@@ -272,6 +363,21 @@ def run_supervisor(dbx, projects: List[dict], state: dict,
 
     put_encrypted(f"supervisor/audit_{ts}.json.enc", full_payload)
     put_plain(f"supervisor/digest_{ts}.json", digest_payload)
+
+    # Email files for the workflow: written ONLY when K needs to act.
+    # Silence = everything matches the template.
+    if email_dir:
+        import os as _os
+        _os.makedirs(email_dir, exist_ok=True)
+        rendered = render_email(audit, run_stats, ts)
+        if rendered:
+            subject, body = rendered
+            with open(_os.path.join(email_dir, "subject.txt"), "w",
+                      encoding="utf-8") as fh:
+                fh.write(subject)
+            with open(_os.path.join(email_dir, "body.txt"), "w",
+                       encoding="utf-8") as fh:
+                fh.write(body)
 
     deviating = sum(1 for f in audit.values()
                     if f.get("missing") or f.get("unexpected")

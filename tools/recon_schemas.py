@@ -392,7 +392,10 @@ def main() -> int:
               flush=True)
 
     n_cols = len(by_col)
-    n_dup_files = sum(len(d["files"]) for d in dupes.values())
+    dupe_file_union: set[str] = set()
+    for d in dupes.values():
+        dupe_file_union |= d["files"]
+    n_dup_files = len(dupe_file_union)
     reasons = ", ".join(f"{k}={v}" for k, v in fail_reasons.items())
     exts = ", ".join(f"{e}={c}"
                      for e, c in sorted(fail_extensions.items(),

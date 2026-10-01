@@ -1,486 +1,648 @@
 """Signal-specific processing engine (Phases 9-11).
 
-One engine, driven by ``configs/signals/*.yaml``. For every column:
+The dictionary (profiles/_variables.yaml) is the single source of truth for
+valid ranges, zero semantics and raw-name aliases. Signal configs under
+configs/signals/ declare *behaviour* only: which detectors to run, which
+filter to apply, which features to extract. Any range in a config is a
+fallback for channels with no dictionary entry yet, and a disagreement with
+the dictionary is logged as a conflict (dictionary wins).
 
-1. **Validity** -- physiological range from the dictionary, zero handling from
-   ``zero_is_valid``, global missing codes. Violations become NaN in the
-   filtered output plus a QC flag. Raw is never modified.
-2. **Artifact detection** -- per-signal detectors declared in the YAML
-   (flatline, spike, saturation, dropout...), never a generic filter.
-3. **Filtering** -- per-signal method (lowpass/bandpass for waveforms,
-   robust smoothing for ~1 Hz parameters, none for exposure data).
-
-Columns with no dictionary entry are NOT processed: they go to the review
-queue so K can define their handling. Unknown columns are never silently
-dropped and never force-fit through another signal's filter.
-
-QC vocabulary: VALID, INVALID_RANGE, SPIKE, FLATLINE, MISSING, GAP,
-SATURATION, DEVICE_ARTIFACT, LOW_QUALITY.
+Philosophy: invalid observations are flagged, never deleted. Raw is never
+modified; this module produces filtered + QC sidecar dataframes, leaving
+the source untouched.
 """
 
-from __future__ import annotations
-
+import argparse
 import json
-from pathlib import Path
+import os
+import re
 
 import numpy as np
 import pandas as pd
 import yaml
 
-# Highest severity first. One flag per sample: the most severe wins.
-FLAG_PRIORITY = [
-    "MISSING",
-    "INVALID_RANGE",
-    "SATURATION",
-    "FLATLINE",
-    "DEVICE_ARTIFACT",
-    "SPIKE",
-    "GAP",
-    "LOW_QUALITY",
-    "VALID",
-]
+# Detectors actually implemented below. A config may *declare* any detector
+# name, but names outside this set are reported at load time and run nothing
+# -- never silently skipped.
+IMPLEMENTED_DETECTORS = {"flatline", "spike", "saturation_clipping",
+                         "out_of_range"}
+
+# Filters actually implemented below.
+IMPLEMENTED_FILTERS = {"none", "lowpass", "bandpass", "robust_smoothing"}
+
+# Column names we accept as the time base, in preference order.
+TIME_CANDIDATES = ["timestamp", "time", "time_ms", "time_s", "datetime",
+                   "epoch_ms", "epoch_s"]
+
+# Matches a parenthesised unit/embedded segment, e.g. " (mm(hg)^^ISO+)",
+# " (/min^^ISO+)". Used to strip vendor unit suffixes for alias matching.
+_UNIT_SEGMENT_RE = re.compile(
+    r"\s*\((?:[^()]*\d[^()]*|mm\s?hg|iso|bpm|mv|uv|%|hz)[^()]*\)",
+    re.IGNORECASE)
+
+# pandas duplicate-column suffix: HR.1, HR.11 ...
+_DUPLICATE_SUFFIX_RE = re.compile(r"\.(\d+)$")
 
 
-def load_signal_configs(config_dir: str | Path) -> dict:
-    """Load every configs/signals/*.yaml into {signal_name: config}."""
-    configs = {}
-    for path in sorted(Path(config_dir).glob("*.yaml")):
-        with open(path, encoding="utf-8") as fh:
-            cfg = yaml.safe_load(fh)
-        if cfg and "signal" in cfg:
-            configs[cfg["signal"]] = cfg
-    return configs
+# --------------------------------------------------------------------------
+# Alias / canonicalisation helpers
+# --------------------------------------------------------------------------
+
+def _strip_unit_segment(name: str) -> str:
+    """Remove vendor unit segments from a raw column name."""
+    return _UNIT_SEGMENT_RE.sub("", name).strip()
 
 
-def _normalise(name: str) -> str:
-    import re
+def _normalize_name(name: str) -> str:
+    """Case/whitespace-insensitive key for alias lookup."""
+    return re.sub(r"\s+", " ", str(name)).strip().lower()
 
-    return re.sub(r"[^a-z0-9]+", "_", str(name).lower()).strip("_")
 
+# --------------------------------------------------------------------------
+# Config + dictionary loading
+# --------------------------------------------------------------------------
 
-def find_config(column: str, configs: dict) -> dict | None:
-    """Match a column to its signal config via channels or aliases.
+def load_signal_configs(config_dir, variables_path):
+    """Load signal configs and build the lookup index.
 
-    Duplicate columns (HR, HR.1, HR.2 ...) all resolve to the same signal
-    config; disambiguation of the duplicates happens in the per-source
-    scripts, never here.
+    Returns (configs, index) where configs maps config filename stem ->
+    config dict, and index is a dict with:
+      alias -> (config, canonical_variable)
+      conflicts: [{channel, config_range, dictionary_range}]
+      unresolved_channels: [{config, channel}]  (config fallback in use)
+      unimplemented_detectors: [{config, detector, method}]
+      unimplemented_filters: [{config, method}]
+      dictionary_channels: set of canonical names found in the dictionary
     """
-    norm = _normalise(column)
-    # Strip pandas duplicate suffixes: HR.1 -> HR, SpO2.2 -> SpO2.
-    import re
+    configs = {}
+    index = {
+        "alias": {},
+        "conflicts": [],
+        "unresolved_channels": [],
+        "unimplemented_detectors": [],
+        "unimplemented_filters": [],
+        "dictionary_channels": set(),
+    }
 
-    base = re.sub(r"\.\d+$", "", column)
-    base_norm = _normalise(base)
-    for signal, cfg in configs.items():
-        channels = [_normalise(c) for c in cfg.get("channels", [])]
-        if norm in channels or base_norm in channels:
-            return cfg
-        if norm == _normalise(signal) or base_norm == _normalise(signal):
-            return cfg
-    return None
+    # --- dictionary ------------------------------------------------------
+    dictionary = {}
+    global_missing = []
+    if variables_path and os.path.exists(str(variables_path)):
+        with open(variables_path, encoding="utf-8") as fh:
+            raw = yaml.safe_load(fh) or {}
+        dictionary = raw.get("variables", {}) or {}
+        global_missing = raw.get("global_missing_codes", []) or []
+
+    for canon, spec in dictionary.items():
+        if not isinstance(spec, dict):
+            continue
+        index["dictionary_channels"].add(canon)
+        # Sentinel key carries the dictionary spec for this canonical name.
+        index["alias"]["\x00" + canon] = spec
+
+    index["global_missing_codes"] = list(global_missing)
+
+    # --- configs ---------------------------------------------------------
+    for fname in sorted(os.listdir(config_dir)):
+        if not fname.endswith((".yaml", ".yml")):
+            continue
+        stem = os.path.splitext(fname)[0]
+        with open(os.path.join(config_dir, fname), encoding="utf-8") as fh:
+            cfg = yaml.safe_load(fh) or {}
+        configs[stem] = cfg
+        signal = cfg.get("signal", stem)
+
+        # Register channels and their aliases against this config.
+        for channel in cfg.get("channels", []) or []:
+            spec = index["alias"].get("\x00" + channel)
+            if spec is None:
+                index["unresolved_channels"].append(
+                    {"config": signal, "channel": channel})
+            else:
+                # YAML range present but dictionary wins: log the conflict.
+                yaml_range = (cfg.get("validity") or {}).get("range")
+                dict_range = ([spec.get("min"), spec.get("max")]
+                              if spec.get("min") is not None
+                              and spec.get("max") is not None else None)
+                if yaml_range and dict_range and list(yaml_range) != dict_range:
+                    index["conflicts"].append({
+                        "config": signal,
+                        "channel": channel,
+                        "config_range": list(yaml_range),
+                        "dictionary_range": dict_range,
+                    })
+            names = [channel]
+            if spec:
+                names += spec.get("aliases", []) or []
+            for name in names:
+                key = _normalize_name(name)
+                stripped = _normalize_name(_strip_unit_segment(name))
+                index["alias"].setdefault(key, (cfg, channel))
+                index["alias"].setdefault(stripped, (cfg, channel))
+
+        # Report declared-but-unimplemented detectors/filters at load time.
+        for det in cfg.get("artifact_detection", []) or []:
+            name = det.get("name") if isinstance(det, dict) else det
+            if name not in IMPLEMENTED_DETECTORS:
+                index["unimplemented_detectors"].append({
+                    "config": signal, "detector": name,
+                    "method": (det.get("method") if isinstance(det, dict)
+                               else None),
+                })
+        filt = cfg.get("filter", {}) or {}
+        method = filt.get("method", "none") if isinstance(filt, dict) else "none"
+        if method not in IMPLEMENTED_FILTERS:
+            index["unimplemented_filters"].append(
+                {"config": signal, "method": method})
+
+    return configs, index
 
 
-def _worse(current: str, candidate: str) -> str:
-    if FLAG_PRIORITY.index(candidate) < FLAG_PRIORITY.index(current):
-        return candidate
-    return current
+def find_config(column, configs, index):
+    """Resolve a raw column name to (config, canonical_variable).
 
-
-def apply_validity(series: pd.Series, cfg: dict,
-                   missing_codes: list) -> tuple[pd.Series, np.ndarray]:
-    """Range / zero / missing-code checks. Returns (cleaned, flags)."""
-    flags = np.full(len(series), "VALID", dtype=object)
-    out = pd.to_numeric(series, errors="coerce").astype(float)
-
-    if missing_codes:
-        is_code = out.isin(missing_codes)
-        out = out.mask(is_code)
-        flags[is_code.to_numpy()] = "MISSING"
-
-    validity = cfg.get("validity", {}) or {}
-    zero_is_valid = validity.get("zero_is_valid", False)
-    if not zero_is_valid:
-        is_zero = out.eq(0) & out.notna()
-        out = out.mask(is_zero)
-        flags[is_zero.to_numpy()] = np.array(
-            [_worse(f, "INVALID_RANGE") for f in flags[is_zero.to_numpy()]])
-
-    vrange = validity.get("range")
-    if vrange:
-        lo, hi = vrange
-        bad = (out.lt(lo) | out.gt(hi)) & out.notna()
-        out = out.mask(bad)
-        bad_idx = bad.to_numpy()
-        flags[bad_idx] = np.array(
-            [_worse(f, "INVALID_RANGE") for f in flags[bad_idx]])
-    return out, flags
-
-
-def detect_flatline(series: pd.Series, fs_hz: float,
-                    window_s: float = 2.0,
-                    epsilon: float | None = None) -> np.ndarray:
-    """Sliding variance below epsilon -> transducer disconnect / lead off."""
-    n = max(int(window_s * fs_hz), 2)
-    roll_std = series.rolling(n, center=True, min_periods=n).std()
-    if epsilon is None:
-        # Scale-free fallback: variance < 1e-9 of the series' own range.
-        span = series.max() - series.min()
-        epsilon = (span * 1e-6) if pd.notna(span) and span > 0 else 1e-9
-    hit = (roll_std < epsilon) & series.notna()
-    return hit.to_numpy()
-
-
-def detect_spike(series: pd.Series, fs_hz: float, window_s: float = 10.0,
-                 n_sigma: float = 5.0) -> np.ndarray:
-    """Robust deviation vs local median (MAD scale). Context, not thresholds."""
-    n = max(int(window_s * fs_hz), 3)
-    med = series.rolling(n, center=True, min_periods=n).median()
-    mad = (series - med).abs().rolling(n, center=True,
-                                      min_periods=n).median()
-    scale = mad * 1.4826
-    with np.errstate(divide="ignore", invalid="ignore"):
-        z = (series - med).abs() / scale
-    hit = (z > n_sigma) & series.notna() & (scale > 0)
-    return hit.fillna(False).to_numpy()
-
-
-def detect_saturation(series: pd.Series,
-                      min_consecutive: int = 5) -> np.ndarray:
-    """Samples stuck at the ADC rail -> clipping."""
-    hit = np.zeros(len(series), dtype=bool)
-    vals = series.to_numpy()
-    if len(vals) == 0:
+    Order: exact alias -> unit-segment stripped -> duplicate suffix
+    stripped (HR.11 -> HR.1 -> HR) -> alias again. Returns (None, None)
+    when nothing resolves.
+    """
+    alias = index.get("alias", {})
+    key = _normalize_name(column)
+    hit = alias.get(key)
+    if isinstance(hit, tuple):
         return hit
-    rail_lo, rail_hi = np.nanmin(vals), np.nanmax(vals)
-    if not np.isfinite(rail_lo):
+    stripped = _normalize_name(_strip_unit_segment(column))
+    hit = alias.get(stripped)
+    if isinstance(hit, tuple):
         return hit
-    at_rail = (vals == rail_lo) | (vals == rail_hi)
-    run = 0
-    for i, v in enumerate(at_rail):
-        if v and np.isfinite(vals[i]):
-            run += 1
-            if run >= min_consecutive:
-                hit[i - run + 1: i + 1] = True
-        else:
-            run = 0
+    # pandas duplicate suffixes: strip repeatedly (HR.11 -> HR.1 -> HR)
+    base = column
+    while True:
+        m = _DUPLICATE_SUFFIX_RE.search(base)
+        if not m:
+            break
+        base = base[:m.start()]
+        hit = alias.get(_normalize_name(base))
+        if isinstance(hit, tuple):
+            return hit
+        hit = alias.get(_normalize_name(_strip_unit_segment(base)))
+        if isinstance(hit, tuple):
+            return hit
+    return None, None
+
+
+def get_var_spec(canonical, index):
+    """Return the dictionary spec for a canonical variable, or None."""
+    return index.get("alias", {}).get("\x00" + canonical)
+
+
+# --------------------------------------------------------------------------
+# Validity (Phase 9)
+# --------------------------------------------------------------------------
+
+def apply_validity(series, config, var_spec, missing_codes):
+    """Flag out-of-range / invalid-zero / missing-code samples.
+
+    Returns (cleaned, flags): cleaned has invalid samples as NaN, flags is a
+    Series of QC labels. Missing codes (device sentinels like -1401) become
+    MISSING. Out-of-range values become INVALID_RANGE. Raw is untouched.
+    """
+    s = pd.to_numeric(series, errors="coerce")
+    flags = pd.Series("VALID", index=s.index, dtype=object)
+    cleaned = s.copy()
+
+    codes = list(missing_codes or [])
+    if codes:
+        is_code = s.isin(codes)
+        flags[is_code] = "MISSING"
+        cleaned[is_code] = np.nan
+
+    if var_spec is not None:
+        lo, hi = var_spec.get("min"), var_spec.get("max")
+        zero_ok = var_spec.get("zero_is_valid", False)
+    else:
+        validity = (config or {}).get("validity", {}) or {}
+        rng = validity.get("range")
+        lo, hi = (rng[0], rng[1]) if rng else (None, None)
+        zero_ok = validity.get("zero_is_valid", False)
+
+    if lo is not None and hi is not None:
+        bad = (s < lo) | (s > hi)
+        # invalid zeros that are *inside* range still flagged when zero invalid
+        if not zero_ok:
+            bad = bad | (s == 0)
+        bad = bad & (flags == "VALID")  # don't overwrite MISSING
+        flags[bad] = "INVALID_RANGE"
+        cleaned[bad] = np.nan
+
+    return cleaned, flags
+
+
+# --------------------------------------------------------------------------
+# Artifact detection (Phase 10)
+# --------------------------------------------------------------------------
+
+def detect_flatline(series, fs_hz, window_s=5.0):
+    """Boolean mask: windows with ~zero variance (disconnected lead)."""
+    s = pd.to_numeric(series, errors="coerce")
+    n = max(int(round(window_s * fs_hz)), 3)
+    if len(s) < n:
+        return pd.Series(False, index=s.index)
+    roll = s.rolling(n, center=True, min_periods=n)
+    var = roll.var()
+    eps = 1e-12
+    hit = (var < eps).fillna(False)
     return hit
 
 
-def detect_artifacts(series: pd.Series, fs_hz: float,
-                     cfg: dict) -> np.ndarray:
-    """Run the artifact detectors declared in the signal config."""
-    flags = np.full(len(series), "VALID", dtype=object)
-    for det in cfg.get("artifact_detection", []) or []:
-        name = det.get("name", "")
+def detect_spike(series, fs_hz, window_s=10.0, n_sigma=5.0):
+    """Boolean mask: samples deviating n_sigma (MAD scale) from local median."""
+    s = pd.to_numeric(series, errors="coerce")
+    n = max(int(round(window_s * fs_hz)), 3)
+    if len(s) < n:
+        return pd.Series(False, index=s.index)
+    med = s.rolling(n, center=True, min_periods=n).median()
+    mad = (s - med).abs().rolling(n, center=True,
+                                  min_periods=n).median()
+    scale = mad * 1.4826
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z = (s - med).abs() / scale.replace(0, np.nan)
+    hit = (z > n_sigma).fillna(False)
+    return hit
+
+
+def detect_saturation(series, min_consecutive=5):
+    """Boolean mask: runs at the series' own min/max (ADC clipping)."""
+    s = pd.to_numeric(series, errors="coerce")
+    if len(s) < min_consecutive:
+        return pd.Series(False, index=s.index)
+    vmax, vmin = s.max(), s.min()
+    at_edge = (s == vmax) | (s == vmin)
+    # find runs of at_edge with length >= min_consecutive
+    hit = pd.Series(False, index=s.index)
+    run_start = None
+    vals = at_edge.to_numpy()
+    for i, v in enumerate(vals):
+        if v and run_start is None:
+            run_start = i
+        if not v and run_start is not None:
+            if i - run_start >= min_consecutive:
+                hit.iloc[run_start:i] = True
+            run_start = None
+    if run_start is not None and len(vals) - run_start >= min_consecutive:
+        hit.iloc[run_start:] = True
+    return hit
+
+
+def detect_artifacts(series, fs_hz, detectors):
+    """Run the *implemented* detectors declared in the config.
+
+    detectors: list of {name, params}. Names outside IMPLEMENTED_DETECTORS
+    are ignored here -- they were already reported at load time.
+    Returns a dict name -> boolean mask.
+    """
+    out = {}
+    for det in detectors or []:
+        if not isinstance(det, dict):
+            continue
+        name = det.get("name")
         params = det.get("params", {}) or {}
-        flag = det.get("flag", "DEVICE_ARTIFACT")
-        hit = None
         if name == "flatline":
-            hit = detect_flatline(series, fs_hz, **{
-                k: v for k, v in params.items()
-                if k in ("window_s", "epsilon")})
+            out[name] = detect_flatline(
+                series, fs_hz, window_s=params.get("window_s", 5.0))
         elif name == "spike":
-            hit = detect_spike(series, fs_hz, **{
-                k: v for k, v in params.items()
-                if k in ("window_s", "n_sigma")})
+            out[name] = detect_spike(
+                series, fs_hz, window_s=params.get("window_s", 10.0),
+                n_sigma=params.get("n_sigma", 5.0))
         elif name == "saturation_clipping":
-            hit = detect_saturation(
+            out[name] = detect_saturation(
                 series,
-                min_consecutive=int(params.get("min_consecutive", 5)))
-        elif name == "out_of_range":
-            continue  # handled by apply_validity
-        if hit is not None:
-            flags[hit] = np.array(
-                [_worse(f, flag) for f in flags[hit]])
-    return flags
-
-
-def apply_filter(series: pd.Series, fs_hz: float,
-                 cfg: dict) -> pd.Series:
-    """Filter declared in the signal config. Waveforms and parameters differ."""
-    spec = cfg.get("filter", {}) or {}
-    method = spec.get("method", "none")
-    params = spec.get("params", {}) or {}
-    out = series.copy()
-
-    if method in ("lowpass", "bandpass", "highpass"):
-        from scipy.signal import butter, filtfilt
-
-        nyq = fs_hz / 2.0
-        if method == "lowpass":
-            wn = float(params.get("high_hz", nyq * 0.9)) / nyq
-            btype, wn_arg = "low", min(wn, 0.99)
-        elif method == "highpass":
-            wn = float(params.get("low_hz", 0.1)) / nyq
-            btype, wn_arg = "high", max(wn, 0.01)
-        else:
-            wn_arg = [max(float(params.get("low_hz", 0.1)) / nyq, 0.01),
-                      min(float(params.get("high_hz", nyq * 0.9)) / nyq, 0.99)]
-            btype = "band"
-        order = int(params.get("order", 4))
-        b, a = butter(order, wn_arg, btype=btype)
-        padlen = 3 * max(len(a), len(b))
-        valid = out.notna().to_numpy()
-        if valid.sum() > padlen + 1:
-            # Filter contiguous valid segments so NaN gaps never smear.
-            vals = out.to_numpy(dtype=float)
-            idx = np.where(valid)[0]
-            breaks = np.where(np.diff(idx) > 1)[0]
-            segments = np.split(idx, breaks + 1)
-            for seg in segments:
-                if len(seg) > padlen + 1:
-                    vals[seg] = filtfilt(b, a, vals[seg])
-            out = pd.Series(vals, index=out.index)
-    elif method == "robust_smoothing":
-        # Hampel-style: rolling median clip, parameters only.
-        window_s = float(params.get("window_s", 10.0))
-        n_sigma = float(params.get("n_sigma", 3.0))
-        n = max(int(window_s * fs_hz), 3)
-        med = out.rolling(n, center=True, min_periods=1).median()
-        mad = (out - med).abs().rolling(n, center=True,
-                                        min_periods=1).median() * 1.4826
-        # MAD collapses to 0 on constant stretches (e.g. a parameter stuck at
-        # exactly 70.0). Fall back to a tiny relative scale so a genuine
-        # spike is still clipped instead of dividing by zero.
-        scale = mad.mask(mad.eq(0),
-                         (med.abs() + 1.0) * 1e-9)
-        with np.errstate(divide="ignore", invalid="ignore"):
-            z = (out - med).abs() / scale
-        out = out.mask(z > n_sigma, med)
-    # method "none": exposure data and unfiltered signals pass through.
+                min_consecutive=params.get("min_consecutive", 5))
+        # out_of_range is handled by apply_validity (Phase 9), not here.
     return out
 
 
-def flag_gaps(flags: np.ndarray, series: pd.Series, fs_hz: float,
-              max_gap_s: float = 10.0) -> np.ndarray:
-    """Missing runs longer than max_gap_s become GAP (not silent)."""
-    is_nan = series.isna().to_numpy()
-    if not is_nan.any():
-        return flags
-    max_n = max(int(max_gap_s * fs_hz), 1)
-    run = 0
-    for i, v in enumerate(is_nan):
-        if v:
-            run += 1
-        else:
-            if run >= max_n:
-                for j in range(i - run, i):
-                    flags[j] = _worse(flags[j], "GAP")
-            run = 0
-    if run >= max_n:
-        for j in range(len(flags) - run, len(flags)):
-            flags[j] = _worse(flags[j], "GAP")
-    return flags
+# --------------------------------------------------------------------------
+# Filtering (Phase 11) -- signal-specific, never generic
+# --------------------------------------------------------------------------
+
+def _butter_filter(x, fs_hz, low_hz=None, high_hz=None, order=4,
+                   kind="bandpass"):
+    from scipy.signal import butter, sosfiltfilt
+    nyq = fs_hz / 2.0
+    if kind == "lowpass":
+        if high_hz is None or high_hz >= nyq:
+            return x  # cutoff at/above Nyquist: no-op, must not invent data
+        sos = butter(order, high_hz / nyq, btype="low", output="sos")
+    elif kind == "highpass":
+        sos = butter(order, low_hz / nyq, btype="high", output="sos")
+    else:
+        if low_hz is None or low_hz <= 0:
+            return _butter_filter(x, fs_hz, high_hz=high_hz, order=order,
+                                  kind="lowpass")
+        if high_hz is None or high_hz >= nyq:
+            return _butter_filter(x, fs_hz, low_hz=low_hz, order=order,
+                                  kind="highpass")
+        sos = butter(order, [low_hz / nyq, high_hz / nyq], btype="band",
+                     output="sos")
+    mask = ~np.isnan(x)
+    if mask.sum() < order * 3 + 1:
+        return x  # too few valid samples to filter honestly
+    y = np.full_like(x, np.nan)
+    y[mask] = sosfiltfilt(sos, x[mask])
+    return y
 
 
-def process_series(column: str, series: pd.Series, fs_hz: float,
-                   cfg: dict, missing_codes: list,
-                   max_gap_s: float = 10.0) -> tuple[pd.Series, pd.Series]:
-    """Full chain for one column. Returns (filtered, qc_flags)."""
-    cleaned, flags = apply_validity(series, cfg, missing_codes)
-    art = detect_artifacts(cleaned, fs_hz, cfg)
-    for i in range(len(flags)):
-        flags[i] = _worse(flags[i], art[i])
-    filtered = apply_filter(cleaned, fs_hz, cfg)
-    # Filtering never resurrects invalid samples: re-apply the NaN mask.
-    filtered = filtered.mask(cleaned.isna())
-    flags = flag_gaps(flags, cleaned, fs_hz, max_gap_s)
-    qc = pd.Series(flags, index=series.index, name=f"{column}__qc")
-    filtered.name = column
-    return filtered, qc
+def apply_filter(series, fs_hz, cfg):
+    """Apply the config's signal-specific filter.
+
+    NaN stays NaN: filtering never resurrects invalid samples. Missing
+    samples are not interpolated across here (that is a separate, logged
+    decision, not part of filtering).
+    """
+    filt = (cfg or {}).get("filter", {}) or {}
+    method = filt.get("method", "none")
+    params = filt.get("params", {}) or {}
+    x = pd.to_numeric(series, errors="coerce").to_numpy(dtype=float)
+
+    if method == "none":
+        return pd.Series(x, index=series.index)
+    if method == "lowpass":
+        y = _butter_filter(x, fs_hz, high_hz=params.get("high_hz"),
+                           order=params.get("order", 4), kind="lowpass")
+        return pd.Series(y, index=series.index)
+    if method == "bandpass":
+        y = _butter_filter(x, fs_hz, low_hz=params.get("low_hz"),
+                           high_hz=params.get("high_hz"),
+                           order=params.get("order", 4), kind="bandpass")
+        return pd.Series(y, index=series.index)
+    if method == "robust_smoothing":
+        # Parameter-level QC: replace robust outliers with local median.
+        window_s = params.get("window_s", 10.0)
+        n_sigma = params.get("n_sigma", 3.0)
+        n = max(int(round(window_s * fs_hz)), 3)
+        s = pd.Series(x, index=series.index)
+        med = s.rolling(n, center=True, min_periods=1).median()
+        mad = (s - med).abs().rolling(n, center=True,
+                                      min_periods=1).median()
+        scale = mad * 1.4826
+        # A perfectly flat neighbourhood has MAD 0: any deviation there is
+        # an outlier by definition, so floor the scale instead of dividing
+        # by zero (which would silently keep the spike).
+        scale = scale.mask(scale == 0, 1e-9)
+        with np.errstate(divide="ignore", invalid="ignore"):
+            z = (s - med).abs() / scale
+        outlier = (z > n_sigma).fillna(False) & s.notna()
+        out = s.copy()
+        out[outlier] = med[outlier]
+        return out
+    # Unimplemented filter names were reported at load; never invent one.
+    return pd.Series(x, index=series.index)
 
 
-def measure_fs_hz(time_index: pd.DatetimeIndex,
-                  series: pd.Series) -> float | None:
-    """Observed sampling rate of one column from its non-null timestamps."""
-    ts = time_index[series.notna().to_numpy()]
-    if len(ts) < 3:
-        return None
-    deltas = pd.Series(ts).diff().dt.total_seconds().dropna()
-    deltas = deltas[deltas > 0]
-    if deltas.empty:
-        return None
-    return float(1.0 / deltas.median())
+# --------------------------------------------------------------------------
+# Series / frame processing
+# --------------------------------------------------------------------------
+
+def measure_fs_hz(time_index, series=None):
+    """Observed sampling rate from a datetime index (median dt)."""
+    try:
+        idx = pd.DatetimeIndex(pd.to_datetime(time_index, errors="coerce"))
+        idx = idx[~idx.isna()]
+        if len(idx) < 2:
+            return None
+        dt = idx.to_series().diff().dt.total_seconds().median()
+        if dt and dt > 0:
+            return 1.0 / dt
+    except Exception:
+        pass
+    return None
 
 
-def process_frame(df: pd.DataFrame, time_col: str | None,
-                  configs: dict, missing_codes: list,
-                  fs_overrides: dict | None = None,
-                  source: str = "") -> tuple[pd.DataFrame, pd.DataFrame,
-                                             list[dict]]:
-    """Process every column. Returns (filtered, qc, review_queue).
+def process_series(col, series, fs_hz, cfg, var_spec, missing_codes,
+                   max_gap_s=10.0):
+    """Process one column: validity -> artifact flags -> filter.
 
-    review_queue holds one entry per column with no dictionary entry:
-    {source, column, n_rows, n_non_null}. Nothing is dropped, nothing is
-    force-fit through another signal's filter.
+    Returns (filtered, qc) Series. Invalid samples are NaN in filtered with
+    the reason in qc. Gaps longer than max_gap_s are flagged GAP, never
+    bridged.
+    """
+    cleaned, flags = apply_validity(series, cfg, var_spec, missing_codes)
+    # Samples missing *before* validity processing: structural gaps. Samples
+    # invalidated by validity keep their INVALID_RANGE/MISSING reason -- a
+    # column that is entirely out of range is not a "gap".
+    originally_missing = pd.to_numeric(series, errors="coerce").isna()
+
+    detectors = ((cfg or {}).get("artifact_detection") or [])
+    masks = detect_artifacts(cleaned, fs_hz or 1.0,
+                             [d for d in detectors
+                              if isinstance(d, dict)
+                              and d.get("name") in IMPLEMENTED_DETECTORS
+                              and d.get("name") != "out_of_range"])
+    flag_names = {"flatline": "FLATLINE", "spike": "SPIKE",
+                  "saturation_clipping": "SATURATION"}
+    for det_name, mask in masks.items():
+        hit = mask & (flags == "VALID")
+        flags[hit] = flag_names.get(det_name, "DEVICE_ARTIFACT")
+        cleaned[hit] = np.nan
+
+    # Long runs of *originally missing* samples: mark GAP (structural
+    # interruption, not bridged). Never overwrite validity flags.
+    if max_gap_s and fs_hz:
+        min_len = int(round(max_gap_s * fs_hz))
+        isnan = originally_missing.to_numpy()
+        if isnan.any() and min_len > 1:
+            run_id = np.cumsum(np.diff(np.concatenate([[False], isnan])) != 0)
+            for r in np.unique(run_id[isnan]):
+                idx = np.where((run_id == r) & isnan)[0]
+                if len(idx) >= min_len:
+                    sel = flags.iloc[idx]
+                    flags.iloc[idx] = sel.where(sel != "VALID", "GAP")
+
+    filtered = apply_filter(cleaned, fs_hz or 1.0, cfg or {})
+    # Safety: filtering must never resurrect an invalid sample.
+    filtered[cleaned.isna()] = np.nan
+    return filtered, flags
+
+
+def process_frame(df, time_col, configs, index, missing_codes,
+                  fs_overrides=None, source="unknown", time_index=None):
+    """Process a whole source file.
+
+    Returns (filtered, qc, review):
+      filtered: dataframe with the time column + processed signals
+      qc: dataframe with the time column + <col>__qc flag columns
+      review: list of dicts for columns needing human review
+    Unknown columns are preserved untouched and queued for review --
+    never dropped, never processed with a generic rule.
     """
     fs_overrides = fs_overrides or {}
-    filtered_cols: dict[str, pd.Series] = {}
-    qc_cols: dict[str, pd.Series] = {}
-    review_queue: list[dict] = []
+    review = []
+    filtered_cols = {}
+    qc_cols = {}
 
-    if time_col and time_col in df.columns:
-        time_index = pd.to_datetime(df[time_col], errors="coerce")
+    # --- time base ------------------------------------------------------
+    if time_index is not None:
+        t_index = pd.DatetimeIndex(pd.to_datetime(time_index,
+                                                  errors="coerce"))
+    elif time_col and time_col in df.columns:
+        t_index = pd.DatetimeIndex(pd.to_datetime(df[time_col],
+                                                  errors="coerce"))
     else:
-        time_index = pd.DatetimeIndex(
-            pd.to_datetime(df.index, errors="coerce"))
+        found = next((c for c in TIME_CANDIDATES if c in df.columns), None)
+        if found:
+            print(f"[warn] requested time_col={time_col!r} not found in "
+                  f"columns; using {found!r} instead.")
+            t_index = pd.DatetimeIndex(pd.to_datetime(df[found],
+                                                       errors="coerce"))
+        else:
+            print(f"[warn] time_col={time_col!r} not found in columns and "
+                  f"no candidate {TIME_CANDIDATES} present; falling back to "
+                  f"the row index (sampling rate will be unreliable).")
+            t_index = pd.RangeIndex(len(df))
+
+    # Pass the original time column through untouched when present.
+    if time_col and time_col in df.columns:
+        filtered_cols[time_col] = df[time_col]
 
     for column in df.columns:
         if column == time_col:
-            filtered_cols[column] = df[column]
             continue
-        cfg = find_config(column, configs)
+        s = df[column]
+        cfg, canonical = find_config(column, configs, index)
+        var_spec = get_var_spec(canonical, index) if canonical else None
+
         if cfg is None:
-            review_queue.append({
-                "source": source,
-                "column": column,
-                "n_rows": int(len(df)),
-                "n_non_null": int(df[column].notna().sum()),
+            # Unknown: preserve, queue for review, do not process.
+            filtered_cols[column] = s
+            qc_cols[column + "__qc"] = pd.Series("UNREVIEWED",
+                                                 index=s.index, dtype=object)
+            review.append({
+                "column": column, "source": source,
                 "reason": "no_dictionary_entry",
+                "detail": "No config and no dictionary entry; preserved "
+                          "untouched, needs human classification.",
             })
-            # Preserve the column untouched in the filtered output.
-            filtered_cols[column] = df[column]
-            qc_cols[f"{column}__qc"] = pd.Series(
-                ["LOW_QUALITY"] * len(df), index=df.index,
-                name=f"{column}__qc")
             continue
-        series = pd.to_numeric(df[column], errors="coerce")
-        fs = fs_overrides.get(column)
+
+        # Sampling rate: explicit override > measured from time base.
+        fs = fs_overrides.get(column) or fs_overrides.get(canonical)
         if fs is None:
-            fs = measure_fs_hz(time_index, series)
-        if fs is None or fs <= 0:
-            review_queue.append({
-                "source": source,
-                "column": column,
-                "n_rows": int(len(df)),
-                "n_non_null": int(series.notna().sum()),
+            fs = measure_fs_hz(t_index, s)
+        if fs is None:
+            fs = 1.0
+            review.append({
+                "column": column, "source": source,
                 "reason": "sampling_rate_unknown",
+                "detail": "Could not measure fs; assumed 1 Hz. Verify.",
             })
-            filtered_cols[column] = df[column]
-            qc_cols[f"{column}__qc"] = pd.Series(
-                ["LOW_QUALITY"] * len(df), index=df.index,
-                name=f"{column}__qc")
-            continue
-        if (cfg.get("status") or "").lower() == "draft":
-            # Configs stay draft until K reviews the intervals.
-            pass
-        filt, qc = process_series(column, series, fs, cfg, missing_codes)
+
+        fallback = var_spec is None
+        filt, flags = process_series(column, s, fs, cfg, var_spec,
+                                     missing_codes)
+        if fallback:
+            # Config fallback ranges were used: never report clean VALID.
+            flags = flags.where(flags != "VALID", "LOW_QUALITY")
         filtered_cols[column] = filt
-        qc_cols[qc.name] = qc
+        qc_cols[column + "__qc"] = flags
 
     filtered = pd.DataFrame(filtered_cols, index=df.index)
-    qc_frame = pd.DataFrame(qc_cols, index=df.index)
-    return filtered, qc_frame, review_queue
+    qc = pd.DataFrame(qc_cols, index=df.index)
+
+    # A readable timestamp column leads the outputs (unless the source
+    # already has one under that name).
+    try:
+        ts_vals = pd.DatetimeIndex(
+            pd.to_datetime(t_index, errors="coerce")).to_numpy()
+    except Exception:
+        ts_vals = np.asarray(t_index)
+    if "timestamp" not in filtered.columns:
+        filtered.insert(0, "timestamp", ts_vals)
+    if "timestamp" not in qc.columns:
+        qc.insert(0, "timestamp", ts_vals)
+
+    return filtered, qc, review
 
 
-def write_review_queue(entries: list[dict], path: str | Path) -> None:
-    """Append review entries as JSONL (privacy-safe: names and counts only)."""
-    if not entries:
-        return
-    with open(path, "a", encoding="utf-8") as fh:
-        for e in entries:
-            fh.write(json.dumps(e) + "\n")
+# --------------------------------------------------------------------------
+# CLI driver: one source file in, filtered + QC + review out
+# --------------------------------------------------------------------------
 
+def run_source_script(device, argv=None):
+    """Process a single source file.
 
-# ---------------------------------------------------------------------------
-# Shared per-source driver (used by process_bettercare.py / process_infinity.py)
-# ---------------------------------------------------------------------------
-
-def _build_time_index(df: pd.DataFrame, time_col: str | None,
-                      start_time: str | None) -> pd.DatetimeIndex:
-    if time_col and time_col in df.columns:
-        col = df[time_col]
-        parsed = pd.to_datetime(col, errors="coerce")
-        if parsed.notna().sum() >= len(col) // 2:
-            return pd.DatetimeIndex(parsed)
-        # Numeric timebase: elapsed units from the recording start.
-        num = pd.to_numeric(col, errors="coerce")
-        unit = "ms" if num.max() > 1e6 else "s"
-        base = (pd.Timestamp(start_time, tz="UTC") if start_time
-                else pd.Timestamp("2000-01-01", tz="UTC"))
-        return pd.DatetimeIndex(
-            base + pd.to_timedelta(num - num.min(), unit=unit))
-    return pd.DatetimeIndex(pd.to_datetime(df.index, errors="coerce"))
-
-
-def run_source_script(source: str, argv: list[str] | None = None) -> int:
-    """CLI driver shared by the per-source processing scripts."""
-    import argparse
-
+    argv: --input, --output, --review-queue, --config-dir, --variables,
+          --time-col, --fs (JSON dict of column->Hz overrides),
+          --missing-codes (JSON list, extra device sentinels).
+    Writes <output> (filtered) and <output>.qc.<ext> (QC flags), appends
+    review entries as JSON lines to --review-queue.
+    """
     ap = argparse.ArgumentParser(
-        description=f"Process {source} files with the signal dictionary "
-                    "(raw is never modified; filtered + QC are written).")
-    ap.add_argument("--input", required=True,
-                    help="Standardized parquet or CSV to process")
-    ap.add_argument("--output", required=True,
-                    help="Filtered parquet output path")
-    ap.add_argument("--qc-output", default="",
-                    help="QC flag parquet output path (default: <output>.qc.parquet)")
-    ap.add_argument("--review-queue", default="review_queue.jsonl",
-                    help="JSONL file for columns with no dictionary entry")
-    ap.add_argument("--config-dir", default="configs/signals",
-                    help="Signal dictionary configs")
-    ap.add_argument("--variables", default="profiles/_variables.yaml",
-                    help="Ontology with units, ranges, missing codes")
-    ap.add_argument("--time-col", default="",
-                    help="Timestamp column (auto-detected if empty)")
-    ap.add_argument("--start-time", default="",
-                    help="ISO start time for numeric elapsed timebases")
+        description=f"Process one {device} source file (Phases 9-11).")
+    ap.add_argument("--input", required=True)
+    ap.add_argument("--output", required=True)
+    ap.add_argument("--review-queue", required=True)
+    ap.add_argument("--config-dir", required=True)
+    ap.add_argument("--variables", required=True)
+    ap.add_argument("--time-col", default=None)
+    ap.add_argument("--fs", default="{}")
+    ap.add_argument("--missing-codes", default="[]")
     args = ap.parse_args(argv)
 
-    configs = load_signal_configs(args.config_dir)
-    drafts = [s for s, c in configs.items()
-              if (c.get("status") or "").lower() == "draft"]
+    configs, index = load_signal_configs(args.config_dir, args.variables)
+
+    for w in index["unresolved_channels"]:
+        print(f"[warn] channel {w['channel']!r} of signal {w['config']} has "
+              f"no dictionary entry yet (config_fallback ranges in use).")
+    for w in index["unimplemented_detectors"]:
+        print(f"[warn] detector {w['detector']!r} declared by signal "
+              f"{w['config']} is NOT implemented -- no artifact detection "
+              f"runs for it ({w['method']}).")
+    for w in index["unimplemented_filters"]:
+        print(f"[warn] filter method {w['method']!r} declared by signal "
+              f"{w['config']} is NOT implemented -- column passes through "
+              f"unfiltered.")
+    drafts = [stem for stem, c in configs.items()
+              if c.get("status") == "draft"]
     if drafts:
         print(f"[warn] {len(drafts)} signal configs are still draft "
-              f"({', '.join(sorted(drafts)[:8])}...); intervals await review.")
+              f"({', '.join(drafts[:5])}{'...' if len(drafts) > 5 else ''}); "
+              f"intervals await review.")
 
-    with open(args.variables, encoding="utf-8") as fh:
-        variables = yaml.safe_load(fh)
-    missing_codes = (variables.get("global_missing_codes", []) or [])
-
-    if args.input.lower().endswith(".parquet"):
-        df = pd.read_parquet(args.input)
-    else:
-        df = pd.read_csv(args.input, low_memory=False)
-    # Duplicate columns (HR, HR.1, ...) are preserved as-is; the engine
-    # matches each to its signal config without collapsing them.
-    print(f"[{source}] loaded {args.input}: {len(df)} rows, "
+    df = pd.read_csv(args.input)
+    print(f"[{device}] loaded {args.input}: {len(df)} rows, "
           f"{len(df.columns)} columns")
 
-    time_col = args.time_col or None
-    if time_col is None:
-        for cand in ("timestamp", "Time (msecs)", "OBSERVATION_DATETIME",
-                     "time"):
-            if cand in df.columns:
-                time_col = cand
-                break
-    df = df.copy()
-    df["_time_index"] = _build_time_index(df, time_col, args.start_time or None)
+    fs_overrides = json.loads(args.fs)
+    extra_codes = json.loads(args.missing_codes)
+    missing_codes = list(index.get("global_missing_codes", [])) + extra_codes
 
     filtered, qc, review = process_frame(
-        df.drop(columns=["_time_index"]),
-        time_col="_time_index",
-        configs=configs,
-        missing_codes=missing_codes,
-        source=source,
-    )
-    # Restore a readable timestamp column in the outputs.
-    filtered.insert(0, "timestamp", df["_time_index"].to_numpy())
-    qc.insert(0, "timestamp", df["_time_index"].to_numpy())
+        df, args.time_col, configs, index, missing_codes,
+        fs_overrides=fs_overrides, source=device)
 
-    filtered.to_parquet(args.output, index=False)
-    qc_path = args.qc_output or (args.output + ".qc.parquet")
-    qc.to_parquet(qc_path, index=False)
-    write_review_queue(review, args.review_queue)
+    out = args.output
+    if out.endswith(".parquet"):
+        filtered.to_parquet(out, index=False)
+        qc_path = out.replace(".parquet", ".qc.parquet")
+        qc.to_parquet(qc_path, index=False)
+    else:
+        filtered.to_csv(out, index=False)
+        qc_path = out + ".qc.csv"
+        qc.to_csv(qc_path, index=False)
 
-    n_flagged = int((qc.drop(columns=["timestamp"], errors="ignore")
-                     != "VALID").any(axis=1).sum()) if len(qc.columns) > 1 else 0
-    print(f"[{source}] wrote {args.output} ({len(filtered)} rows)")
-    print(f"[{source}] wrote {qc_path}")
-    print(f"[{source}] rows with any QC flag: {n_flagged}; "
-          f"review queue entries: {len(review)}")
-    for e in review:
-        print(f"[{source}] REVIEW: {e['column']} ({e['reason']}, "
-              f"n_non_null={e['n_non_null']})")
+    with open(args.review_queue, "a", encoding="utf-8") as fh:
+        for entry in review:
+            entry["file"] = args.input
+            fh.write(json.dumps(entry) + "\n")
+
+    n_flagged = int((qc.filter(like="__qc")
+                       .apply(lambda c: c != "VALID")).sum().sum())
+    print(f"[{device}] wrote {out} + {qc_path}; "
+          f"{len(review)} review entries, {n_flagged} flagged samples.")
     return 0
+
+
+if __name__ == "__main__":
+    import sys
+    device = sys.argv[1] if len(sys.argv) > 1 else "source"
+    sys.exit(run_source_script(device, sys.argv[2:]))

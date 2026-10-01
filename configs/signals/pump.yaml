@@ -1,0 +1,37 @@
+# Pump / drug exposure config (EXPOSURE variables, not physiological signals)
+signal: PUMP
+status: draft
+category: E  # medication/exposure
+channels:
+  - drug
+  - dose
+  - dose_rate
+  - infusion_rate
+  - volume
+  - concentration
+  - bolus
+  - event
+validity:
+  unit: clinical  # drug-specific; never assume
+  zero_is_valid: true  # zero infusion rate is a real state (pump off)
+  note: Units and drugs must come from the pump file's own fields, never assumed.
+artifact_detection: []  # no signal artifact detection on exposure data
+filter:
+  method: none
+  note: NEVER filter pump data like a physiological signal.
+normalization:
+  policy: none
+  rationale: Doses retain clinical units; exposure is the analysis unit.
+features:
+  - drug_exposure_intervals
+  - bolus_events
+  - cumulative_dose
+  note: Convert to exposure intervals, then align with physiology on timestamps.
+missing_data:
+  note: Pump off / no drug = zero exposure, a real state, not missing data.
+graphs:
+  priority: derived
+  views: [exposure_timeline_aligned_with_physiology]
+cross_validation:
+  - align: [NOL, HR, ART_MEAN, SPO2, BIS]
+    note: Medication exposure timeline aligned with physiological response; the core analysis shape.

@@ -1,0 +1,37 @@
+# BIS processing config (derived index, NOT a waveform)
+signal: BIS
+status: draft
+category: D  # derived physiological index
+channels:
+  - BIS
+validity:
+  unit: index
+  range: [0, 100]  # from profiles/_variables.yaml
+  zero_is_valid: true  # 0 = isoelectric, valid in deep anesthesia
+artifact_detection:
+  - name: out_of_range
+    method: index validity range
+    flag: INVALID_RANGE
+  - name: device_invalid
+    method: SQI / signal-quality indicator below threshold, or EMG contamination flag
+    params: {min_sqi: 50.0}
+    flag: LOW_QUALITY
+    note: Retain SQI, EMG, suppression ratio alongside BIS; they decide reliability.
+filter:
+  method: short_smoothing_if_justified
+  params: {window_s: 15.0}
+  note: Only light smoothing; BIS is already a processed index. Never waveform filtering.
+normalization:
+  policy: none
+  rationale: BIS retains its native 0-100 index; normalization would destroy clinical meaning.
+features:
+  - mean_bis
+  - min_bis
+  - max_bis
+  - time_below_40
+  - time_below_60
+missing_data:
+  note: Sensor-off periods are device-invalid, not missing physiology.
+graphs:
+  priority: primary
+  views: [time_series, quality_flags]

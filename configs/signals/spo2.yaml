@@ -6,8 +6,7 @@ channels:
   - SPO2
 validity:
   unit: percent
-  range: [50, 100]  # from profiles/_variables.yaml
-  zero_is_valid: false
+  note: Range and zero semantics come from profiles/_variables.yaml (single source of truth).
 artifact_detection:
   - name: out_of_range
     method: physiological validity range

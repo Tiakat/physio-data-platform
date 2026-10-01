@@ -127,6 +127,17 @@ def test_state_shape():
     assert rec["status"] == "ok"
 
 
+def test_split_chunks_bounds_peak_size():
+    from tools.legacy_pipeline import _split_chunks
+    sel = [{"relpath": f"f{i}", "size": 400_000_000} for i in range(5)]  # 400MB each
+    chunks = _split_chunks(sel, 1_000_000_000)  # 1GB chunks
+    assert len(chunks) == 3  # [2, 2, 1]
+    assert [len(c) for c in chunks] == [2, 2, 1]
+    # a single file larger than the chunk still gets its own chunk (no loss)
+    big = [{"relpath": "big", "size": 5_000_000_000}]
+    assert len(_split_chunks(big, 1_000_000_000)) == 1
+
+
 TESTS = [v for k, v in sorted(globals().items())
          if k.startswith("test_") and callable(v)]
 

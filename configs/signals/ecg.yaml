@@ -1,0 +1,58 @@
+# ECG processing config
+signal: ECG
+status: draft
+category: B  # raw waveform
+channels:
+  - ECG
+  - ECG I
+  - ECG II
+  - ECG III
+validity:
+  unit: mV  # device-specific ADC units possible; confirm per source
+  zero_is_valid: false
+  note: >-
+    No universal amplitude range: check saturation per recording instead of a
+    fixed min/max. A living patient's ECG is never exactly zero for long.
+artifact_detection:
+  - name: flatline
+    method: sliding variance below epsilon
+    params: {window_s: 2.0, epsilon_uv: 1.0}
+    flag: FLATLINE
+  - name: saturation_clipping
+    method: samples at ADC rail for >= N consecutive samples
+    params: {min_consecutive: 5}
+    flag: SATURATION
+  - name: spike
+    method: rate-of-change vs local context (never a lone threshold)
+    params: {z_window_s: 10.0}
+    flag: SPIKE
+  - name: powerline
+    method: assess 50/60 Hz peak in spectrum before deciding to notch
+    params: {assess_only: true}
+    flag: DEVICE_ARTIFACT
+    note: Quebec mains are 60 Hz; assess from data, do not assume.
+filter:
+  method: bandpass
+  params: {low_hz: 0.5, high_hz: 40, order: 4}
+  note: >-
+    Monitoring-grade bandpass. Cutoffs depend on the scientific objective
+    (e.g. ST analysis needs lower high-pass); documented per project.
+features:
+  - r_peaks
+  - rr_intervals
+  - hr_derived
+  - hrv_sdnn
+  - hrv_rmssd
+  note: Derived features are Level 3, generated separately from the filtered waveform.
+normalization:
+  policy: none
+  rationale: Waveforms keep native units; normalization only on derived features if justified.
+missing_data:
+  structural: Lead detachment or unrecorded lead is structural, not a failure.
+graphs:
+  priority: primary
+  views: [raw_vs_filtered_overlay, full_recording, zoomed_window, quality_flags]
+cross_validation:
+  - derive: hr_derived
+    compare_with: HR  # monitor parameter
+    note: Disagreement becomes a QC flag on the period, not an auto-correction.

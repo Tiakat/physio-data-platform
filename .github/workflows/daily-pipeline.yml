@@ -110,6 +110,16 @@ jobs:
           PIPELINE_DATA_KEY: ${{ secrets.PIPELINE_DATA_KEY }}
           STAGE2_SAMPLE_N: "20"
         run: python -m tools.stage2_discovery
+      # Archive website feed: de-identified project aggregates from the
+      # plaintext stage 2 digest -> reports/feed/archive.json, in the shape
+      # liam-v2's physio-data page expects. No patient data by construction;
+      # counts below k=5 are suppressed. This builds the file; pointing the
+      # website at it (PHYSIO_FEED_URL) stays a manual, privacy-gated step.
+      - name: Build archive website feed
+        env:
+          AZURE_STORAGE_ACCOUNT: labdataplatform
+          AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+        run: python -m tools.build_archive_feed
       # Stage 2 findings (e.g. identifier-class columns inside a standardized
       # parquet) go to a labeled issue, same pattern as the supervisor.
       - name: File stage 2 report

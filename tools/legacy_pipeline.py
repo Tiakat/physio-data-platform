@@ -341,10 +341,12 @@ def _parquet_blob_name(code: str, device: str, digest: str) -> str:
 def _resource_snapshot() -> tuple:
     """(disk_free_gb, mem_available_gb) for the temp filesystem / host."""
     free_gb = float("nan")
-    try:
-        free_gb = shutil.disk_usage(tempfile.gettempdir()).free / 1e9
-    except Exception:  # noqa: BLE001
-        pass
+    for _p in (tempfile.gettempdir(), "/"):
+        try:
+            free_gb = shutil.disk_usage(_p).free / 1e9
+            break
+        except Exception:  # noqa: BLE001
+            continue
     mem_gb = float("nan")
     try:
         with open("/proc/meminfo") as fh:

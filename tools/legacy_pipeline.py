@@ -59,6 +59,15 @@ DOCUMENT_EXTENSIONS = {
 
 JUNK_NAMES = {".ds_store", "thumbs.db", "desktop.ini"}
 
+# Patient photos are NEVER ingested to Azure — not even encrypted.
+# The lab template defines Photos/ as the photo folder; image files are
+# also excluded wherever they appear (defense in depth).
+PHOTO_EXTENSIONS = {
+    ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif",
+    ".heic", ".heif", ".webp",
+}
+GLOBAL_EXCLUDE_FOLDERS = ["Photos"]
+
 RAW_PREFIX = "rawdata"          # container
 PARQUET_DIR = "parquet"         # rawdata/<CODE>/parquet/...
 BYTES_DIR = "raw"               # rawdata/<CODE>/raw/... (encrypted source bytes)
@@ -66,6 +75,10 @@ BYTES_DIR = "raw"               # rawdata/<CODE>/raw/... (encrypted source bytes
 
 def is_document(relpath: str) -> bool:
     return Path(relpath).suffix.lower() in DOCUMENT_EXTENSIONS
+
+
+def is_photo(name: str) -> bool:
+    return Path(name).suffix.lower() in PHOTO_EXTENSIONS
 
 
 def is_junk(name: str) -> bool:
@@ -119,7 +132,10 @@ def select_projects(dbx) -> Tuple[List[dict], List[str]]:
             "code": code,
             "dropbox_base": f"{DROPBOX_ROOT}/{entry['dropbox']}",
             "data_roots": entry.get("data_roots") or ["."],
-            "exclude_folders": entry.get("exclude_folders") or [],
+            # Photos/ is always excluded (lab template): patient photos are
+            # never ingested, not even encrypted.
+            "exclude_folders": (entry.get("exclude_folders") or [])
+            + GLOBAL_EXCLUDE_FOLDERS,
             "profile": load_profile(code),
         })
 
@@ -403,6 +419,7 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
     excl = project["exclude_folders"]
     candidates = [e for e in entries
                   if not is_junk(e["name"]) and not is_document(e["relpath"])
+                  and not is_photo(e["name"])
                   and not _excluded(e["relpath"], excl)]
 
     selected, used = _select_new(candidates, done, budget_bytes)

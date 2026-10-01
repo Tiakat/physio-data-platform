@@ -1,6 +1,8 @@
 # Pump / drug exposure config (EXPOSURE variables, not physiological signals)
 signal: PUMP
 status: draft
+dictionary:
+  none: true  # exposure variables are not physiological signals; no validity range applies
 category: E  # medication/exposure
 channels:
   - drug
@@ -26,7 +28,7 @@ features:
   - drug_exposure_intervals
   - bolus_events
   - cumulative_dose
-  note: Convert to exposure intervals, then align with physiology on timestamps.
+  # note: convert to exposure intervals, then align with physiology on timestamps.
 missing_data:
   note: Pump off / no drug = zero exposure, a real state, not missing data.
 graphs:

@@ -338,6 +338,25 @@ def _parquet_blob_name(code: str, device: str, digest: str) -> str:
     return f"{code}/{PARQUET_DIR}/{device}_{digest[:8]}.parquet.enc"
 
 
+def _resource_snapshot() -> tuple:
+    """(disk_free_gb, mem_available_gb) for the temp filesystem / host."""
+    free_gb = float("nan")
+    try:
+        free_gb = shutil.disk_usage(tempfile.gettempdir()).free / 1e9
+    except Exception:  # noqa: BLE001
+        pass
+    mem_gb = float("nan")
+    try:
+        with open("/proc/meminfo") as fh:
+            for line in fh:
+                if line.startswith("MemAvailable:"):
+                    mem_gb = int(line.split()[1]) / 1e6
+                    break
+    except Exception:  # noqa: BLE001
+        pass
+    return free_gb, mem_gb
+
+
 def _split_chunks(selected: List[dict], chunk_bytes: int) -> List[List[dict]]:
     """Split selected files into size-bounded chunks (peak disk control)."""
     chunks: List[List[dict]] = []
@@ -394,8 +413,11 @@ def ingest_project(dbx, project: dict, account: str, done: Dict[str, dict],
     chunks = _split_chunks(selected, chunk_bytes)
     for i, chunk in enumerate(chunks):
         tag = f"c{i:02d}"
+        free_gb, mem_gb = _resource_snapshot()
         print(f"[ingest] {code}: chunk {tag} ({i + 1}/{len(chunks)}, "
-              f"{len(chunk)} files)", flush=True)
+              f"{len(chunk)} files) "
+              f"[disk_free={free_gb:.1f}GB mem_avail={mem_gb:.1f}GB]",
+              flush=True)
         with tempfile.TemporaryDirectory(prefix=f"ingest_{code}_{tag}_") as tmp:
             tmpdir = Path(tmp)
             srcdir = tmpdir / "src"

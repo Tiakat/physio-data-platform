@@ -43,7 +43,7 @@ features:
   - hr_derived
   - hrv_sdnn
   - hrv_rmssd
-  note: Derived features are Level 3, generated separately from the filtered waveform.
+  # note: derived features are Level 3, generated separately from the filtered waveform.
 normalization:
   policy: none
   rationale: Waveforms keep native units; normalization only on derived features if justified.

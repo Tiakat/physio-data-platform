@@ -37,8 +37,8 @@ variables:
   ART_MEAN:
     label: Radial arterial mean pressure
     unit: mmHg
-    min: 30
-    max: 250
+    min: 40
+    max: 160
     zero_is_valid: false
     aliases:
       - "ART M (mm(hg)^^ISO+)"
@@ -73,8 +73,8 @@ variables:
   PA_MEAN:
     label: Brachial or pulmonary artery mean pressure
     unit: mmHg
-    min: 30
-    max: 250
+    min: 40
+    max: 160
     zero_is_valid: false
     aliases:
       - "PA M (mm(hg)^^ISO+)"
@@ -103,8 +103,8 @@ variables:
   NBP_MEAN:
     label: Non invasive mean pressure
     unit: mmHg
-    min: 30
-    max: 250
+    min: 40
+    max: 160
     zero_is_valid: false
     aliases:
       - "NBP M (mm(hg)^^ISO+)"

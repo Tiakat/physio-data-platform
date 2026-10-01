@@ -24,10 +24,13 @@ jobs:
       # Ingest ALL data projects (not just V-RAPS). Comma-separated codes or "all".
       LEGACY_PROJECTS: all
       # Encrypted-parquet ingest budget PER PROJECT per run (GB of source data).
-      # Kept small (4): the runner was SIGTERM-killed (exit 143) on a 10.6 GB
-      # DEXREM batch, likely disk exhaustion. One run walks ALL projects and
-      # state is saved after each project, so scheduled runs resume on their own.
+      # Per-project source-data budget per run. Kept small (4): the runner was
+      # SIGTERM-killed (exit 143) on large DEXREM batches. Each project's
+      # selection is processed in INGEST_CHUNK_GB chunks (download -> parse ->
+      # upload -> wipe), so peak disk stays near the chunk size even when
+      # parsed parquet is much larger than the source files.
       LEGACY_BUDGET_GB: "4"
+      INGEST_CHUNK_GB: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

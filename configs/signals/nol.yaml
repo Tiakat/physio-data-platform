@@ -15,7 +15,7 @@ artifact_detection:
     method: device quality indicator below threshold where available
     flag: LOW_QUALITY
 filter:
-  method: none_default
+  method: none
   note: No filtering by default; NOL is an event-response index. Smoothing only if the analysis question justifies it.
 normalization:
   policy: none

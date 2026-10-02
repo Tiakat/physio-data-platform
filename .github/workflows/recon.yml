@@ -45,6 +45,7 @@ on:
           - find-complete-patient
           - find-golden-patient
           - ingest-progress
+          - identifier-columns
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -169,6 +170,11 @@ jobs:
               --body "$MSG - $(date -u)" --label "ingest-progress" 2>/dev/null || \
             gh issue comment --body "$MSG - $(date -u)" 1 2>/dev/null || true
             python3 -c "c=int('$COUNT'); print(f'Phase 1: {c}/257 = {c/257*100:.1f}%')"
+          elif [ "${{ inputs.task }}" = "identifier-columns" ]; then
+            # Issue #2: list identifier-class column NAMES per project
+            # (names only, no values — privacy-safe). Feeds K's review of
+            # the de-identified website feed gate.
+            python -m tools.dump_identifier_columns
           elif [ "${{ inputs.task }}" = "find-golden-patient" ]; then
             mkdir -p patient_out
             python -m tools.find_golden_patient --out patient_out/

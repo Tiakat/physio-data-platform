@@ -57,11 +57,12 @@ def main(argv=None):
 
     report = {"ts": datetime.now(timezone.utc).isoformat(),
               "items": []}
+    force = os.environ.get("SWEEP_FORCE", "0") == "1"
     for it in items:
         project = it["project"]
         blob = it["blob"]
         label = it.get("label", "patient ?")
-        if _already_done(project, label):
+        if not force and _already_done(project, label):
             status = "skipped_done"
             print(f"[sweep-chunk] {project} {label}: {status}", flush=True)
         else:

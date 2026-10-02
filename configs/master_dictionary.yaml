@@ -1,0 +1,572 @@
+# Master Signal Processing Dictionary — Machine-Readable Specification
+# Generated from K's column-level spec (2026-10-02)
+# This drives tools/signal_processing.py — no thresholds hard-coded in Python
+# 
+# Key principles:
+# - normal_range ≠ deletion threshold (intraoperative context)
+# - hard_min/hard_max = technical plausibility only
+# - Values outside normal → VALID_BUT_EXTREME, not deleted
+# - Every signal has: raw preserved, filtered, QC flags, artifact mask
+
+version: "1.0"
+generated: "2026-10-02"
+source: "K column spec + literature norms (docs/signal_norms_*.md)"
+
+# Global QC flags applied to every numerical physiological variable
+global_qc_flags:
+  - VALID
+  - MISSING
+  - OUT_OF_RANGE
+  - SPIKE
+  - RATE_OF_CHANGE
+  - FLATLINE
+  - SATURATION
+  - GAP
+  - LOW_QUALITY
+  - DUPLICATE
+  - VALID_BUT_EXTREME
+
+# Output schema for every processed variable
+output_schema:
+  - time
+  - raw_value
+  - filtered_value
+  - qc_flag
+  - artifact_type
+  - source
+  - unit
+  - sampling_rate
+
+# ============================================================
+# INFINITY — monitor-derived anesthesia/ventilation data
+# Semicolon-delimited, ^^ISO+ unit encoding, absolute datetime
+# ============================================================
+infinity:
+  timebase: "absolute_datetime"
+  
+  cardiovascular:
+    ART_S:
+      original: "ART S (mm(hg)^^ISO+)"
+      canonical: art_systolic
+      unit: mmHg
+      type: scalar
+      normal_reference: "90-140 (context dependent)"
+      hard_min: 40
+      hard_max: 300
+      artifact_method: [hampel_spike, flatline, rate_of_change]
+      filter_method: median_robust
+      consistency: "SBP > MAP > DBP"
+      
+    ART_M:
+      original: "ART M (mm(hg)^^ISO+)"
+      canonical: art_mean
+      unit: mmHg
+      type: scalar
+      normal_reference: "65-100 intraop (context dependent)"
+      hard_min: 20
+      hard_max: 250
+      artifact_method: [hampel_spike, flatline, rate_of_change]
+      filter_method: median_robust
+      consistency: "SBP > MAP > DBP"
+      
+    ART_D:
+      original: "T D (mm(hg)^^ISO+)"
+      canonical: art_diastolic
+      unit: mmHg
+      type: scalar
+      note: "Label ambiguous (T D) — verify source definition"
+      hard_min: 20
+      hard_max: 200
+      artifact_method: [hampel_spike, flatline]
+      filter_method: median_robust
+      consistency: "SBP > MAP > DBP"
+      
+    PLS:
+      original: "PLS (/min^^ISO+)"
+      canonical: pulse_rate
+      unit: bpm
+      type: scalar
+      normal_reference: "60-100 resting"
+      hard_min: 20
+      hard_max: 250
+      artifact_method: [spike, flatline, rate_of_change]
+      filter_method: robust_temporal
+      
+    SpO2:
+      original: "SpO2 (%^^ISO+)"
+      canonical: spo2
+      unit: percent
+      type: scalar
+      normal_reference: "95-100"
+      hard_min: 0
+      hard_max: 100
+      artifact_method: [range, persistence, pleth_quality]
+      filter_method: none_aggressive
+      note: "85% may be real clinical event — flag, don't delete"
+      
+    NBP_S:
+      original: "NBP S (mm(hg)^^ISO+)"
+      canonical: nibp_systolic
+      unit: mmHg
+      type: discrete_measurement
+      hard_min: 30
+      hard_max: 300
+      artifact_method: [range, consistency]
+      filter_method: none
+      note: "Treat each cuff measurement as observation, no interpolation"
+      
+    NBP_D:
+      original: "NBP D (mm(hg)^^ISO+)"
+      canonical: nibp_diastolic
+      unit: mmHg
+      type: discrete_measurement
+      hard_min: 20
+      hard_max: 200
+      artifact_method: [range, consistency]
+      filter_method: none
+      
+    NBP_M:
+      original: "NBP M (mm(hg)^^ISO+)"
+      canonical: nibp_mean
+      unit: mmHg
+      type: discrete_measurement
+      hard_min: 20
+      hard_max: 250
+      artifact_method: [range, consistency]
+      filter_method: none
+
+  ventilation:
+    MVe:
+      original: "MVe (L/min^^ISO+)"
+      canonical: minute_ventilation_expired
+      unit: L/min
+      type: scalar
+      normal_reference: "5-8 spontaneous"
+      hard_min: 0
+      hard_max: 30
+      artifact_method: [range, spike]
+      filter_method: robust_qc
+      
+    Pplat:
+      original: "Pplat (mbar^^ISO+)"
+      canonical: plateau_pressure
+      unit: mbar
+      type: scalar
+      normal_reference: "<30 preferred"
+      hard_min: 0
+      hard_max: 60
+      artifact_method: [spike, trend]
+      filter_method: robust_qc
+      consistency: "PIP >= Pplat >= PEEP"
+      
+    PEEP:
+      original: "PEEP (mbar^^ISO+)"
+      canonical: peep
+      unit: mbar
+      type: scalar
+      normal_reference: "5-10 (protocol dependent)"
+      hard_min: 0
+      hard_max: 30
+      artifact_method: [range, step_change]
+      filter_method: none
+      note: "Stepwise changes expected"
+      
+    PIP:
+      original: "PIP (mbar^^ISO+)"
+      canonical: peak_inspiratory_pressure
+      unit: mbar
+      type: scalar
+      normal_reference: "15-30 (context dependent)"
+      hard_min: 0
+      hard_max: 80
+      artifact_method: [spike, ventilator_change]
+      filter_method: robust_qc
+      consistency: "PIP >= Pplat >= PEEP"
+      
+    RRc:
+      original: "RRc (/min^^ISO+)"
+      canonical: resp_rate_calculated
+      unit: /min
+      type: scalar
+      normal_reference: "12-20 spontaneous"
+      hard_min: 1
+      hard_max: 100
+      artifact_method: [range, spike]
+      filter_method: robust_qc
+      note: "Do not use 12-20 as abnormality threshold for ventilated"
+      
+    RR:
+      original: "RR (/min^^ISO+)"
+      canonical: resp_rate
+      unit: /min
+      type: scalar
+      normal_reference: "12-20 spontaneous"
+      hard_min: 1
+      hard_max: 100
+      artifact_method: [range, spike]
+      filter_method: robust_qc
+      
+    VTe:
+      original: "VTe (mL^^ISO+)"
+      canonical: tidal_volume_expired
+      unit: mL
+      type: scalar
+      hard_min: 0
+      hard_max: 2000
+      artifact_method: [range, negative_check]
+      filter_method: robust_qc
+      note: "Analyze relative to weight"
+      
+    VT:
+      original: "VT (mL^^ISO+)"
+      canonical: tidal_volume
+      unit: mL
+      type: scalar
+      hard_min: 0
+      hard_max: 2000
+      artifact_method: [range]
+      filter_method: robust_qc
+      
+    MV:
+      original: "MV (L/min^^ISO+)"
+      canonical: minute_ventilation
+      unit: L/min
+      type: scalar
+      hard_min: 0
+      hard_max: 30
+      artifact_method: [range]
+      filter_method: robust_qc
+      
+    Apn_Dur:
+      original: "Apn Dur (s^^ISO+)"
+      canonical: apnea_duration
+      unit: seconds
+      type: event_variable
+      hard_min: 0
+      filter_method: none
+      note: "Event variable, not filtered"
+
+  gases:
+    etCO2:
+      original: "etCO2 (mm(hg)^^ISO+)"
+      canonical: etco2
+      unit: mmHg
+      type: scalar
+      normal_reference: "35-45"
+      hard_min: 10
+      hard_max: 100
+      artifact_method: [range, spike, persistence]
+      filter_method: robust_qc
+      
+    inCO2:
+      original: "inCO2 (mm(hg)^^ISO+)"
+      canonical: inspired_co2
+      unit: mmHg
+      type: scalar
+      normal_reference: "~0"
+      hard_min: 0
+      hard_max: 50
+      artifact_method: [range, temporal_consistency]
+      filter_method: robust_qc
+      
+    FiO2:
+      original: "FiO2 (%^^ISO+)"
+      canonical: fio2
+      unit: percent
+      type: treatment_variable
+      hard_min: 21
+      hard_max: 100
+      artifact_method: [range]
+      filter_method: none
+      note: "Treatment state, not physiological abnormality"
+      
+    etO2:
+      original: "etO2 (%^^ISO+)"
+      canonical: eto2
+      unit: percent
+      type: scalar
+      hard_min: 0
+      hard_max: 100
+      filter_method: none
+
+  anesthetic_agents:
+    # Inspired/end-tidal pairs — treatment variables, preserve steps
+    inDes: {canonical: inspired_desflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etDes: {canonical: endtidal_desflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    inSev: {canonical: inspired_sevoflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etSev: {canonical: endtidal_sevoflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    inIso: {canonical: inspired_isoflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etIso: {canonical: endtidal_isoflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    inHal: {canonical: inspired_halothane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etHal: {canonical: endtidal_halothane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    inEnf: {canonical: inspired_enflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etEnf: {canonical: endtidal_enflurane, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    inN2O: {canonical: inspired_n2o, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etN2O: {canonical: endtidal_n2o, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    inPrimA: {canonical: inspired_primary_agent, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etPrimA: {canonical: endtidal_primary_agent, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    inSecA: {canonical: inspired_secondary_agent, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    etSecA: {canonical: endtidal_secondary_agent, unit: percent, type: treatment_variable, hard_min: 0, hard_max: 100, filter_method: none}
+    
+  consumption:
+    # Cumulative — must be monotonic non-decreasing
+    note: "All consumption variables: monotonicity check, flag CUMULATIVE_DECREASE"
+    N2O_cons: {canonical: n2o_consumption, unit: L, type: cumulative, filter_method: none}
+    O2_cons: {canonical: o2_consumption, unit: L, type: cumulative, filter_method: none}
+    Air_cons: {canonical: air_consumption, unit: L, type: cumulative, filter_method: none}
+    Hal_cons: {canonical: halothane_consumption, unit: mL, type: cumulative, filter_method: none}
+    Enf_cons: {canonical: enflurane_consumption, unit: mL, type: cumulative, filter_method: none}
+    Iso_cons: {canonical: isoflurane_consumption, unit: mL, type: cumulative, filter_method: none}
+    Des_cons: {canonical: desflurane_consumption, unit: mL, type: cumulative, filter_method: none}
+    Sev_cons: {canonical: sevoflurane_consumption, unit: mL, type: cumulative, filter_method: none}
+    
+  mac:
+    xMAC: {canonical: mac_index, type: derived, filter_method: none, note: "Validate against agent context"}
+    inxMAC: {canonical: inspired_mac, type: derived, filter_method: none}
+
+  metadata:
+    # Never filtered
+    Patient_Category: {canonical: patient_category, type: categorical, filter_method: none, note: "IDENTIFIER — privacy gate"}
+    Age: {canonical: age, unit: years, type: demographic, filter_method: none}
+    Weight: {canonical: weight, unit: kg, type: demographic, filter_method: none}
+    Height: {canonical: height, unit: cm, type: demographic, filter_method: none}
+
+# ============================================================
+# BETTERCARE — high-frequency waveforms + derived parameters
+# Time in msecs (relative), 12-lead ECG, duplicate HR columns
+# ============================================================
+bettercare:
+  timebase: "relative_milliseconds"
+  time_column: "Time (msecs)"
+  
+  ecg:
+    leads: [I, II, III, aVR, aVL, aVF, V1, V2, V3, V4, V5, V6]
+    type: waveform
+    preserve_raw: true
+    filter:
+      method: butterworth_zero_phase
+      bandpass_hz: [0.5, 40]
+    artifact_method: [clipping, flatline, baseline_wander, hf_noise, motion]
+    note: "0.05 Hz cutoff for diagnostic ST/T morphology"
+    derived: [r_peaks, hr, rr_intervals, hrv]
+    
+  hr_duplicates:
+    # HR after each ECG lead — disambiguate internally
+    pattern: "HR__ECG_{lead}"
+    count: 12
+    type: scalar
+    unit: bpm
+    hard_min: 20
+    hard_max: 250
+    artifact_method: [spike, flatline, rate_of_change, cross_channel_agreement]
+    filter_method: robust_temporal
+    note: "Derived monitor parameters, not waveforms"
+    
+  pleth:
+    type: waveform
+    preserve_raw: true
+    filter:
+      method: bandpass
+      bandpass_hz: [0.5, 8]
+    artifact_method: [motion, clipping, flatline]
+    note: "Do not use ECG filter"
+    
+  spo2:
+    type: scalar
+    unit: percent
+    hard_min: 0
+    hard_max: 100
+    artifact_method: [range, persistence, pleth_quality]
+    filter_method: none_aggressive
+    
+  arterial_waveform:
+    PRES_ART:
+      type: waveform
+      preserve_raw: true
+      filter:
+        method: lowpass_bandpass
+        bandpass_hz: [0.05, 20]
+      artifact_method: [spike, damping, flushing, flatline, clipping]
+      derived: [sbp, dbp, map, pulse_pressure]
+      
+  arterial_derived:
+    ART_M: {unit: mmHg, type: scalar, filter_method: none, note: "Cross-check against PRES ART"}
+    ART_M_Sys: {unit: mmHg, type: scalar, filter_method: none}
+    ART_M_Dias: {unit: mmHg, type: scalar, filter_method: none}
+    
+  nibp:
+    PNI: {type: discrete_measurement, filter_method: none}
+    NIBP_M: {type: discrete_measurement, filter_method: none}
+    note: "Discrete cuff measurements, no interpolation"
+    
+  cvp:
+    PVC: {type: scalar, unit: mmHg, filter_method: robust_qc}
+    CVP_M:
+      type: scalar
+      unit: mmHg
+      hard_min: -5
+      hard_max: 30
+      artifact_method: [range, flatline, spike]
+      filter_method: robust_qc
+      note: "2-6 mmHg typical but context dependent"
+      
+  respiratory:
+    RESP_1: {type: waveform, filter: {bandpass_hz: [0.05, 2]}, artifact_method: [baseline_drift, flatline, motion]}
+    RESP_2: {type: waveform, filter: {bandpass_hz: [0.05, 2]}, artifact_method: [baseline_drift, flatline, motion]}
+    AIR_FLOW: {type: waveform, filter: {method: lowpass}, artifact_method: [zero_offset, clipping]}
+    RRc: {type: scalar, unit: /min, hard_min: 1, hard_max: 100}
+    
+  airway_pressure:
+    PAW: {type: waveform, derived: [pip, plateau, peep, mean_pressure]}
+    peak_paw: {type: scalar, artifact_method: [range, rate_of_change, breath_comparison]}
+    
+  co2:
+    CO2: {type: waveform, derived: [etco2]}
+    etCO2: {type: scalar, unit: mmHg, normal_reference: "35-45", hard_min: 10, hard_max: 100}
+    
+  pulmonary:
+    PAP: {type: waveform}
+    PA_M: {type: scalar, unit: mmHg}
+    PA_M_Sys: {type: scalar, unit: mmHg}
+    PA_M_Dias: {type: scalar, unit: mmHg}
+    PAD: {type: scalar, note: "Verify device definition"}
+    PAI: {type: scalar, note: "Verify device definition"}
+    LA_M: {type: scalar, note: "Left atrial mean if confirmed"}
+    consistency: "Systolic > Mean > Diastolic"
+    
+  volume:
+    VT: {type: scalar, unit: mL, note: "Calculate VT/predicted_body_weight"}
+    vt_insp: {type: scalar, unit: mL}
+    
+  annotations:
+    type: event_metadata
+    filter_method: none
+    note: "NEVER filtered. Convert to event table."
+
+# ============================================================
+# NOL — nociception index (0-100), absolute timestamps
+# ============================================================
+nol:
+  timebase: "absolute_datetime"
+  columns:
+    Abs_Time_Vector: {type: timestamp, filter_method: none}
+    Relative_Time: {type: elapsed_seconds, filter_method: none}
+    NOL:
+      type: index
+      unit: score
+      hard_min: 0
+      hard_max: 100
+      interpretation:
+        low: [0, 9]
+        target: [10, 25]
+        high: ">25"
+      artifact_method: [range, spike, flatline, persistence]
+      filter_method: none
+      note: "NOL=40 is not bad data — may be the phenomenon of interest"
+    HR:
+      type: scalar
+      unit: bpm
+      hard_min: 0
+      hard_max: 250
+      artifact_method: [spike, flatline, rate_of_change]
+      filter_method: robust_temporal
+    Events:
+      type: event_metadata
+      filter_method: none
+      note: "Convert to event table for event-aligned analysis"
+
+# ============================================================
+# BIS — processed EEG index (0-100), duplicate columns
+# ============================================================
+bis:
+  columns:
+    BIS:
+      type: index
+      unit: score
+      hard_min: 0
+      hard_max: 100
+      normal_reference: "40-60 (general anesthesia target)"
+      artifact_method: [range, sqi_context, emg_context]
+      filter_method: none
+      note: "BIS=70 is not corrupted — may indicate lighter state"
+    SQI:
+      type: quality_indicator
+      filter_method: none
+      note: "Interpret BIS+SQI+EMG together"
+    EMG:
+      type: quality_indicator
+      filter_method: none
+      note: "EMG contamination context for BIS"
+  duplicates:
+    note: "time/bis/sqi/emg appear twice — disambiguate as _1/_2"
+
+# ============================================================
+# PUMPS — event logs, not signals
+# ============================================================
+pumps:
+  format: "HiBaSeD event log"
+  columns: [No, Date, Time, Event, Value, Unit]
+  type: event_log
+  filter_method: none
+  canonical_schema: [patient_id, drug, device, device_serial, timestamp, event, value, unit, source_file]
+  event_types: [DEVICE_EVENT, THERAPY_EVENT, DOSE_EVENT, VOLUME_EVENT, CONCENTRATION_EVENT, SETTING_EVENT]
+  output: "exposure_intervals (start_time, end_time, dose, unit)"
+  note: "Drug data explains vital sign changes — cross-correlate with NOL"
+
+# ============================================================
+# DEMOGRAPHICS — per-project schemas, canonical layer
+# ============================================================
+demographics:
+  canonical_layer: [patient_id, age, sex, height_cm, weight_kg, bmi, asa, group, surgery, study_id]
+  rule: "Retain original_variable_name + original_value + source_project for everything"
+  filter_method: none
+  
+  dexrem:
+    Case_#: {canonical: patient_id, type: identifier}
+    Rando: {canonical: randomization_group, type: categorical}
+    Age: {canonical: age, unit: years, type: demographic}
+    Sex: {canonical: sex, type: categorical}
+    ASA: {canonical: asa, type: ordinal, allowed: [1, 2, 3]}
+    Height: {canonical: height_cm, unit: cm}
+    Real_body_weight: {canonical: weight_kg, unit: kg}
+    Adjusted_body_weight: {canonical: adjusted_weight_kg, unit: kg}
+    BMI: {canonical: bmi, derived_check: "weight / height_m^2"}
+    Notes: {canonical: notes, type: text}
+    
+  promises:
+    # French schema — arterial study
+    Record_ID: {canonical: patient_id, type: identifier}
+    Taille_du_brassard: {canonical: cuff_size, type: categorical}
+    BL_NI_PAS: {canonical: baseline_ni_sbp, type: baseline, unit: mmHg}
+    BL_NI_PAD: {canonical: baseline_ni_dbp, type: baseline, unit: mmHg}
+    BL_NI_PAM: {canonical: baseline_ni_map, type: baseline, unit: mmHg}
+    BL_I_PAS: {canonical: baseline_i_sbp, type: baseline, unit: mmHg}
+    BL_I_PAD: {canonical: baseline_i_dbp, type: baseline, unit: mmHg}
+    BL_I_PAM: {canonical: baseline_i_map, type: baseline, unit: mmHg}
+    NI_PAS_series: {canonical: ni_sbp_repeated, type: repeated_measurement, format: long}
+    I_PAS_series: {canonical: i_sbp_repeated, type: repeated_measurement, format: long}
+    note: "Convert .1/.2/.3 suffixes to long-format measurement table"
+
+# Processing hierarchy
+pipeline_stages:
+  - raw
+  - file_validation
+  - schema_validation
+  - time_validation
+  - signal_classification
+  - qc_flags
+  - signal_specific_filter
+  - derived_features
+  - patient_statistics
+  - project_statistics
+  - demographic_link
+  - event_aligned_analysis
+
+# Output structure per patient
+output_structure:
+  - raw_reference/
+  - processed/
+  - qc/
+  - features/
+  - statistics/
+  - graphs/

@@ -40,6 +40,7 @@ on:
           - ml-unsup-train
           - ml-sup-train
           - ml-incremental
+          - fetch-dict
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -149,6 +150,15 @@ jobs:
               --project "${{ inputs.ml_project }}" \
               --parquet-dir processed_dl \
               --out ml_out
+          elif [ "${{ inputs.task }}" = "fetch-dict" ]; then
+            mkdir -p dict_out
+            az storage blob download \
+              --account-name labdataplatform \
+              --container-name reports \
+              --name dictionary/column_dictionary_mapped.csv \
+              --file dict_out/column_dictionary_mapped.csv \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            head -50 dict_out/column_dictionary_mapped.csv
           elif [ "${{ inputs.task }}" = "ml-incremental" ]; then
             mkdir -p ml_out
             python -m tools.ml_incremental \
@@ -181,4 +191,5 @@ jobs:
             processed_out/
             shared_out/
             ml_out/
+            dict_out/
           if-no-files-found: ignore

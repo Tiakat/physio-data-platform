@@ -63,6 +63,20 @@ def resolve_time(df: pd.DataFrame, fs_hint: float | None = None):
                     dt = dt[(dt > 0) & (dt < 3600)]
                     fs = 1.0 / dt.median() if len(dt) else fs_hint
                     return tsec, "file", fs
+    # BetterCare-style relative milliseconds: a column with values like
+    # 0, 5, 10... (ms from recording start, no absolute date).
+    for col in df.columns:
+        cl = col.lower()
+        if "ms" in cl or "millis" in cl or cl in ("t", "elapsed"):
+            v = pd.to_numeric(df[col], errors="coerce")
+            if v.notna().sum() > len(df) * 0.5 and v.min() >= 0:
+                # Heuristic: monotonic-ish increasing, ms-scale values.
+                if v.max() > 1000:  # at least 1 second of data
+                    tsec = (v - v.min()) / 1000.0
+                    dt = tsec.diff()
+                    dt = dt[(dt > 0) & (dt < 3600)]
+                    fs = 1.0 / dt.median() if len(dt) else fs_hint
+                    return tsec, "bettercare_ms", fs
     # No usable time column: reconstruct from sampling rate.
     fs = fs_hint or 1.0
     tsec = pd.Series(np.arange(len(df), dtype=float) / fs)

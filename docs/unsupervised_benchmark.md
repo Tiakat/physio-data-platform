@@ -61,12 +61,16 @@ For each method:
   4. Measure runtime/memory
   5. Generate cluster visualizations
   
-Rank by: composite score (metrics + stability + efficiency)
+Rank by EFFICIENCY-WEIGHTED composite score:
+  score = (performance × stability) / log(compute_cost)
+  
+A method 2% better but 100x slower LOSES.
+Efficiency is a first-class criterion, not a tiebreaker.
+```
 
 Winner → production unsupervised pipeline
 Top 3 → kept as challengers for future comparisons
 All results → logged with full reproducibility
-```
 
 ## Continuous Search (Muse's Job)
 

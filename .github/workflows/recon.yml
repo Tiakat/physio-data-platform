@@ -152,13 +152,12 @@ jobs:
               --out ml_out
           elif [ "${{ inputs.task }}" = "fetch-dict" ]; then
             mkdir -p dict_out
-            az storage blob download \
+            az storage blob list \
               --account-name labdataplatform \
               --container-name reports \
-              --name dictionary/column_dictionary_mapped.csv \
-              --file dict_out/column_dictionary_mapped.csv \
-              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
-            head -50 dict_out/column_dictionary_mapped.csv
+              --prefix dictionary/ \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --query "[].name" -o tsv | head -20
           elif [ "${{ inputs.task }}" = "ml-incremental" ]; then
             mkdir -p ml_out
             python -m tools.ml_incremental \

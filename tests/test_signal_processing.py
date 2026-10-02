@@ -310,3 +310,20 @@ def test_gap_flagged_not_silently_bridged():
     s = pd.Series([70.0] * 10 + [np.nan] * 30 + [70.0] * 10)
     _, qc = process_series("HR", s, 1.0, _cfg(), None, [], max_gap_s=10.0)
     assert (qc == "GAP").sum() == 30
+
+
+def test_nyquist_invalid_bandpass_is_noop():
+    # Regression: bandpass with cutoffs above Nyquist must not crash
+    # (scipy raises "Filter not stable"); it becomes a no-op.
+    from signal_processing import _butter_filter
+    x = np.sin(np.linspace(0, 10, 500))
+    y = _butter_filter(x, fs_hz=1.0, low_hz=0.5, high_hz=40.0,
+                       kind="bandpass")
+    assert np.allclose(y, x, equal_nan=True)
+
+
+def test_nyquist_invalid_highpass_is_noop():
+    from signal_processing import _butter_filter
+    x = np.sin(np.linspace(0, 10, 500))
+    y = _butter_filter(x, fs_hz=1.0, low_hz=5.0, kind="highpass")
+    assert np.allclose(y, x, equal_nan=True)

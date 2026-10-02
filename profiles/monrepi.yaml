@@ -41,6 +41,12 @@ tiers:
     - pattern: "Perf_*.csv"
       device: pump
       parser: pump
+    - pattern: "*.spa"
+      device: bis
+      parser: bis
+    - pattern: "*.r2a"
+      device: bis
+      parser: bis
   B_kept:                        # stored, checksummed, indexed, not parsed
     - "*.vital"                  # Vital Recorder files (MONREPI) — no parser yet
     - "Patient *.csv"            # NMT vital CSV exports at patient level
@@ -50,10 +56,8 @@ tiers:
     - "*.o_a"
     - "*.m_a"
     - "*.h_a"
-    - "*.spa"
     - "*.e_a"
     - "*.t_a"
-    - "*.r2a"
     - "*.f_a"
     - "*.xlsx"
     - "*.pdf"
@@ -113,6 +117,15 @@ devices:
     keep_variables: [NOL, HR]
     required_variables: [NOL]
     expected_interval_s: 5
+
+  bis:
+    encoding: "utf-8"
+    time:
+      timezone: "America/Montreal"
+    bis:
+      channels: 2
+    keep_variables: [BIS_1, BSR, SEF, MF, EMG]
+    expected_interval_s: 1.0
 
   pump:
     delimiter: ";"

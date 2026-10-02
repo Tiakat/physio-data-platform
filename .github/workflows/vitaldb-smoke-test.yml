@@ -1,0 +1,40 @@
+name: vitaldb-smoke-test
+
+on:
+  workflow_dispatch:
+    inputs:
+      n_cases:
+        description: 'Number of VitalDB cases to test'
+        default: '10'
+        required: false
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install dependencies
+        run: |
+          pip install vitaldb numpy pandas scipy scikit-learn pywavelets
+          
+      - name: Download VitalDB test cases
+        run: |
+          python tools/vitaldb_test_setup.py ${{ github.event.inputs.n_cases || '10' }}
+          
+      - name: Run filter comparison
+        run: |
+          python tools/compare_filters.py --input vitaldb_test/ --output results/
+          
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitaldb-smoke-results
+          path: results/

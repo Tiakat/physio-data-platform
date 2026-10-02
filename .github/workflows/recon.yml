@@ -41,6 +41,7 @@ on:
           - ml-sup-train
           - ml-incremental
           - fetch-dict
+          - azure-inventory
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -150,6 +151,18 @@ jobs:
               --project "${{ inputs.ml_project }}" \
               --parquet-dir processed_dl \
               --out ml_out
+          elif [ "${{ inputs.task }}" = "azure-inventory" ]; then
+            mkdir -p inv_out
+            for container in rawdata processed; do
+              echo "=== $container ==="
+              az storage blob list \
+                --account-name labdataplatform \
+                --container-name $container \
+                --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+                --query "[].{name:name}" -o tsv | \
+                cut -d/ -f1,2 | sort | uniq -c | sort -rn | head -30
+            done > inv_out/inventory.txt
+            cat inv_out/inventory.txt
           elif [ "${{ inputs.task }}" = "fetch-dict" ]; then
             mkdir -p dict_out
             az storage blob list \
@@ -191,4 +204,5 @@ jobs:
             shared_out/
             ml_out/
             dict_out/
+            inv_out/
           if-no-files-found: ignore

@@ -83,7 +83,13 @@ def main(argv=None) -> int:
                 for c_i in range(rg.num_columns):
                     col = rg.column(c_i)
                     path = col.path_in_schema
-                    name = path[0] if len(path) == 1 else ".".join(path)
+                    # pyarrow returns path_in_schema as a plain string in
+                    # some versions (not a list): join() on a string would
+                    # dot every character ("H.R" for "HR").
+                    if isinstance(path, str):
+                        name = path
+                    else:
+                        name = path[0] if len(path) == 1 else ".".join(path)
                     stats = col.statistics
                     try:
                         if stats and stats.has_null_count:

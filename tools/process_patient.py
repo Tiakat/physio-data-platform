@@ -105,15 +105,19 @@ def compress_gaps(tsec: pd.Series, y: pd.Series, max_gap_s: float = 300.0):
     return segments
 
 
-def _decimate_plot(tsec, *frames, max_pts=4000):
+def _decimate_plot(tsec, *frames, max_pts=4000, min_n=100_000):
     """Stride-decimate aligned Series/DataFrames for display.
 
     Memory guard (OOM fix): a 14"-wide figure at 110 dpi is ~1540 px, so
     plotting millions of points is invisible overplotting that explodes
     Agg renderer memory. Decimation is display-only; data is untouched.
+    Files below min_n rows are plotted in full: stride decimation can drop
+    every valid sample of an ultra-sparse column (e.g. NIBP with a handful
+    of readings), which then crashes the overview's pd.concat on an empty
+    segment list.
     """
     n = len(tsec)
-    if n <= max_pts:
+    if n <= max(min_n, max_pts):
         return (tsec,) + frames
     step = int(np.ceil(n / max_pts))
     idx = np.arange(0, n, step)
@@ -178,9 +182,13 @@ def graph_overview(tsec, filt, qc, cols, title, path, duration_s):
         segs = compress_gaps(tsec, filt[col])
         for ts_seg, y_seg in segs:
             ax.plot(ts_seg, y_seg, lw=0.9)
-        all_y = pd.concat([s[1] for s in segs])
-        pad = (all_y.max() - all_y.min()) * 0.08 or 1.0
-        ax.set_ylim(all_y.min() - pad, all_y.max() + pad)
+        if segs:
+            all_y = pd.concat([s[1] for s in segs])
+            pad = (all_y.max() - all_y.min()) * 0.08 or 1.0
+            ax.set_ylim(all_y.min() - pad, all_y.max() + pad)
+        # Empty segs: decimation dropped every valid sample of this sparse
+        # column in a giant file. Subplot stays blank; data is intact in
+        # the processed parquet (display-only limitation).
         ax.set_ylabel(col, fontsize=9)
         ax.grid(alpha=0.3)
     axes[0].set_title(title)

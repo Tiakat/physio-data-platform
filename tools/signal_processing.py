@@ -34,6 +34,25 @@ IMPLEMENTED_FILTERS = {"none", "lowpass", "bandpass", "robust_smoothing"}
 TIME_CANDIDATES = ["timestamp", "time", "time_ms", "time_s", "datetime",
                    "epoch_ms", "epoch_s"]
 
+# QC flag vocabulary. Flags are stored as categorical (int8 codes), not
+# object-dtype strings: a 5M-row x 53-col QC frame is ~265M cells, which is
+# ~2.1 GB as Python-object pointers but ~265 MB as int8 codes. This was the
+# difference between finishing and an OOM SIGTERM kill on giant BetterCare
+# files (Oct 2026: 3 sweep jobs died on 3.3-5.0M-row files).
+_QC_CATEGORIES = ["VALID", "MISSING", "INVALID_RANGE", "UNREVIEWED",
+                  "LOW_QUALITY", "FLATLINE", "SPIKE", "SATURATION",
+                  "DEVICE_ARTIFACT", "GAP"]
+
+
+def _new_flags(index, value="VALID"):
+    """Blank QC flag Series as categorical (memory-safe)."""
+    code = _QC_CATEGORIES.index(value)
+    return pd.Series(
+        pd.Categorical.from_codes(
+            np.full(len(index), code, dtype=np.int8),
+            categories=_QC_CATEGORIES),
+        index=index)
+
 # Matches a parenthesised unit/embedded segment, e.g. " (mm(hg)^^ISO+)",
 # " (/min^^ISO+)". Used to strip vendor unit suffixes for alias matching.
 _UNIT_SEGMENT_RE = re.compile(
@@ -207,7 +226,7 @@ def apply_validity(series, config, var_spec, missing_codes):
     MISSING. Out-of-range values become INVALID_RANGE. Raw is untouched.
     """
     s = pd.to_numeric(series, errors="coerce")
-    flags = pd.Series("VALID", index=s.index, dtype=object)
+    flags = _new_flags(s.index, "VALID")
     cleaned = s.copy()
 
     # Native missing values are MISSING, never VALID. (NaN comparisons are
@@ -535,8 +554,7 @@ def process_frame(df, time_col, configs, index, missing_codes,
         if cfg is None:
             # Unknown: preserve, queue for review, do not process.
             filtered_cols[column] = s
-            qc_cols[column + "__qc"] = pd.Series("UNREVIEWED",
-                                                 index=s.index, dtype=object)
+            qc_cols[column + "__qc"] = _new_flags(s.index, "UNREVIEWED")
             review.append({
                 "column": column, "source": source,
                 "reason": "no_dictionary_entry",

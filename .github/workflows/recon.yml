@@ -235,6 +235,7 @@ jobs:
           name: recon-${{ inputs.task }}-${{ github.run_id }}
           path: |
             recon_out/
+            presence_out/
             fetched/
             filter_pilot_out/
             processed_out/

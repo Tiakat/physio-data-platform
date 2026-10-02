@@ -105,9 +105,27 @@ def compress_gaps(tsec: pd.Series, y: pd.Series, max_gap_s: float = 300.0):
     return segments
 
 
+def _decimate_plot(tsec, *frames, max_pts=4000):
+    """Stride-decimate aligned Series/DataFrames for display.
+
+    Memory guard (OOM fix): a 14"-wide figure at 110 dpi is ~1540 px, so
+    plotting millions of points is invisible overplotting that explodes
+    Agg renderer memory. Decimation is display-only; data is untouched.
+    """
+    n = len(tsec)
+    if n <= max_pts:
+        return (tsec,) + frames
+    step = int(np.ceil(n / max_pts))
+    idx = np.arange(0, n, step)
+    def _take(f):
+        return f.iloc[idx] if isinstance(f, (pd.Series, pd.DataFrame)) else f
+    return (_take(tsec),) + tuple(_take(f) for f in frames)
+
+
 def graph_signal(tsec, raw, filtered, qc, col, patient_label,
                  source_label, path, duration_s):
     """Per-signal graph: seconds x-axis, source-labeled, tight scales."""
+    tsec, raw, filtered, qc = _decimate_plot(tsec, raw, filtered, qc)
     segments_filt = compress_gaps(tsec, filtered)
     if not segments_filt:
         return False
@@ -151,6 +169,7 @@ def graph_overview(tsec, filt, qc, cols, title, path, duration_s):
             and filt[c].notna().sum() > 0]
     if not cols:
         return False
+    tsec, filt = _decimate_plot(tsec, filt)
     n = len(cols)
     fig, axes = plt.subplots(n, 1, figsize=(14, 2.6 * n), sharex=True,
                              squeeze=False)
@@ -235,6 +254,13 @@ def main(argv=None):
         container="rawdata", blob=blob).download_blob().readall()
     blob_sha = hashlib.sha256(raw).hexdigest()
     df = pd.read_parquet(io.BytesIO(decrypt_bytes(raw)))
+    # Memory guard (OOM fix): giant BetterCare files (5M rows x 53 cols)
+    # are ~2.1 GB as float64 and SIGTERM-killed 3 sweep jobs (Oct 2026).
+    # float32 halves RAM; precision is plenty for filtering/QC/graphs.
+    # Raw source data stays untouched in Azure.
+    for c in df.columns:
+        if df[c].dtype == np.float64:
+            df[c] = df[c].astype(np.float32)
     print(f"[process-patient] loaded {len(df)} rows x {len(df.columns)} cols",
           flush=True)
 

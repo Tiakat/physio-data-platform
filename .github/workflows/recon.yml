@@ -12,6 +12,8 @@ name: recon
 #                    (counts only, privacy-safe report)
 #   fetch-recon   -> download a reports/recon/<prefix>/ prefix from Azure
 #                    (for bringing census outputs back as an artifact)
+#   pilot-filter  -> Phase 9+ filtering pilot on a few decrypted parquets
+#                    (draft intervals; filtered CSV + QC + PNG graph)
 # Neither task moves, renames, or deletes anything.
 
 on:
@@ -32,6 +34,7 @@ on:
           - forensics
           - pilot-scan
           - fetch-recon
+          - filter-pilot
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -89,6 +92,10 @@ jobs:
             fi
             python -m tools.fetch_recon \
               --prefix "${{ inputs.fetch_prefix }}" --out fetched
+          elif [ "${{ inputs.task }}" = "filter-pilot" ]; then
+            mkdir -p filter_pilot_out
+            python -m tools.pilot_filter --per-project 1 --max-total 3 \
+              --signals HR,SPO2 --max-rows 20000 --out filter_pilot_out
           else
             python -m tools.recon_layouts
           fi
@@ -100,4 +107,5 @@ jobs:
           path: |
             recon_out/
             fetched/
+            filter_pilot_out/
           if-no-files-found: ignore

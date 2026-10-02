@@ -123,7 +123,7 @@ jobs:
               --out processed_out
           elif [ "${{ inputs.task }}" = "fetch-shared" ]; then
             mkdir -p shared_out
-            python -m tools.fetch_shared_link \
+            python -m tools.fetch_shared_zip \
               --url "${{ inputs.shared_url }}" \
               --out shared_out
           else

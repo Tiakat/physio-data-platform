@@ -34,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import azure_auth  # noqa: E402
 from tools.crypto import decrypt_bytes  # noqa: E402
 from tools.signal_processing import (  # noqa: E402
-    find_config, load_signal_configs, process_frame)
+    find_config, get_var_spec, load_signal_configs, process_frame)
 
 
 def _project_of(blob: str) -> str:
@@ -62,17 +62,34 @@ def _data_rich_window(df: pd.DataFrame, configs, index, wanted,
     sig_cols = _pick_signal_columns(df, configs, index, wanted)
     if not sig_cols or len(df) <= max_rows:
         return df.iloc[:max_rows] if len(df) > max_rows else df
-    has_data = pd.Series(False, index=df.index)
+    # Prefer rows where wanted signals are plausibly VALID (in dictionary
+    # range), not just non-null: device-off zeros and artifacts are
+    # non-null but useless for a prototype.
+    has_good = pd.Series(False, index=df.index)
+    has_any = pd.Series(False, index=df.index)
     for c in sig_cols:
-        has_data |= pd.to_numeric(df[c], errors="coerce").notna()
-    if not has_data.any():
+        cfg, canonical = find_config(c, configs, index)
+        v = pd.to_numeric(df[c], errors="coerce")
+        has_any |= v.notna()
+        var_spec = get_var_spec(canonical, index) if canonical else None
+        lo, hi = None, None
+        if var_spec:
+            lo, hi = var_spec.get("min"), var_spec.get("max")
+        if lo is not None and hi is not None:
+            has_good |= (v >= lo) & (v <= hi)
+        else:
+            has_good |= v.notna()
+    target = has_good if has_good.any() else has_any
+    if not target.any():
         print("[pilot-filter] wanted signals have no data in file; "
               "using first rows", flush=True)
         return df.iloc[:max_rows]
-    first = has_data.idxmax()
+    first = target.idxmax()
     pos = df.index.get_loc(first)
     # Center the window on the data when possible.
     start = max(0, min(pos - max_rows // 4, len(df) - max_rows))
+    print(f"[pilot-filter] window at row {start} "
+          f"({'in-range' if has_good.any() else 'non-null'} data)", flush=True)
     return df.iloc[start:start + max_rows]
 
 

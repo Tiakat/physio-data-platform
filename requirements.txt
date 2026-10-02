@@ -35,3 +35,6 @@ pytest>=8
 
 # Pipeline data encryption (Fernet)
 cryptography>=42
+
+# Filter pilot graphs
+matplotlib>=3.8

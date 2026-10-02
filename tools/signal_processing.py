@@ -210,6 +210,11 @@ def apply_validity(series, config, var_spec, missing_codes):
     flags = pd.Series("VALID", index=s.index, dtype=object)
     cleaned = s.copy()
 
+    # Native missing values are MISSING, never VALID. (NaN comparisons are
+    # always False, so without this they would silently stay VALID.)
+    is_nan = s.isna()
+    flags[is_nan] = "MISSING"
+
     codes = list(missing_codes or [])
     if codes:
         is_code = s.isin(codes)

@@ -1,11 +1,18 @@
 """Signal-specific processing engine (Phases 9-11).
 
-The dictionary (profiles/_variables.yaml) is the single source of truth for
-valid ranges, zero semantics and raw-name aliases. Signal configs under
-configs/signals/ declare *behaviour* only: which detectors to run, which
-filter to apply, which features to extract. Any range in a config is a
-fallback for channels with no dictionary entry yet, and a disagreement with
-the dictionary is logged as a conflict (dictionary wins).
+The dictionary is the single source of truth for valid ranges, zero
+semantics and raw-name aliases. It has two layers:
+
+1. profiles/_variables.yaml -- the original per-variable table;
+2. configs/master_dictionary.yaml (v1.1, literature-backed) -- overlaid on
+   top. Its hard_min/hard_max WIN over layer 1 (every override is logged
+   as a conflict), and signals it alone knows are added as new entries.
+
+Signal configs under configs/signals/ declare *behaviour* only: which
+detectors to run, which filter to apply, which features to extract. Any
+range in a config is a fallback for channels with no dictionary entry yet,
+and a disagreement with the dictionary is logged as a conflict (dictionary
+wins).
 
 Philosophy: invalid observations are flagged, never deleted. Raw is never
 modified; this module produces filtered + QC sidecar dataframes, leaving
@@ -78,11 +85,159 @@ def _normalize_name(name: str) -> str:
 
 
 # --------------------------------------------------------------------------
+# Master dictionary (configs/master_dictionary.yaml)
+# --------------------------------------------------------------------------
+
+# Top-level keys in the master dictionary that are NOT device sections
+# (metadata, method libraries, output specs).
+_MASTER_META_KEYS = {"version", "generated", "source", "filter_methods",
+                     "global_qc_flags", "output_schema", "demographics",
+                     "pipeline_stages", "output_structure"}
+
+
+def _iter_master_signals(node, device):
+    """Yield (code, device, spec) for every leaf signal dict under a device.
+
+    The master dictionary nests device -> domain -> SIGNAL_CODE -> spec,
+    where a leaf spec is a dict carrying a 'canonical' key. Domains nest
+    arbitrarily; anything without 'canonical' is descended into.
+    """
+    if not isinstance(node, dict):
+        return
+    for key, val in node.items():
+        if not isinstance(val, dict):
+            continue
+        if "canonical" in val:
+            yield key, device, val
+        else:
+            yield from _iter_master_signals(val, device)
+
+
+def _load_master_dictionary(path):
+    """Flatten configs/master_dictionary.yaml into a list of signal dicts.
+
+    Each item: {canonical, code, original, device, min, max, unit, aliases,
+    filter_method, artifact_method}.
+    """
+    with open(path, encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+    entries = []
+    for device, node in raw.items():
+        if device in _MASTER_META_KEYS or not isinstance(node, dict):
+            continue
+        for code, dev, spec in _iter_master_signals(node, device):
+            canonical = spec.get("canonical")
+            if not canonical:
+                continue
+            entries.append({
+                "canonical": str(canonical),
+                "code": str(code),
+                "original": spec.get("original"),
+                "device": dev,
+                "min": spec.get("hard_min"),
+                "max": spec.get("hard_max"),
+                "unit": spec.get("unit"),
+                "filter_method": spec.get("filter_method"),
+                "artifact_method": spec.get("artifact_method"),
+                "aliases": ([str(code)] +
+                            ([str(spec["original"])]
+                             if spec.get("original") else [])),
+            })
+    return entries
+
+
+def _merge_master_dictionary(dictionary, index, entries):
+    """Merge master-dictionary signals into the variables dictionary.
+
+    Matching is by device identity: a master entry's `original` raw name
+    (or signal code) is looked up among the normalized aliases of the
+    profiles/_variables.yaml entries. On a match the master hard_min /
+    hard_max WIN (logged as a conflict when they differ); aliases, unit,
+    filter and artifact methods are filled in. Unmatched entries are added
+    as new dictionary entries under their canonical name (reachable via
+    get_var_spec, and via config channels that name their device code).
+
+    Returns (n_merged, n_added).
+    """
+    alias_to_canon = {}
+    for canon, spec in dictionary.items():
+        if not isinstance(spec, dict):
+            continue
+        for a in spec.get("aliases", []) or []:
+            alias_to_canon.setdefault(_normalize_name(a), canon)
+        alias_to_canon.setdefault(_normalize_name(canon), canon)
+
+    n_merged = n_added = 0
+    for e in entries:
+        target = None
+        for probe in (e.get("original"), e.get("code")):
+            if probe:
+                target = alias_to_canon.get(_normalize_name(probe))
+                if target is not None:
+                    break
+        if target is not None and target in dictionary:
+            spec = dictionary[target]
+            if e["min"] is not None and e["max"] is not None:
+                old_range = [spec.get("min"), spec.get("max")]
+                new_range = [e["min"], e["max"]]
+                if old_range != new_range:
+                    index["conflicts"].append({
+                        "source": "master_dictionary",
+                        "device": e["device"],
+                        "canonical": target,
+                        "master_canonical": e["canonical"],
+                        "variables_range": old_range,
+                        "master_range": new_range,
+                    })
+                spec["min"], spec["max"] = new_range
+            for a in e["aliases"]:
+                spec.setdefault("aliases", [])
+                if a not in spec["aliases"]:
+                    spec["aliases"].append(a)
+            for k in ("unit", "filter_method", "artifact_method"):
+                if e.get(k) and not spec.get(k):
+                    spec[k] = e[k]
+            spec["_master_canonical"] = e["canonical"]
+            spec["_master_device"] = e["device"]
+            n_merged += 1
+        else:
+            spec = {
+                "label": e["canonical"].replace("_", " "),
+                "unit": e.get("unit"),
+                "min": e.get("min"),
+                "max": e.get("max"),
+                # Master dict carries no zero semantics; flag zeros for
+                # review rather than silently accepting them.
+                "zero_is_valid": False,
+                "aliases": list(e["aliases"]),
+                "filter_method": e.get("filter_method"),
+                "artifact_method": e.get("artifact_method"),
+                "_source": "master_dictionary",
+                "_device": e["device"],
+            }
+            dictionary[e["canonical"]] = spec
+            index["dictionary_channels"].add(e["canonical"])
+            index["alias"].setdefault("\x00" + e["canonical"], spec)
+            # Also register under the device code, so a config channel
+            # naming the code (e.g. ART_S) resolves to the master spec
+            # instead of falling back to config ranges.
+            index["alias"].setdefault("\x00" + e["code"], spec)
+            n_added += 1
+    return n_merged, n_added
+
+
+# --------------------------------------------------------------------------
 # Config + dictionary loading
 # --------------------------------------------------------------------------
 
-def load_signal_configs(config_dir, variables_path):
+def load_signal_configs(config_dir, variables_path, master_dict_path=None):
     """Load signal configs and build the lookup index.
+
+    master_dict_path: path to configs/master_dictionary.yaml, or None to
+    auto-discover it next to config_dir (configs/master_dictionary.yaml).
+    The master dictionary's hard_min/hard_max override
+    profiles/_variables.yaml ranges; every override is logged in
+    index["conflicts"] with source "master_dictionary".
 
     Returns (configs, index) where configs maps config filename stem ->
     config dict, and index is a dict with:
@@ -92,6 +247,7 @@ def load_signal_configs(config_dir, variables_path):
       unimplemented_detectors: [{config, detector, method}]
       unimplemented_filters: [{config, method}]
       dictionary_channels: set of canonical names found in the dictionary
+      master_dictionary: {path, signals, merged, added} (when loaded)
     """
     configs = {}
     index = {
@@ -120,6 +276,23 @@ def load_signal_configs(config_dir, variables_path):
         index["alias"]["\x00" + canon] = spec
 
     index["global_missing_codes"] = list(global_missing)
+
+    # --- master dictionary overlay (configs/master_dictionary.yaml) -------
+    # Auto-discovered next to config_dir unless an explicit path is given.
+    if master_dict_path is None:
+        candidate = os.path.join(os.path.dirname(str(config_dir)),
+                                 "master_dictionary.yaml")
+        master_dict_path = candidate if os.path.exists(candidate) else None
+    if master_dict_path and os.path.exists(str(master_dict_path)):
+        _master_entries = _load_master_dictionary(master_dict_path)
+        _n_merged, _n_added = _merge_master_dictionary(
+            dictionary, index, _master_entries)
+        index["master_dictionary"] = {
+            "path": str(master_dict_path),
+            "signals": len(_master_entries),
+            "merged": _n_merged,
+            "added": _n_added,
+        }
 
     # --- configs ---------------------------------------------------------
     for fname in sorted(os.listdir(config_dir)):

@@ -462,7 +462,19 @@ def process_series(col, series, fs_hz, cfg, var_spec, missing_codes,
                     sel = flags.iloc[idx]
                     flags.iloc[idx] = sel.where(sel != "VALID", "GAP")
 
-    filtered = apply_filter(cleaned, fs_hz or 1.0, cfg or {})
+    filt_method = ((cfg or {}).get("filter", {}) or {}).get("method", "none")
+    try:
+        filtered = apply_filter(cleaned, fs_hz or 1.0, cfg or {})
+    except Exception as exc:  # noqa: BLE001
+        # A filter that cannot run on real data must never kill the
+        # pipeline: keep the cleaned signal, flag for human review.
+        filtered = cleaned.copy()
+        review_note = (f"filter_failed:{filt_method}:"
+                       f"{type(exc).__name__}:fs_hz={fs_hz}")
+        if isinstance(flags, pd.Series):
+            flags = flags.copy()
+        # stash the note where process_frame can collect it
+        filtered.attrs["filter_failure"] = review_note
     # Safety: filtering must never resurrect an invalid sample.
     filtered[cleaned.isna()] = np.nan
     return filtered, flags
@@ -543,6 +555,13 @@ def process_frame(df, time_col, configs, index, missing_codes,
         fallback = var_spec is None
         filt, flags = process_series(column, s, fs, cfg, var_spec,
                                      missing_codes)
+        failure = getattr(filt, "attrs", {}).get("filter_failure")
+        if failure:
+            review.append({
+                "column": column, "source": source,
+                "reason": "filter_failed",
+                "detail": failure + "; kept cleaned signal unfiltered.",
+            })
         if fallback:
             # Config fallback ranges were used: never report clean VALID.
             flags = flags.where(flags != "VALID", "LOW_QUALITY")

@@ -51,6 +51,31 @@ def _pick_signal_columns(df: pd.DataFrame, configs, index, wanted) -> list[str]:
     return cols
 
 
+def _data_rich_window(df: pd.DataFrame, configs, index, wanted,
+                      max_rows: int) -> pd.DataFrame:
+    """Select max_rows where the wanted signals actually have data.
+
+    BetterCare files mix ~200 Hz waveforms with ~1 Hz parameters; the
+    first N rows can be waveform-only. Find the first row where any
+    wanted signal is non-null and take the window from there.
+    """
+    sig_cols = _pick_signal_columns(df, configs, index, wanted)
+    if not sig_cols or len(df) <= max_rows:
+        return df.iloc[:max_rows] if len(df) > max_rows else df
+    has_data = pd.Series(False, index=df.index)
+    for c in sig_cols:
+        has_data |= pd.to_numeric(df[c], errors="coerce").notna()
+    if not has_data.any():
+        print("[pilot-filter] wanted signals have no data in file; "
+              "using first rows", flush=True)
+        return df.iloc[:max_rows]
+    first = has_data.idxmax()
+    pos = df.index.get_loc(first)
+    # Center the window on the data when possible.
+    start = max(0, min(pos - max_rows // 4, len(df) - max_rows))
+    return df.iloc[start:start + max_rows]
+
+
 def _graph(raw: pd.DataFrame, filtered: pd.DataFrame, qc: pd.DataFrame,
            signals: list[str], path: Path, title: str) -> bool:
     t = pd.to_datetime(filtered["timestamp"], errors="coerce")
@@ -131,8 +156,8 @@ def main(argv=None):
             raw = svc.get_blob_client(
                 container="rawdata", blob=blob).download_blob().readall()
             df = pd.read_parquet(io.BytesIO(decrypt_bytes(raw)))
-            if len(df) > args.max_rows:
-                df = df.iloc[: args.max_rows]
+            df = _data_rich_window(df, configs, index, wanted,
+                                   args.max_rows)
             token = _project_of(blob).lower() + f"_{i:02d}"
             filt, qc, review = process_frame(
                 df, None, configs, index, missing_codes, source="pilot")

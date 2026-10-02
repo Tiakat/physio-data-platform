@@ -38,6 +38,12 @@ tiers:
     - pattern: "Perf_*.csv"
       device: pump
       parser: pump
+    - pattern: "*.r2a"
+      device: bis
+      parser: bis
+    - pattern: "*.spa"
+      device: bis
+      parser: bis
   B_kept:                        # stored, checksummed, indexed, not parsed
     - "*.med"
     - "*.enc"
@@ -111,6 +117,16 @@ devices:
     encoding: "utf-8"
     kind: event                  # not a regular time series
     keep_variables: []
+
+  bis:
+    kind: waveform
+    # .r2a: raw EEG, 2ch, 128 Hz, no header, no timestamps
+    # .spa: 1 Hz trend parameters, pipe-delimited
+    time:
+      kind: "elapsed_s"
+    keep_variables: [BIS, SQI, EMG, BSR, SEF]
+    required_variables: [BIS]
+    expected_interval_s: 1.0
 
 # Quality control thresholds. Each becomes a flag, not a score.
 quality:

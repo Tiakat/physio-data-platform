@@ -40,6 +40,12 @@ tiers:
     - pattern: "Perf_*.csv"
       device: pump
       parser: pump
+    - pattern: "*.spa"
+      device: bis
+      parser: bis
+    - pattern: "*.r2a"
+      device: bis
+      parser: bis
   B_kept:                        # stored, checksummed, indexed, not parsed
     - "POSBRAIN *.csv"           # POSBRAIN oximetry CSV exports — no parser yet
     - "*.H3"                     # TPAD cerebral oximetry files — no parser yet
@@ -49,10 +55,8 @@ tiers:
     - "*.o_a"
     - "*.m_a"
     - "*.h_a"
-    - "*.spa"
     - "*.e_a"
     - "*.t_a"
-    - "*.r2a"
     - "*.f_a"
     - "*.pdf"
     - "*.jpeg"
@@ -111,6 +115,15 @@ devices:
     keep_variables: [NOL, HR]
     required_variables: [NOL]
     expected_interval_s: 5
+
+  bis:
+    encoding: "utf-8"
+    time:
+      timezone: "America/Montreal"
+    bis:
+      channels: 2
+    keep_variables: [BIS_1, BSR, SEF, MF, EMG]
+    expected_interval_s: 1.0
 
   pump:
     delimiter: ";"

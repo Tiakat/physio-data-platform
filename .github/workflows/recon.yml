@@ -37,6 +37,8 @@ on:
           - filter-pilot
           - process-patient
           - fetch-shared
+          - ml-unsup-train
+          - ml-sup-train
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -55,6 +57,14 @@ on:
         default: ""
       shared_url:
         description: "fetch-shared: Dropbox shared link URL"
+        required: false
+        default: ""
+      ml_project:
+        description: "ml train: project code"
+        required: false
+        default: ""
+      ml_signal:
+        description: "ml-sup-train: signal name"
         required: false
         default: ""
 
@@ -126,6 +136,30 @@ jobs:
             python -m tools.fetch_shared_zip \
               --url "${{ inputs.shared_url }}" \
               --out shared_out
+          elif [ "${{ inputs.task }}" = "ml-unsup-train" ]; then
+            mkdir -p ml_out processed_dl
+            az storage blob download-batch \
+              --account-name labdataplatform \
+              --source processed \
+              --pattern "level2/${{ inputs.ml_project }}/*" \
+              --destination processed_dl \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            python -m tools.ml_unsupervised_train \
+              --project "${{ inputs.ml_project }}" \
+              --parquet-dir processed_dl \
+              --out ml_out
+          elif [ "${{ inputs.task }}" = "ml-sup-train" ]; then
+            mkdir -p ml_out processed_dl
+            az storage blob download-batch \
+              --account-name labdataplatform \
+              --source processed \
+              --pattern "level2/*/*" \
+              --destination processed_dl \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            python -m tools.ml_supervised_train \
+              --signal "${{ inputs.ml_signal }}" \
+              --parquet-dir processed_dl \
+              --out ml_out
           else
             python -m tools.recon_layouts
           fi
@@ -140,4 +174,5 @@ jobs:
             filter_pilot_out/
             processed_out/
             shared_out/
+            ml_out/
           if-no-files-found: ignore

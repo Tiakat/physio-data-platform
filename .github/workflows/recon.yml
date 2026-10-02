@@ -35,8 +35,21 @@ on:
           - pilot-scan
           - fetch-recon
           - filter-pilot
+          - process-patient
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
+        required: false
+        default: ""
+      pp_project:
+        description: "process-patient: project code (e.g. DEXREM)"
+        required: false
+        default: ""
+      pp_patient:
+        description: "process-patient: patient label (e.g. patient 1)"
+        required: false
+        default: ""
+      pp_blob:
+        description: "process-patient: encrypted parquet blob path"
         required: false
         default: ""
 
@@ -96,6 +109,13 @@ jobs:
             mkdir -p filter_pilot_out
             python -m tools.pilot_filter --per-project 1 --max-total 3 \
               --signals HR,SPO2 --max-rows 20000 --out filter_pilot_out
+          elif [ "${{ inputs.task }}" = "process-patient" ]; then
+            mkdir -p processed_out
+            python -m tools.process_patient \
+              --project "${{ inputs.pp_project }}" \
+              --patient "${{ inputs.pp_patient }}" \
+              --blob "${{ inputs.pp_blob }}" \
+              --out processed_out
           else
             python -m tools.recon_layouts
           fi
@@ -108,4 +128,5 @@ jobs:
             recon_out/
             fetched/
             filter_pilot_out/
+            processed_out/
           if-no-files-found: ignore

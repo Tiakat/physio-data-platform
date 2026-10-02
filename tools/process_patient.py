@@ -46,8 +46,9 @@ TIME_CANDIDATES = ["timestamp", "time", "datetime", "date_time",
 
 
 def resolve_time(df: pd.DataFrame, fs_hint: float | None = None):
-    """Return (time_index, method, fs_hz).
+    """Return (t_seconds, method, fs_hz).
 
+    t_seconds: seconds from recording start (float).
     method is 'file' (real timestamps from the file) or 'reconstructed'
     (row index scaled by sampling rate, explicitly labeled).
     """
@@ -56,70 +57,103 @@ def resolve_time(df: pd.DataFrame, fs_hint: float | None = None):
             if col.lower() == cand:
                 t = pd.to_datetime(df[col], errors="coerce")
                 if t.notna().sum() > len(df) * 0.5:
-                    # Measure fs from the real timestamps.
-                    dt = t.dropna().diff().dt.total_seconds()
+                    t0 = t.min()
+                    tsec = (t - t0).dt.total_seconds()
+                    dt = tsec.diff()
                     dt = dt[(dt > 0) & (dt < 3600)]
                     fs = 1.0 / dt.median() if len(dt) else fs_hint
-                    return t, "file", fs
+                    return tsec, "file", fs
     # No usable time column: reconstruct from sampling rate.
     fs = fs_hint or 1.0
-    t = pd.to_datetime(pd.Series(np.arange(len(df)) / fs, dtype=float),
-                                 unit="s", origin="1970-01-01")
-    return t, "reconstructed", fs
+    tsec = pd.Series(np.arange(len(df), dtype=float) / fs)
+    return tsec, "reconstructed", fs
 
 
-def compress_gaps(t: pd.Series, y: pd.Series, max_gap_s: float = 300.0):
+def compress_gaps(tsec: pd.Series, y: pd.Series, max_gap_s: float = 300.0):
     """Split a series into segments, breaking at gaps longer than max_gap_s.
 
-    Returns a list of (t_seg, y_seg). Long missing stretches become
-    axis breaks instead of plotted emptiness.
+    tsec: seconds from start. Returns list of (t_seg, y_seg).
     """
     valid = y.notna()
     if not valid.any():
         return []
-    # Time in seconds for gap measurement.
-    ts = pd.to_datetime(t, errors="coerce")
-    tsec = (ts - ts.min()).dt.total_seconds().to_numpy()
+    tarr = tsec.to_numpy()
     idx = np.where(valid.to_numpy())[0]
-    # Split where the time gap between consecutive valid samples is large.
-    breaks = np.where(np.diff(tsec[idx]) > max_gap_s)[0]
+    breaks = np.where(np.diff(tarr[idx]) > max_gap_s)[0]
     segments = []
     start = 0
     for b in breaks:
         seg_idx = idx[start:b + 1]
-        segments.append((ts.iloc[seg_idx], y.iloc[seg_idx]))
+        segments.append((tsec.iloc[seg_idx], y.iloc[seg_idx]))
         start = b + 1
     seg_idx = idx[start:]
-    segments.append((ts.iloc[seg_idx], y.iloc[seg_idx]))
+    segments.append((tsec.iloc[seg_idx], y.iloc[seg_idx]))
     return segments
 
 
-def graph_signal(t, raw, filtered, qc, col, patient_label, path):
-    """Per-signal graph with gap compression and honest labeling."""
-    segments_raw = compress_gaps(t, raw)
-    segments_filt = compress_gaps(t, filtered)
+def graph_signal(tsec, raw, filtered, qc, col, patient_label,
+                 source_label, path, duration_s):
+    """Per-signal graph: seconds x-axis, source-labeled, tight scales."""
+    segments_filt = compress_gaps(tsec, filtered)
     if not segments_filt:
         return False
     fig, ax = plt.subplots(figsize=(14, 4))
-    for ts_seg, y_seg in segments_raw:
-        ax.plot(ts_seg, y_seg, color="0.75", lw=0.7, alpha=0.8)
-    for ts_seg, y_seg in segments_filt:
-        ax.plot(ts_seg, y_seg, color="tab:red", lw=1.1)
-    # Flagged samples as markers (only where data exists).
+    # Raw in light gray behind, filtered in red on top -- judge the
+    # filtering yourself.
+    raw_segs = compress_gaps(tsec, raw)
+    for i, (ts_seg, y_seg) in enumerate(raw_segs):
+        ax.plot(ts_seg, y_seg, color="0.7", lw=0.6, alpha=0.7,
+                label="raw" if i == 0 else "")
+    for i, (ts_seg, y_seg) in enumerate(segments_filt):
+        ax.plot(ts_seg, y_seg, color="tab:red", lw=1.2,
+                label="filtered" if i == 0 else "")
     bad = (qc.to_numpy() != "VALID") & raw.notna().to_numpy()
     if bad.any():
-        ax.scatter(pd.to_datetime(t).to_numpy()[bad],
-                   raw.to_numpy()[bad], color="black", s=10, zorder=5)
+        ax.scatter(tsec.to_numpy()[bad], raw.to_numpy()[bad],
+                   color="black", s=12, zorder=5, label="flagged")
     n_gaps = len(segments_filt) - 1
-    title = f"{patient_label} — {col}"
+    title = f"{patient_label} [{source_label}] — {col}"
     if n_gaps:
         title += f" ({n_gaps} gap{'s' if n_gaps > 1 else ''} compressed)"
     ax.set_title(title)
     ax.set_ylabel(col)
+    ax.set_xlabel(f"time (s) — full recording: {duration_s:.0f}s")
+    # Tight scales: no wasted axis space.
+    all_y = pd.concat([s[1] for s in segments_filt])
+    pad = (all_y.max() - all_y.min()) * 0.08 or 1.0
+    ax.set_ylim(all_y.min() - pad, all_y.max() + pad)
+    ax.set_xlim(0, duration_s)
     ax.grid(alpha=0.3)
-    fig.autofmt_xdate()
+    ax.legend(loc="upper right", fontsize=8)
     fig.tight_layout()
     fig.savefig(path, dpi=110)
+    plt.close(fig)
+    return True
+
+
+def graph_overview(tsec, filt, qc, cols, title, path, duration_s):
+    """One graph with many columns (K's regroup request)."""
+    cols = [c for c in cols if c in filt.columns
+            and filt[c].notna().sum() > 0]
+    if not cols:
+        return False
+    n = len(cols)
+    fig, axes = plt.subplots(n, 1, figsize=(14, 2.6 * n), sharex=True,
+                             squeeze=False)
+    axes = axes[:, 0]
+    for ax, col in zip(axes, cols):
+        segs = compress_gaps(tsec, filt[col])
+        for ts_seg, y_seg in segs:
+            ax.plot(ts_seg, y_seg, lw=0.9)
+        all_y = pd.concat([s[1] for s in segs])
+        pad = (all_y.max() - all_y.min()) * 0.08 or 1.0
+        ax.set_ylim(all_y.min() - pad, all_y.max() + pad)
+        ax.set_ylabel(col, fontsize=9)
+        ax.grid(alpha=0.3)
+    axes[0].set_title(title)
+    axes[-1].set_xlabel(f"time (s) — full recording: {duration_s:.0f}s")
+    fig.tight_layout()
+    fig.savefig(path, dpi=100)
     plt.close(fig)
     return True
 
@@ -141,6 +175,20 @@ def main(argv=None):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     patient_label = f"{args.project} {args.patient}"
+    # Source device from blob name (e.g. bettercare_xxx -> BetterCare).
+    blob_lower = (args.blob or "").lower()
+    if "bettercare" in blob_lower:
+        source_label = "BetterCare"
+    elif "infinity" in blob_lower:
+        source_label = "Infinity"
+    elif "bis" in blob_lower:
+        source_label = "BIS"
+    elif "nol" in blob_lower:
+        source_label = "NOL"
+    elif "pump" in blob_lower or "perf" in blob_lower:
+        source_label = "Pump"
+    else:
+        source_label = "unknown source"
 
     configs, index = load_signal_configs(
         Path("configs/signals"), Path("profiles/_variables.yaml"))
@@ -187,17 +235,20 @@ def main(argv=None):
         df, None, configs, index, missing_codes, source="process_patient",
         time_index=t)
 
+    duration_s = float(t.max() - t.min()) if len(t) else 0.0
     # Lineage: hashes + counts only, no patient data.
     lineage = {
         "tool": "process_patient",
         "ts": datetime.now(timezone.utc).isoformat(),
         "project": args.project,
         "patient_label": patient_label,
+        "source_device": source_label,
         "source_blob": blob,
         "source_blob_sha256": blob_sha,
         "source_dropbox_sha256": args.source_sha256 or None,
         "rows": len(df),
         "columns": len(df.columns),
+        "duration_s": duration_s,
         "time_method": time_method,
         "fs_hz": fs,
         "draft_configs": drafts,
@@ -233,7 +284,7 @@ def main(argv=None):
             json.dumps(lineage, indent=1), overwrite=True)
     print(f"[process-patient] wrote encrypted outputs to {base}", flush=True)
 
-    # Graphs: one per signal with data, gap-compressed.
+    # Graphs: per-signal + regrouped overviews (K's request).
     gdir = out / "graphs"
     gdir.mkdir(exist_ok=True)
     n_graphs = 0
@@ -248,8 +299,27 @@ def main(argv=None):
         safe_col = "".join(
             ch if ch.isalnum() else "_" for ch in col).strip("_")
         if graph_signal(t, df[col] if col in df.columns else filt[col],
-                        filt[col], q, col, patient_label,
-                        gdir / f"{safe_col}.png"):
+                        filt[col], q, col, patient_label, source_label,
+                        gdir / f"{safe_col}.png", duration_s):
+            n_graphs += 1
+    # Overviews: all columns regrouped by family.
+    def _fam(prefixes):
+        return [c for c in filt.columns
+                if any(c.upper().startswith(p) for p in prefixes)]
+    overviews = {
+        "overview_hr": _fam(["HR"]),
+        "overview_ecg": _fam(["ECG"]),
+        "overview_pressures": _fam(["PA_", "PRES_", "NBP", "CVP", "PAP",
+                                    "PAD", "PAI"]),
+        "overview_resp": _fam(["RESP", "RR", "CO2", "ETCO2", "AIR_",
+                               "PAW", "TV", "VT"]),
+        "overview_other": _fam(["SPO2", "PLETH", "PVC", "PNI", "LA_",
+                                "RA_"]),
+    }
+    for name, cols in overviews.items():
+        if graph_overview(t, filt, qc, cols,
+                          f"{patient_label} [{source_label}] — {name}",
+                          gdir / f"{name}.png", duration_s):
             n_graphs += 1
     print(f"[process-patient] {n_graphs} graphs", flush=True)
     print(f"[process-patient] done: {patient_label}")

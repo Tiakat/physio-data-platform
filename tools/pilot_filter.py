@@ -33,7 +33,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools import azure_auth  # noqa: E402
 from tools.crypto import decrypt_bytes  # noqa: E402
-from signal_processing import (  # noqa: E402
+from tools.signal_processing import (  # noqa: E402
     find_config, load_signal_configs, process_frame)
 
 

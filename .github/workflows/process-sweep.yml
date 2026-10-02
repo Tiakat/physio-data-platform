@@ -20,6 +20,14 @@ on:
         description: "Comma-separated project codes, or 'all'"
         required: false
         default: "all"
+      only:
+        description: "Targeted retry: comma-separated 'PROJECT:patient N' pairs (e.g. 'COLECTOMIE:patient 103')"
+        required: false
+        default: ""
+      force:
+        description: "Set to 1 to reprocess even patients already done in Azure (targeted graph repair)"
+        required: false
+        default: "0"
 
 jobs:
   enumerate:
@@ -46,6 +54,7 @@ jobs:
           python -m tools.build_sweep_matrix \
             --projects "${{ inputs.projects }}" \
             --chunk-size "${{ inputs.chunk_size }}" \
+            --only "${{ inputs.only }}" \
             --out matrix.json
           echo "count=$(python -c "import json;print(len(json.load(open('matrix.json'))))")" >> "$GITHUB_OUTPUT"
           echo "matrix=$(python -c "import json;print(json.dumps(json.load(open('matrix.json'))))")" >> "$GITHUB_OUTPUT"
@@ -68,6 +77,7 @@ jobs:
       AZURE_STORAGE_ACCOUNT: labdataplatform
       AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
       PIPELINE_DATA_KEY: ${{ secrets.PIPELINE_DATA_KEY }}
+      SWEEP_FORCE: ${{ inputs.force }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

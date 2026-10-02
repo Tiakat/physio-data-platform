@@ -334,6 +334,8 @@ def _butter_filter(x, fs_hz, low_hz=None, high_hz=None, order=4,
             return x  # cutoff at/above Nyquist: no-op, must not invent data
         sos = butter(order, high_hz / nyq, btype="low", output="sos")
     elif kind == "highpass":
+        if low_hz is None or low_hz <= 0 or low_hz >= nyq:
+            return x  # Nyquist-invalid: no-op, must not invent data
         sos = butter(order, low_hz / nyq, btype="high", output="sos")
     else:
         if low_hz is None or low_hz <= 0:
@@ -342,6 +344,8 @@ def _butter_filter(x, fs_hz, low_hz=None, high_hz=None, order=4,
         if high_hz is None or high_hz >= nyq:
             return _butter_filter(x, fs_hz, low_hz=low_hz, order=order,
                                   kind="highpass")
+        if low_hz >= nyq or high_hz <= 0 or low_hz >= high_hz:
+            return x  # Nyquist-invalid: no-op, must not invent data
         sos = butter(order, [low_hz / nyq, high_hz / nyq], btype="band",
                      output="sos")
     mask = ~np.isnan(x)

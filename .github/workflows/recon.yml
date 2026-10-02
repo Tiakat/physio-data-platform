@@ -46,6 +46,7 @@ on:
           - find-golden-patient
           - ingest-progress
           - identifier-columns
+          - signal-presence
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -175,6 +176,12 @@ jobs:
             # (names only, no values — privacy-safe). Feeds K's review of
             # the de-identified website feed gate.
             python -m tools.dump_identifier_columns
+          elif [ "${{ inputs.task }}" = "signal-presence" ]; then
+            # Issue #2: full signal-presence census from parquet footers
+            # (replaces the 20-file sampled "entirely missing" findings
+            # with complete per-project/per-device/per-column counts).
+            mkdir -p presence_out
+            python -m tools.signal_presence_scan --out presence_out/
           elif [ "${{ inputs.task }}" = "find-golden-patient" ]; then
             mkdir -p patient_out
             python -m tools.find_golden_patient --out patient_out/

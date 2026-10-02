@@ -162,7 +162,12 @@ jobs:
               --prefix "DEXREM/parquet/" \
               --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
               --query "length(@)")
-            echo "Blobs in Azure: $COUNT / 257 total"
+            PCT=$(python3 -c "print(f'{int($COUNT)/257*100:.1f}')")
+            MSG="Phase 1 DEXREM: $COUNT/257 blobs ($PCT%)"
+            echo "$MSG"
+            gh issue create --title "Ingest Progress: $MSG" \
+              --body "$MSG - $(date -u)" --label "ingest-progress" 2>/dev/null || \
+            gh issue comment --body "$MSG - $(date -u)" 1 2>/dev/null || true
             python3 -c "c=int('$COUNT'); print(f'Phase 1: {c}/257 = {c/257*100:.1f}%')"
           elif [ "${{ inputs.task }}" = "find-golden-patient" ]; then
             mkdir -p patient_out

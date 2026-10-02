@@ -43,7 +43,7 @@ jobs:
       # parsed parquet is much larger than the source files. Each chunk logs
       # free disk + available memory first, so a runner kill is diagnosable.
       LEGACY_BUDGET_GB: "4"
-      INGEST_CHUNK_GB: "0.25"
+      INGEST_CHUNK_GB: "1.0"
       # One-shot rescan of unsupported files (dispatch with rescan_unsupported=1
       # after adding a new parser or project profile).
       RESCAN_UNSUPPORTED: ${{ inputs.rescan_unsupported || '0' }}

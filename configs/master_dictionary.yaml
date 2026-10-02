@@ -8,9 +8,82 @@
 # - Values outside normal → VALID_BUT_EXTREME, not deleted
 # - Every signal has: raw preserved, filtered, QC flags, artifact mask
 
-version: "1.0"
+version: "1.1"
 generated: "2026-10-02"
-source: "K column spec + literature norms (docs/signal_norms_*.md)"
+source: "K column spec + literature norms (docs/signal_norms_*.md) + advanced methods"
+
+# Advanced filtering methods library
+# Each method has: when to use, parameters, preserves_what
+filter_methods:
+  butterworth_zero_phase:
+    description: "Zero-phase bandpass for offline analysis"
+    preserves: "Phase relationships"
+    
+  wavelet_denoising:
+    description: "Multi-resolution denoising for non-stationary signals"
+    use_for: [ECG, PLETH]
+    preserves: "QRS morphology, sharp transients"
+    parameters:
+      wavelet: "db4"
+      levels: 5
+      threshold: "sure"
+    note: "Better than bandpass for motion artifacts"
+    
+  morphological_filter:
+    description: "Structuring-element based baseline removal"
+    use_for: [ECG]
+    preserves: "ST-segment morphology"
+    parameters:
+      operation: "opening_closing"
+      window_seconds: 0.6
+    note: "Cleaner than high-pass for ST preservation"
+    
+  spectral_interpolation:
+    description: "Powerline removal without notch distortion"
+    use_for: [ECG, EEG]
+    preserves: "Signal around 50/60 Hz"
+    parameters:
+      frequencies: [50, 60]
+      bandwidth_hz: 2
+      
+  ica:
+    description: "Independent component analysis across channels"
+    use_for: [ECG_12lead]
+    preserves: "Cardiac signal separated from artifact"
+    requirements: "Synchronized multi-channel"
+    note: "Separates muscle artifact, baseline drift from cardiac"
+    
+  kalman_smoother:
+    description: "State-space tracking with physiological dynamics"
+    use_for: [HR, SpO2, BP_scalar]
+    preserves: "Physiologically plausible trajectories"
+    parameters:
+      process_noise: "signal_specific"
+      measurement_noise: "signal_specific"
+    note: "HR can't jump 50 bpm in 1s — Kalman knows this"
+    
+  total_variation:
+    description: "Edge-preserving denoising for step signals"
+    use_for: [drug_concentration, PEEP, ventilator_settings]
+    preserves: "Sharp steps (dose changes)"
+    parameters:
+      regularization: 1.0
+    note: "Low-pass would smear dose changes; TV won't"
+    
+  emd:
+    description: "Empirical mode decomposition for non-linear signals"
+    use_for: [RESP]
+    preserves: "True breathing separated from cardiac artifact"
+    parameters:
+      max_imfs: 8
+      
+  sq_weighted_average:
+    description: "Signal-quality-weighted averaging"
+    use_for: [SpO2]
+    preserves: "High-quality segments weighted more"
+    parameters:
+      quality_source: "pleth_sqi"
+      window_seconds: 10
 
 # Global QC flags applied to every numerical physiological variable
 global_qc_flags:
@@ -346,6 +419,19 @@ bettercare:
     filter:
       method: butterworth_zero_phase
       bandpass_hz: [0.5, 40]
+    advanced_filter:
+      method: wavelet_denoising
+      when: "motion_artifact_detected"
+      parameters: {wavelet: db4, levels: 5}
+    baseline_removal:
+      method: morphological_filter
+      when: "st_analysis"
+    powerline:
+      method: spectral_interpolation
+      frequencies: [50, 60]
+    multilead:
+      method: ica
+      when: "all_12_leads_synchronized"
     artifact_method: [clipping, flatline, baseline_wander, hf_noise, motion]
     note: "0.05 Hz cutoff for diagnostic ST/T morphology"
     derived: [r_peaks, hr, rr_intervals, hrv]
@@ -359,8 +445,8 @@ bettercare:
     hard_min: 20
     hard_max: 250
     artifact_method: [spike, flatline, rate_of_change, cross_channel_agreement]
-    filter_method: robust_temporal
-    note: "Derived monitor parameters, not waveforms"
+    filter_method: kalman_smoother
+    note: "Kalman tracks physiological HR dynamics better than Hampel"
     
   pleth:
     type: waveform
@@ -377,7 +463,8 @@ bettercare:
     hard_min: 0
     hard_max: 100
     artifact_method: [range, persistence, pleth_quality]
-    filter_method: none_aggressive
+    filter_method: sq_weighted_average
+    note: "Weight by pleth signal quality, not fixed windows"
     
   arterial_waveform:
     PRES_ART:

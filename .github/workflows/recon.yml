@@ -36,6 +36,7 @@ on:
           - fetch-recon
           - filter-pilot
           - process-patient
+          - fetch-shared
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -50,6 +51,10 @@ on:
         default: ""
       pp_blob:
         description: "process-patient: encrypted parquet blob path"
+        required: false
+        default: ""
+      shared_url:
+        description: "fetch-shared: Dropbox shared link URL"
         required: false
         default: ""
 
@@ -116,6 +121,11 @@ jobs:
               --patient "${{ inputs.pp_patient }}" \
               --blob "${{ inputs.pp_blob }}" \
               --out processed_out
+          elif [ "${{ inputs.task }}" = "fetch-shared" ]; then
+            mkdir -p shared_out
+            python -m tools.fetch_shared_link \
+              --url "${{ inputs.shared_url }}" \
+              --out shared_out
           else
             python -m tools.recon_layouts
           fi
@@ -129,4 +139,5 @@ jobs:
             fetched/
             filter_pilot_out/
             processed_out/
+            shared_out/
           if-no-files-found: ignore

@@ -43,6 +43,7 @@ on:
           - fetch-dict
           - azure-inventory
           - find-complete-patient
+          - find-golden-patient
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -152,6 +153,9 @@ jobs:
               --project "${{ inputs.ml_project }}" \
               --parquet-dir processed_dl \
               --out ml_out
+          elif [ "${{ inputs.task }}" = "find-golden-patient" ]; then
+            mkdir -p patient_out
+            python -m tools.find_golden_patient --out patient_out/
           elif [ "${{ inputs.task }}" = "find-complete-patient" ]; then
             mkdir -p patient_out
             python -m tools.find_complete_patient --out patient_out/ 2>&1 | head -50

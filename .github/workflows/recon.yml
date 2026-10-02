@@ -39,6 +39,7 @@ on:
           - fetch-shared
           - ml-unsup-train
           - ml-sup-train
+          - ml-incremental
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -148,6 +149,11 @@ jobs:
               --project "${{ inputs.ml_project }}" \
               --parquet-dir processed_dl \
               --out ml_out
+          elif [ "${{ inputs.task }}" = "ml-incremental" ]; then
+            mkdir -p ml_out
+            python -m tools.ml_incremental \
+              --out ml_out \
+              --manifest ml_out/training_manifest.json
           elif [ "${{ inputs.task }}" = "ml-sup-train" ]; then
             mkdir -p ml_out processed_dl
             az storage blob download-batch \

@@ -24,6 +24,10 @@ def main(argv=None):
                     help="Comma-separated codes or 'all'.")
     ap.add_argument("--chunk-size", type=int, default=10)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--only", default="",
+                    help=("Targeted retry: comma-separated 'PROJECT:label' "
+                          "pairs, e.g. 'COLECTOMIE:patient 103'. Only those "
+                          "files are included in the matrix."))
     args = ap.parse_args(argv)
 
     account = os.environ["AZURE_STORAGE_ACCOUNT"]
@@ -48,16 +52,28 @@ def main(argv=None):
             continue
         by_project.setdefault(code, []).append(name)
 
+    only = None
+    if args.only.strip():
+        only = set()
+        for piece in args.only.split(","):
+            piece = piece.strip()
+            if ":" in piece:
+                proj, lab = piece.split(":", 1)
+                only.add((proj.strip().upper(), lab.strip().lower()))
+
     # Flatten into (project, blob) pairs, then chunk.
     pairs = []
     for code in sorted(by_project):
         for i, blob in enumerate(sorted(by_project[code]), 1):
+            label = f"patient {i}"
+            if only is not None and (code, label.lower()) not in only:
+                continue
             pairs.append({
                 "project": code,
                 "blob": blob,
                 # Provisional label until patient linkage is resolved
                 # from the ingest state (blob sha -> Dropbox path).
-                "label": f"patient {i}",
+                "label": label,
             })
     chunks = [pairs[i:i + args.chunk_size]
               for i in range(0, len(pairs), args.chunk_size)]

@@ -149,7 +149,7 @@ jobs:
             az storage blob download-batch \
               --account-name labdataplatform \
               --source processed \
-              --pattern "level2/${{ inputs.ml_project }}/*" \
+              --pattern "processed/level2/${{ inputs.ml_project }}/*" \
               --destination processed_dl \
               --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
             python -m tools.ml_unsupervised_train \
@@ -225,7 +225,7 @@ jobs:
             az storage blob download-batch \
               --account-name labdataplatform \
               --source processed \
-              --pattern "level2/*/*" \
+              --pattern "processed/level2/*/*" \
               --destination processed_dl \
               --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
             python -m tools.ml_supervised_train \

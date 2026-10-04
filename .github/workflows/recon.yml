@@ -51,6 +51,7 @@ on:
           - continuity-check
           - meta-supervisor
           - export-csv
+          - migrate-graphs
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -87,6 +88,10 @@ on:
         default: ""
       ml_signal:
         description: "ml-sup-train: signal name"
+        required: false
+        default: ""
+      migrate_project:
+        description: "migrate-graphs: project code"
         required: false
         default: ""
 
@@ -319,6 +324,8 @@ jobs:
             python -m tools.meta_supervisor
           elif [ "${{ inputs.task }}" = "export-csv" ]; then
             python -m tools.export_filtered_csv
+          elif [ "${{ inputs.task }}" = "migrate-graphs" ]; then
+            python -m tools.migrate_graphs --project "${{ inputs.migrate_project }}"
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)

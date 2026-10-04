@@ -46,6 +46,7 @@ on:
           - find-golden-patient
           - ingest-progress
           - verify-ingest
+          - diagnose-blobs
           - identifier-columns
           - signal-presence
       fetch_prefix:
@@ -181,6 +182,9 @@ jobs:
             python3 -c "c=int('$COUNT'); print(f'Phase 1: {c}/257 = {c/257*100:.1f}%')"
           elif [ "${{ inputs.task }}" = "verify-ingest" ]; then
             python -m tools.verify_ingest
+          elif [ "${{ inputs.task }}" = "diagnose-blobs" ]; then
+            python -m tools.verify_ingest --diagnose SILVR
+            python -m tools.verify_ingest --diagnose V-RAPS
           elif [ "${{ inputs.task }}" = "identifier-columns" ]; then
             # Issue #2: list identifier-class column NAMES per project
             # (names only, no values — privacy-safe). Feeds K's review of

@@ -159,9 +159,6 @@ def main(argv=None):
     return 1
 
 
-if __name__ == "__main__":
-    sys.exit(main())
-
 
 def diagnose_blobs(account: str, code: str):
     """Dump stored-vs-actual blob mismatch details for one project."""
@@ -183,4 +180,9 @@ def diagnose_blobs(account: str, code: str):
     for b in container.list_blobs(name_starts_with=code[:3]):
         prefixes.add(b.name.split("/")[0] + "/" + b.name.split("/")[1] if "/" in b.name else b.name)
     print(f"[diagnose] prefixes starting with {code[:3]}: {sorted(prefixes)[:10]}")
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+
 

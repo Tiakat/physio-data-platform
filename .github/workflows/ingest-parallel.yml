@@ -16,6 +16,10 @@ on:
         description: "Per-project source-data budget for this wave (GB)"
         required: false
         default: "4"
+      rescan_v1:
+        description: "Re-ingest v1 raw blobs as v2 parsed parquets"
+        required: false
+        default: "0"
 
 jobs:
   ingest:
@@ -45,6 +49,7 @@ jobs:
       LEGACY_PROJECTS: ${{ matrix.projects }}
       LEGACY_BUDGET_GB: ${{ inputs.budget_gb }}
       INGEST_CHUNK_GB: "1.0"
+      RESCAN_V1: ${{ inputs.rescan_v1 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

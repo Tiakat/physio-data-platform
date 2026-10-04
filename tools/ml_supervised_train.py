@@ -61,7 +61,7 @@ def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path) -> bool:
                     for c in signal)
     with open(out / f"{safe}_model.pkl", "wb") as f:
         pickle.dump(model, f)
-    (out / f"{signal}_report.json").write_text(json.dumps({
+    (out / f"{safe}_report.json").write_text(json.dumps({
         "signal": signal,
         "n_windows": len(X),
         "artifact_frac": float(np.mean(y)),

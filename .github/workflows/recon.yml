@@ -183,8 +183,10 @@ jobs:
           elif [ "${{ inputs.task }}" = "verify-ingest" ]; then
             python -m tools.verify_ingest
           elif [ "${{ inputs.task }}" = "diagnose-blobs" ]; then
-            python -m tools.verify_ingest --diagnose SILVR
-            python -m tools.verify_ingest --diagnose V-RAPS
+            python -m tools.verify_ingest --diagnose DEXREM
+            python -m tools.verify_ingest --diagnose ESMONOL
+            python -m tools.verify_ingest --diagnose IPAMS
+            python -m tools.verify_ingest --diagnose PROMISES
           elif [ "${{ inputs.task }}" = "identifier-columns" ]; then
             # Issue #2: list identifier-class column NAMES per project
             # (names only, no values — privacy-safe). Feeds K's review of

@@ -133,19 +133,29 @@ def main(argv=None):
         missing = [b for b in stored if b not in blobs]
         n_missing = len(missing)
 
-        # Every eligible file must be accounted for in state (ok or
-        # unsupported), none failed, and every ok file's blob must exist.
-        accounted = (n_ok + n_unsup == n_eligible)
-        complete = accounted and n_failed == 0 and n_missing == 0
+        # Every eligible Dropbox file must be marked ok/unsupported in
+        # state. Files in state but no longer in Dropbox were deleted after
+        # ingest -- their Azure blobs remain as the archive (counted, not a
+        # gap). Every ok file's blob must exist in Azure.
+        eligible_rels = {e["relpath"] for e in eligible}
+        state_rels = {rel for rel, f in files.items()
+                      if isinstance(f, dict)
+                      and f.get("status") in ("ok", "unsupported")}
+        unaccounted = [r for r in eligible_rels if r not in state_rels]
+        n_unaccounted = len(unaccounted)
+        n_deleted = len(state_rels - eligible_rels)
+        complete = (n_unaccounted == 0 and n_failed == 0 and n_missing == 0)
         verdict = "COMPLETE" if complete else "INCOMPLETE"
         if not complete:
             all_complete = False
-            if not accounted:
-                verdict += f" (eligible={n_eligible} vs ok+unsup={n_ok + n_unsup})"
+            if n_unaccounted:
+                verdict += f" ({n_unaccounted} eligible files not in state)"
             elif n_failed:
                 verdict += f" ({n_failed} failed)"
             elif n_missing:
                 verdict += f" ({n_missing} blobs missing)"
+        elif n_deleted:
+            verdict += f" (+{n_deleted} archived, deleted from Dropbox)"
         print(f"{code:<12} {listed:>8} {n_eligible:>8} "
               f"{n_ok:>8} {n_unsup:>7} {n_failed:>7} {n_blobs:>8}  {verdict}",
               flush=True)

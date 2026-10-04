@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import azure_auth, daily_pipeline
 from tools.crypto import decrypt_bytes
 from tools.legacy_pipeline import (
+    _excluded,
     is_document,
     is_junk,
     is_photo,
@@ -52,15 +53,11 @@ def load_state(account: str) -> dict:
     return json.loads(decrypt_bytes(raw).decode("utf-8"))
 
 
-def count_azure_blobs(account: str, code: str) -> int:
+def list_azure_blobs(account: str, code: str) -> set:
     svc = azure_auth.get_blob_service_client(account)
     container = svc.get_container_client("rawdata")
     prefix = f"{code}/parquet/"
-    return sum(1 for _ in container.list_blobs(name_starts_with=prefix))
-
-
-def _excluded(relpath: str, excl) -> bool:
-    return any(x in relpath for x in excl)
+    return {b.name for b in container.list_blobs(name_starts_with=prefix)}
 
 
 def main(argv=None):
@@ -120,14 +117,19 @@ def main(argv=None):
         n_failed = sum(1 for f in files.values()
                        if isinstance(f, dict) and f.get("status") == "failed")
 
-        # Azure blobs
-        n_blobs = count_azure_blobs(account, code)
+        # Azure blobs: check each ok file's stored blob exists
+        blobs = list_azure_blobs(account, code)
+        n_blobs = len(blobs)
+        stored = [f.get("stored") for f in files.values()
+                  if isinstance(f, dict) and f.get("status") == "ok"
+                  and f.get("stored")]
+        missing = [b for b in stored if b not in blobs]
+        n_missing = len(missing)
 
         # Every eligible file must be accounted for in state (ok or
-        # unsupported), none failed, and Azure must hold the ok files.
+        # unsupported), none failed, and every ok file's blob must exist.
         accounted = (n_ok + n_unsup == n_eligible)
-        blobs_ok = (n_blobs >= n_ok)
-        complete = accounted and n_failed == 0 and blobs_ok
+        complete = accounted and n_failed == 0 and n_missing == 0
         verdict = "COMPLETE" if complete else "INCOMPLETE"
         if not complete:
             all_complete = False
@@ -135,8 +137,8 @@ def main(argv=None):
                 verdict += f" (eligible={n_eligible} vs ok+unsup={n_ok + n_unsup})"
             elif n_failed:
                 verdict += f" ({n_failed} failed)"
-            elif not blobs_ok:
-                verdict += f" (blobs {n_blobs} < ok {n_ok})"
+            elif n_missing:
+                verdict += f" ({n_missing} blobs missing)"
         print(f"{code:<12} {listed:>8} {n_eligible:>8} "
               f"{n_ok:>8} {n_unsup:>7} {n_failed:>7} {n_blobs:>8}  {verdict}",
               flush=True)

@@ -69,6 +69,59 @@ def save_state(account: str, state: dict) -> None:
         token, overwrite=True, metadata={"enc": "fernet"})
 
 
+def save_state_merge(account: str, state: dict, codes=None,
+                     retries: int = 8) -> None:
+    """Merge per-project legacy state into the shared encrypted blob.
+
+    Parallel ingest shards own disjoint project codes; each merges only its
+    own ``state["legacy"][code]`` entries into the latest blob version via
+    an ETag-guarded read-modify-write, so concurrent writers never clobber
+    each other. ``codes=None`` merges everything the caller knows (daily job).
+    Non-legacy keys (ETT state) are only written when codes is None, so a
+    shard never overwrites another writer's fresh ETT state with a stale copy.
+    """
+    import time
+    from azure.core.exceptions import ResourceNotFoundError
+    from azure.core.match_conditions import MatchConditions
+
+    blob = _blob(account, PROCESSED, STATE_BLOB)
+    legacy = state.get("legacy", {})
+    mine = dict(legacy) if codes is None else {
+        c: legacy[c] for c in codes if c in legacy}
+    for attempt in range(retries):
+        try:
+            etag = blob.get_blob_properties().etag
+        except ResourceNotFoundError:
+            etag = None
+        if etag is None:
+            cur = {}
+        else:
+            cur = json.loads(
+                decrypt_bytes(blob.download_blob().readall()).decode("utf-8"))
+        cur.setdefault("legacy", {}).update(mine)
+        if codes is None:
+            for k, v in state.items():
+                if k != "legacy":
+                    cur[k] = v
+        payload = encrypt_bytes(json.dumps(cur).encode("utf-8"))
+        try:
+            if etag is None:
+                blob.upload_blob(payload, overwrite=True,
+                                 metadata={"enc": "fernet"})
+            else:
+                blob.upload_blob(
+                    payload, overwrite=True,
+                    match_condition=MatchConditions.IfNotModified,
+                    etag=etag, metadata={"enc": "fernet"})
+            return
+        except Exception as exc:  # noqa: BLE001
+            if "412" in str(exc) or "ConditionNotMet" in type(exc).__name__:
+                time.sleep(1 + attempt)
+                continue
+            raise
+    raise RuntimeError("save_state_merge: exhausted ETag retries")
+
+
 def _ensure_containers(account: str) -> None:
     svc = azure_auth.get_blob_service_client(account)
     for name in (RAW, PROCESSED, REPORTS):
@@ -316,7 +369,8 @@ def main() -> int:
     # Save state after EACH project: if the 120-min timeout hits mid-run,
     # the next scheduled run resumes on its own instead of redoing everything.
     state = legacy_pipeline.run_ingest(
-        dbx, ACCOUNT, state, progress_cb=lambda s: save_state(ACCOUNT, s))
+        dbx, ACCOUNT, state,
+        progress_cb=lambda s: save_state_merge(ACCOUNT, s))
 
     # Supervisor health checks AFTER ingest (stall / failure-spike /
     # parquet sampling / timeout watch). Never blocks the pipeline.
@@ -341,7 +395,7 @@ def main() -> int:
     publish_feed(ACCOUNT, feed)
     print(f"[pipeline] feed published: {len(feed['projects'])} ETT projects", flush=True)
 
-    save_state(ACCOUNT, state)
+    save_state_merge(ACCOUNT, state)
     print("[pipeline] done", flush=True)
     return 0
 

@@ -47,6 +47,9 @@ on:
           - train-graph-validator
           - validate-external
           - qc-notify
+          - audit-supervisors
+          - continuity-check
+          - meta-supervisor
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -307,6 +310,12 @@ jobs:
               --overwrite
           elif [ "${{ inputs.task }}" = "validate-external" ]; then
             python -m tools.validate_external
+          elif [ "${{ inputs.task }}" = "audit-supervisors" ]; then
+            python -m tools.audit_supervisors
+          elif [ "${{ inputs.task }}" = "continuity-check" ]; then
+            python -m tools.continuity_check
+          elif [ "${{ inputs.task }}" = "meta-supervisor" ]; then
+            python -m tools.meta_supervisor
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)
@@ -347,6 +356,9 @@ jobs:
             validation_report/
             external_validation_report/
             qc_report/
+            supervisor_audit/
+            continuity/
+            meta_supervisor/
             processed_out/
             shared_out/
             ml_out/

@@ -341,13 +341,20 @@ def _select_new(candidates: List[dict], done: Dict[str, dict],
     RESCAN_UNSUPPORTED=1 (set after adding a new parser/profile).
     """
     rescan = os.getenv("RESCAN_UNSUPPORTED") == "1"
+    rescan_v1 = os.getenv("RESCAN_V1") == "1"
     selected: List[dict] = []
     used = 0
     for e in sorted(candidates, key=lambda x: x["relpath"]):
         prev = done.get(e["relpath"])
         if prev and prev.get("rev") == e["rev"]:
             if prev.get("status") == "ok":
-                continue  # already stored and unchanged
+                # v1 byte-mirror blobs (stored under <CODE>/raw/) are not
+                # v2 parsed parquets; re-ingest them when asked.
+                stored = prev.get("stored", "")
+                if rescan_v1 and "/raw/" in stored:
+                    pass  # fall through to re-ingest as v2 parquet
+                else:
+                    continue  # already stored and unchanged
             if prev.get("status") == "unsupported" and not rescan:
                 continue  # no parser yet; left in Dropbox
         if used + e["size"] > budget_bytes and selected:

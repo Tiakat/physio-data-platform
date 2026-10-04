@@ -156,6 +156,13 @@ jobs:
               --project "${{ inputs.ml_project }}" \
               --parquet-dir processed_dl \
               --out ml_out
+            # Durable model store (artifacts expire after 90 days).
+            az storage blob upload-batch \
+              --account-name labdataplatform \
+              --source ml_out --destination processed \
+              --destination-path "ml_models/unsup/${{ inputs.ml_project }}/" \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --overwrite
           elif [ "${{ inputs.task }}" = "ingest-progress" ]; then
             echo "=== DEXREM progress ==="
             COUNT=$(az storage blob list \
@@ -225,6 +232,13 @@ jobs:
               --signal "${{ inputs.ml_signal }}" \
               --parquet-dir processed_dl \
               --out ml_out
+            # Durable model store (artifacts expire after 90 days).
+            az storage blob upload-batch \
+              --account-name labdataplatform \
+              --source ml_out --destination processed \
+              --destination-path "ml_models/sup/${{ inputs.ml_signal }}/" \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --overwrite
           else
             python -m tools.recon_layouts
           fi

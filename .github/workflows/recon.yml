@@ -44,6 +44,7 @@ on:
           - fetch-graphs
           - make-graphs-container
           - validate-processing
+          - qc-notify
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -283,6 +284,29 @@ jobs:
             python -m tools.make_graphs_container
           elif [ "${{ inputs.task }}" = "validate-processing" ]; then
             python -m tools.validate_processing
+          elif [ "${{ inputs.task }}" = "qc-notify" ]; then
+            python -m tools.qc_notifier | tee qc_notifier.log
+            N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)
+            echo "QC findings: $N"
+            if [ "$N" -gt 0 ]; then
+              TITLE="QC Alert: $N data-quality findings across processed patients"
+              # Reuse the open qc-alert issue instead of creating duplicates.
+              EXISTING=$(gh issue list --label "qc-alert" --state open \
+                --json number --jq '.[0].number' 2>/dev/null || echo "")
+              if [ -n "$EXISTING" ]; then
+                echo "Updating existing qc-alert issue #$EXISTING"
+                gh issue edit "$EXISTING" --title "$TITLE" \
+                  --body-file qc_report/summary.md
+                gh issue comment "$EXISTING" --body \
+                  "QC re-scan $(date -u): $N findings (see updated issue body)."
+              else
+                echo "Creating new qc-alert issue"
+                gh issue create --title "$TITLE" \
+                  --body-file qc_report/summary.md --label "qc-alert"
+              fi
+            else
+              echo "No QC issues - no notification needed."
+            fi
           else
             python -m tools.recon_layouts
           fi
@@ -298,6 +322,7 @@ jobs:
             filter_pilot_out/
             graph_samples/
             validation_report/
+            qc_report/
             processed_out/
             shared_out/
             ml_out/

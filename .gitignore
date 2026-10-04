@@ -5,4 +5,11 @@ __pycache__/
 /processed/
 /website/
 *.parquet
-.env
+
+# secrets, keys & encrypted blobs -- never commit
+.env*
+!.env.example
+*.pem
+*.key
+*.enc
+*credentials*

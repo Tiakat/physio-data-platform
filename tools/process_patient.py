@@ -370,6 +370,18 @@ def main(argv=None):
                           gdir / f"{name}.png", duration_s):
             n_graphs += 1
     print(f"[process-patient] {n_graphs} graphs", flush=True)
+    # Upload graphs to Azure in project/patient folder structure (K's request:
+    # browseable in Azure before website integration).
+    # Path: processed/level2/{PROJECT}/{safe_label}/graphs/{column}.png
+    try:
+        for png in sorted(gdir.glob("*.png")):
+            svc.get_blob_client(
+                container="processed",
+                blob=f"{base}/graphs/{png.name}").upload_blob(
+                    png.read_bytes(), overwrite=True)
+        print(f"[process-patient] uploaded {n_graphs} graphs to {base}/graphs/", flush=True)
+    except Exception as e:
+        print(f"[process-patient] WARNING: graph upload failed: {e}", flush=True)
     print(f"[process-patient] done: {patient_label}")
     return 0
 

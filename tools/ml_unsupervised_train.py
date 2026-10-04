@@ -18,6 +18,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+
+def read_parquet_any(path) -> pd.DataFrame:
+    """Read a parquet file, decrypting .enc blobs with PIPELINE_DATA_KEY."""
+    data = Path(path).read_bytes()
+    if str(path).endswith(".enc"):
+        from tools.crypto import decrypt_bytes
+        data = decrypt_bytes(data)
+    return pd.read_parquet(io.BytesIO(data))
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
@@ -25,7 +34,7 @@ from sklearn.preprocessing import StandardScaler
 
 def extract_patient_features(parquet_path: str) -> dict:
     """Extract summary features from one patient's processed parquet."""
-    df = pd.read_parquet(parquet_path)
+    df = read_parquet_any(parquet_path)
     features = {}
     for col in df.columns:
         if col.startswith("_"):
@@ -61,7 +70,7 @@ def main(argv=None):
         return 1
 
     pdir = Path(args.parquet_dir)
-    files = list(pdir.rglob("*.parquet"))
+    files = sorted(pdir.rglob("*filtered.parquet*"))
     print(f"[ml-unsup-train] {len(files)} parquets", flush=True)
     if not files:
         print("[ml-unsup-train] no files found", flush=True)

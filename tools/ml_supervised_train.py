@@ -70,40 +70,34 @@ def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path) -> bool:
     return True
 
 
-def extract_windows(signal: np.ndarray, window: int = 100,
-                    step: int = 50) -> tuple[np.ndarray, list]:
-    """Extract sliding window features."""
+def extract_labeled_windows(signal: np.ndarray, window: int = 100,
+                            step: int = 50) -> tuple[np.ndarray, np.ndarray]:
+    """Sliding window features with aligned pseudo-labels.
+
+    A window is labeled artifact (1) when >20% of its samples are NaN
+    (filtered out by the rule-based QC); else clean (0). Windows with
+    fewer than 10 valid samples are skipped entirely with no label
+    emitted, so X and y are always aligned.
+    """
     feats = []
-    idxs = []
+    labels = []
     for i in range(0, len(signal) - window, step):
         w = signal[i:i + window]
+        nan_frac = float(np.mean(np.isnan(w))) if len(w) > 0 else 0.0
         mask = ~np.isnan(w)
-        w = w[mask]
-        if len(w) < 10:
+        wv = w[mask]
+        if len(wv) < 10:
             continue
-        diffs = np.abs(np.diff(w)) if len(w) > 1 else np.array([0])
+        diffs = np.abs(np.diff(wv)) if len(wv) > 1 else np.array([0])
         feats.append([
-            np.mean(w), np.std(w), np.min(w), np.max(w),
-            np.max(w) - np.min(w), np.median(w),
-            np.max(diffs), len(np.unique(np.round(w, 2))),
+            np.mean(wv), np.std(wv), np.min(wv), np.max(wv),
+            np.max(wv) - np.min(wv), np.median(wv),
+            np.max(diffs), len(np.unique(np.round(wv, 2))),
         ])
-        idxs.append(i)
-    return np.array(feats), idxs
+        labels.append(1 if nan_frac > 0.2 else 0)
+    return np.array(feats), np.array(labels)
 
 
-def pseudo_label_from_qc(qc_flags: np.ndarray, window: int = 100,
-                        step: int = 50) -> np.ndarray:
-    """Convert per-sample QC flags to per-window pseudo-labels.
-
-    A window is labeled 'artifact' if >20% of its samples were QC-flagged.
-    """
-    labels = []
-    for i in range(0, len(qc_flags) - window, step):
-        w = qc_flags[i:i + window]
-        # QC flag: 1 = artifact/invalid, 0 = clean
-        frac = np.mean(w) if len(w) > 0 else 0
-        labels.append(1 if frac > 0.2 else 0)
-    return np.array(labels)
 
 
 def main(argv=None):
@@ -152,10 +146,8 @@ def main(argv=None):
                 continue
             if np.isnan(sig).all():
                 continue
-            qc = np.isnan(sig).astype(int)
-            X, _ = extract_windows(sig)
-            y = pseudo_label_from_qc(qc)
-            n = min(len(X), len(y))
+            X, y = extract_labeled_windows(sig)
+            n = len(X)
             if n == 0:
                 continue
             # Cap per-file contribution so giant files don't dominate.

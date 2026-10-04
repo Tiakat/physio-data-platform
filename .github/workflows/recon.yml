@@ -256,7 +256,8 @@ jobs:
             python -m tools.ml_supervised_train \
               --signal "${{ inputs.ml_signal }}" \
               --parquet-dir processed_dl \
-              --out ml_out
+              --out ml_out \
+              --labels-csv data/labels/promises_labels.csv
             # Durable model store (artifacts expire after 90 days).
             az storage blob upload-batch \
               --account-name labdataplatform \

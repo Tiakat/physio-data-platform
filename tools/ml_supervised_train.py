@@ -102,18 +102,41 @@ def signal_columns(df: pd.DataFrame) -> list:
     return cols
 
 
-def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path) -> bool:
-    """Train one artifact classifier; True if a model was saved."""
+def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path,
+              label_source: str = "rule_based_pseudo") -> bool:
+    """Train one artifact classifier with train/val/test splits.
+
+    Split: 70% train / 15% validation / 15% test (stratified).
+    5-fold CV on train, tune on validation, final eval on held-out test.
+    """
+    from sklearn.model_selection import train_test_split, StratifiedKFold
+    from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef
     if len(np.unique(y)) < 2:
         print(f"[ml-sup-train] {signal}: only one class -- skipped", flush=True)
         return False
+    # Stratified splits
+    X_tr, X_te, y_tr, y_te = train_test_split(
+        X, y, test_size=0.15, random_state=42, stratify=y)
+    X_tr2, X_va, y_tr2, y_va = train_test_split(
+        X_tr, y_tr, test_size=0.176, random_state=42, stratify=y_tr)  # 15% of total
+    # 5-fold CV on train
     model = RandomForestClassifier(n_estimators=100, max_depth=12,
                                    random_state=42, n_jobs=-1)
-    scores = cross_val_score(model, X, y, cv=3)
-    print(f"[ml-sup-train] {signal}: CV accuracy "
-          f"{scores.mean():.3f} +- {scores.std():.3f} "
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    cv_scores = cross_val_score(model, X_tr2, y_tr2, cv=cv, scoring="f1")
+    # Train on full train split, validate, then final fit
+    model.fit(X_tr2, y_tr2)
+    va_pred = model.predict(X_va)
+    va_f1 = f1_score(y_va, va_pred, zero_division=0)
+    # Final model on train+val, evaluate on held-out test
+    model.fit(X_tr, y_tr)
+    te_pred = model.predict(X_te)
+    te_acc = accuracy_score(y_te, te_pred)
+    te_f1 = f1_score(y_te, te_pred, zero_division=0)
+    te_mcc = matthews_corrcoef(y_te, te_pred)
+    print(f"[ml-sup-train] {signal}: CV F1 {cv_scores.mean():.3f}+-{cv_scores.std():.3f} | "
+          f"val F1 {va_f1:.3f} | TEST acc {te_acc:.3f} F1 {te_f1:.3f} MCC {te_mcc:.3f} "
           f"({len(X)} windows, {np.mean(y):.1%} artifact)", flush=True)
-    model.fit(X, y)
     safe = "".join(c if c.isalnum() or c in ("-", "_", ".") else "_"
                     for c in signal)
     with open(out / f"{safe}_model.pkl", "wb") as f:
@@ -121,10 +144,15 @@ def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path) -> bool:
     (out / f"{safe}_report.json").write_text(json.dumps({
         "signal": signal,
         "n_windows": len(X),
+        "n_train": len(X_tr2), "n_val": len(X_va), "n_test": len(X_te),
         "artifact_frac": float(np.mean(y)),
-        "cv_mean": float(scores.mean()),
-        "cv_std": float(scores.std()),
-        "label_source": "rule_based_pseudo",
+        "cv_f1_mean": float(cv_scores.mean()),
+        "cv_f1_std": float(cv_scores.std()),
+        "val_f1": float(va_f1),
+        "test_accuracy": float(te_acc),
+        "test_f1": float(te_f1),
+        "test_mcc": float(te_mcc),
+        "label_source": label_source,
     }, indent=1))
     return True
 
@@ -267,10 +295,11 @@ def main(argv=None):
         return 1
 
     trained, skipped = [], []
+    ls = "mixed_real_and_pseudo" if real_labels else "rule_based_pseudo"
     for col in sorted(acc_X):
         X = np.vstack(acc_X[col])
         y = np.concatenate(acc_y[col])
-        if train_one(col, X, y, out):
+        if train_one(col, X, y, out, label_source=ls):
             trained.append(col)
         else:
             skipped.append(col)
@@ -279,6 +308,7 @@ def main(argv=None):
     (out / "_summary.json").write_text(json.dumps({
         "trained": trained, "skipped": skipped,
         "label_source": "mixed_real_and_pseudo" if real_labels else "rule_based_pseudo",
+        "split": "70/15/15 train/val/test stratified, 5-fold CV on train",
         "labels_csv": args.labels_csv,
     }, indent=1))
     return 0 if trained else 1

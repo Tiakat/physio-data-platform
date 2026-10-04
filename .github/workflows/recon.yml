@@ -44,6 +44,7 @@ on:
           - fetch-graphs
           - make-graphs-container
           - validate-processing
+          - train-graph-validator
           - validate-external
           - qc-notify
           - ml-incremental
@@ -285,6 +286,25 @@ jobs:
             python -m tools.make_graphs_container
           elif [ "${{ inputs.task }}" = "validate-processing" ]; then
             python -m tools.validate_processing
+          elif [ "${{ inputs.task }}" = "train-graph-validator" ]; then
+            mkdir -p ml_out processed_dl
+            az storage blob download-batch \
+              --account-name labdataplatform \
+              --source processed \
+              --pattern "processed/level2/*/*" \
+              --destination processed_dl \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            python -m tools.train_graph_validator \
+              --parquet-dir processed_dl \
+              --out ml_out \
+              --labels-csv data/labels/promises_labels.csv
+            # Durable model store (artifacts expire after 90 days).
+            az storage blob upload-batch \
+              --account-name labdataplatform \
+              --source ml_out --destination processed \
+              --destination-path "ml_models/graph_validator/" \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --overwrite
           elif [ "${{ inputs.task }}" = "validate-external" ]; then
             python -m tools.validate_external
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then

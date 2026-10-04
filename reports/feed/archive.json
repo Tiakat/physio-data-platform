@@ -1,0 +1,1103 @@
+{
+ "generated_at": "2026-10-04T11:48:00+00:00",
+ "privacy": {
+  "note": "Discovery-stage aggregates for the LIAM archive projects: file/signal counts and data-quality indicators only. No patient-level data. Per-signal hours are estimates from discovery sampling and will be replaced by measured statistics in Phase 15.",
+  "k_anonymity": 5
+ },
+ "projects": {
+  "COLECTOMIE": {
+   "n_exams": 198,
+   "suppressed": false,
+   "total_rows": 14872074,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": 6,
+    "columns_high_missing": null,
+    "columns_entirely_missing": null,
+    "schema_drift_columns": 182,
+    "unknown_columns": 160
+   },
+   "ett_versions": {},
+   "signals": {
+    "ETCO2": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.033
+    },
+    "ET_DES": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0181
+    },
+    "ET_SEVO": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "HR": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0042
+    },
+    "MAC": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "NBP_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9987
+    },
+    "NBP_MEAN": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9987
+    },
+    "NBP_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9987
+    },
+    "PEEP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.018
+    },
+    "SPO2": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0013
+    },
+    "TEMP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "TV": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.3333
+    }
+   }
+  },
+  "DEXREM": {
+   "n_exams": 189,
+   "suppressed": false,
+   "total_rows": 18665888,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": 6,
+    "columns_high_missing": 11,
+    "columns_entirely_missing": null,
+    "schema_drift_columns": 184,
+    "unknown_columns": 158
+   },
+   "ett_versions": {},
+   "signals": {
+    "ETCO2": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.5654
+    },
+    "ET_DES": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1253
+    },
+    "ET_SEVO": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1249
+    },
+    "HR": {
+     "n_exams": 12,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.4218
+    },
+    "MAC": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1253
+    },
+    "NBP_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9962
+    },
+    "NBP_MEAN": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9956
+    },
+    "NBP_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.996
+    },
+    "NOL": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.16
+    },
+    "PEEP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1277
+    },
+    "SPO2": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.5202
+    },
+    "TV": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.3333
+    }
+   }
+  },
+  "ESMONOL": {
+   "n_exams": 36,
+   "suppressed": false,
+   "total_rows": 13136665,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": 8,
+    "columns_high_missing": null,
+    "columns_entirely_missing": null,
+    "schema_drift_columns": 199,
+    "unknown_columns": 173
+   },
+   "ett_versions": {},
+   "signals": {
+    "ART_DIA": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0011
+    },
+    "ART_MEAN": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0011
+    },
+    "ART_SYS": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.001
+    },
+    "ETCO2": {
+     "n_exams": 9,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0384
+    },
+    "ET_DES": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0448
+    },
+    "ET_SEVO": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0343
+    },
+    "HR": {
+     "n_exams": 17,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.002
+    },
+    "MAC": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0448
+    },
+    "NBP_DIA": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9979
+    },
+    "NBP_MEAN": {
+     "n_exams": 9,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9978
+    },
+    "NBP_SYS": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9978
+    },
+    "NOL": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0028
+    },
+    "PEEP": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.034
+    },
+    "SPO2": {
+     "n_exams": 9,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0247
+    },
+    "TEMP": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1463
+    },
+    "TV": {
+     "n_exams": 12,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.5
+    }
+   }
+  },
+  "IPAMS": {
+   "n_exams": 305,
+   "suppressed": false,
+   "total_rows": 22991415,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": null,
+    "columns_high_missing": 12,
+    "columns_entirely_missing": null,
+    "schema_drift_columns": 186,
+    "unknown_columns": 160
+   },
+   "ett_versions": {},
+   "signals": {
+    "ART_DIA": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.7837
+    },
+    "ART_MEAN": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.7836
+    },
+    "ART_SYS": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.7836
+    },
+    "CVP": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9965
+    },
+    "ETCO2": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.7648
+    },
+    "ET_DES": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "ET_SEVO": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "HR": {
+     "n_exams": 15,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.57
+    },
+    "MAC": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "NBP_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9982
+    },
+    "NBP_MEAN": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9961
+    },
+    "NBP_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9982
+    },
+    "NOL": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0103
+    },
+    "PA_DIA": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.995
+    },
+    "PA_MEAN": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9975
+    },
+    "PA_SYS": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.995
+    },
+    "PEEP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.2931
+    },
+    "SPO2": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.7181
+    },
+    "TEMP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "TV": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.3333
+    }
+   }
+  },
+  "MONREPI": {
+   "n_exams": 45,
+   "suppressed": false,
+   "total_rows": 6973897,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": 12,
+    "columns_high_missing": null,
+    "columns_entirely_missing": null,
+    "schema_drift_columns": 144,
+    "unknown_columns": 121
+   },
+   "ett_versions": {},
+   "signals": {
+    "ETCO2": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0351
+    },
+    "ET_DES": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0163
+    },
+    "ET_SEVO": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0163
+    },
+    "HR": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0042
+    },
+    "MAC": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0163
+    },
+    "NBP_DIA": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9984
+    },
+    "NBP_MEAN": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9983
+    },
+    "NBP_SYS": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9982
+    },
+    "PEEP": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0224
+    },
+    "SPO2": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0363
+    },
+    "TEMP": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1641
+    },
+    "TV": {
+     "n_exams": 6,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    }
+   }
+  },
+  "POSBRAIN": {
+   "n_exams": 135,
+   "suppressed": false,
+   "total_rows": 13565470,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": 6,
+    "columns_high_missing": 8,
+    "columns_entirely_missing": 6,
+    "schema_drift_columns": 184,
+    "unknown_columns": 158
+   },
+   "ett_versions": {},
+   "signals": {
+    "ART_DIA": {
+     "n_exams": 9,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "ART_MEAN": {
+     "n_exams": 9,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "ART_SYS": {
+     "n_exams": 9,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "CVP": {
+     "n_exams": 6,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.995
+    },
+    "ETCO2": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6819
+    },
+    "ET_DES": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0493
+    },
+    "ET_SEVO": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0493
+    },
+    "HR": {
+     "n_exams": 13,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.5423
+    },
+    "MAC": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0493
+    },
+    "NBP_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9977
+    },
+    "NBP_MEAN": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.996
+    },
+    "NBP_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9977
+    },
+    "PA_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9951
+    },
+    "PA_MEAN": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "PA_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9951
+    },
+    "PEEP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0491
+    },
+    "SPO2": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6671
+    },
+    "TEMP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.4512
+    },
+    "TV": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.3333
+    }
+   }
+  },
+  "PROMISES": {
+   "n_exams": 341,
+   "suppressed": false,
+   "total_rows": 20153944,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": 7,
+    "columns_high_missing": null,
+    "columns_entirely_missing": null,
+    "schema_drift_columns": 174,
+    "unknown_columns": 152
+   },
+   "ett_versions": {},
+   "signals": {
+    "ART_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0012
+    },
+    "ART_MEAN": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0013
+    },
+    "ART_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0012
+    },
+    "ETCO2": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1513
+    },
+    "ET_DES": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1497
+    },
+    "ET_SEVO": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "HR": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0379
+    },
+    "MAC": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "NBP_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9971
+    },
+    "NBP_MEAN": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9968
+    },
+    "NBP_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9981
+    },
+    "NOL": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0029
+    },
+    "PEEP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.1495
+    },
+    "SPO2": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.019
+    },
+    "TEMP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "TV": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.3333
+    }
+   }
+  },
+  "PVB-ABDO": {
+   "n_exams": 84,
+   "suppressed": false,
+   "total_rows": 13221530,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": null,
+    "columns_high_missing": 6,
+    "columns_entirely_missing": 8,
+    "schema_drift_columns": 187,
+    "unknown_columns": 161
+   },
+   "ett_versions": {},
+   "signals": {
+    "ART_DIA": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6634
+    },
+    "ART_MEAN": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6634
+    },
+    "ART_SYS": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6634
+    },
+    "CVP": {
+     "n_exams": 8,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.995
+    },
+    "ETCO2": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6817
+    },
+    "ET_DES": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0449
+    },
+    "ET_SEVO": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "HR": {
+     "n_exams": 15,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.5121
+    },
+    "MAC": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "NBP_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9995
+    },
+    "NBP_MEAN": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9982
+    },
+    "NBP_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9995
+    },
+    "NOL": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0192
+    },
+    "PA_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9975
+    },
+    "PA_MEAN": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "PA_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9975
+    },
+    "PEEP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0449
+    },
+    "SPO2": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6657
+    },
+    "TEMP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0
+    },
+    "TV": {
+     "n_exams": 10,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.3333
+    }
+   }
+  },
+  "SILVR": {
+   "n_exams": 48,
+   "suppressed": false,
+   "total_rows": 8320742,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": null,
+    "columns_high_missing": 7,
+    "columns_entirely_missing": 8,
+    "schema_drift_columns": 160,
+    "unknown_columns": 136
+   },
+   "ett_versions": {},
+   "signals": {
+    "ART_DIA": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "ART_MEAN": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "ART_SYS": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "CVP": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.995
+    },
+    "ETCO2": {
+     "n_exams": 14,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "HR": {
+     "n_exams": 20,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.6513
+    },
+    "NBP_DIA": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9929
+    },
+    "NBP_MEAN": {
+     "n_exams": 14,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9952
+    },
+    "NBP_SYS": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9938
+    },
+    "NOL": {
+     "n_exams": 6,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.0431
+    },
+    "PA_DIA": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9975
+    },
+    "PA_MEAN": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "PA_SYS": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9975
+    },
+    "PEEP": {
+     "n_exams": 7,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 1.0
+    },
+    "SPO2": {
+     "n_exams": 14,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.5835
+    },
+    "TV": {
+     "n_exams": 14,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.5
+    }
+   }
+  },
+  "V-RAPS": {
+   "n_exams": 120,
+   "suppressed": false,
+   "total_rows": 9316732,
+   "qc_verdicts": {
+    "columns_complete": null,
+    "columns_sparse_isolated": null,
+    "columns_gappy": 7,
+    "columns_high_missing": null,
+    "columns_entirely_missing": null,
+    "schema_drift_columns": 137,
+    "unknown_columns": 119
+   },
+   "ett_versions": {},
+   "signals": {
+    "ETCO2": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.2999
+    },
+    "ET_DES": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.2994
+    },
+    "ET_SEVO": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.2994
+    },
+    "HR": {
+     "n_exams": 9,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.2026
+    },
+    "MAC": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.2999
+    },
+    "NBP_DIA": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9974
+    },
+    "NBP_MEAN": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9959
+    },
+    "NBP_SYS": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9974
+    },
+    "PEEP": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.9387
+    },
+    "SPO2": {
+     "n_exams": 5,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.024
+    },
+    "TV": {
+     "n_exams": 11,
+     "mean_duration_s": 0,
+     "total_hours": 0.0,
+     "null_fraction": 0.3333
+    }
+   }
+  }
+ }
+}

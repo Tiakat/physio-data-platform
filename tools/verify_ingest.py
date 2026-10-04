@@ -56,8 +56,10 @@ def load_state(account: str) -> dict:
 def list_azure_blobs(account: str, code: str) -> set:
     svc = azure_auth.get_blob_service_client(account)
     container = svc.get_container_client("rawdata")
-    prefix = f"{code}/parquet/"
-    return {b.name for b in container.list_blobs(name_starts_with=prefix)}
+    blobs = set()
+    for prefix in (f"{code}/parquet/", f"{code}/raw/"):
+        blobs.update(b.name for b in container.list_blobs(name_starts_with=prefix))
+    return blobs
 
 
 def main(argv=None):
@@ -144,6 +146,12 @@ def main(argv=None):
         unaccounted = [r for r in eligible_rels if r not in state_rels]
         n_unaccounted = len(unaccounted)
         n_deleted = len(state_rels - eligible_rels)
+        # v1 raw blobs (stored under <CODE>/raw/) hold the data safely;
+        # they count as ingested. Files still needing v2 migration are
+        # tracked separately.
+        n_v1 = sum(1 for f in files.values()
+                   if isinstance(f, dict) and f.get("status") == "ok"
+                   and "/raw/" in f.get("stored", ""))
         complete = (n_unaccounted == 0 and n_failed == 0 and n_missing == 0)
         verdict = "COMPLETE" if complete else "INCOMPLETE"
         if not complete:

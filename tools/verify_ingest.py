@@ -64,7 +64,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--project", default=None,
                     help="Only verify one project code")
+    ap.add_argument("--diagnose", default=None, metavar="CODE",
+                    help="Dump stored-vs-actual blob mismatches for one project")
     args = ap.parse_args(argv)
+
+    if args.diagnose:
+        account = os.environ.get("AZURE_STORAGE_ACCOUNT", "labdataplatform")
+        diagnose_blobs(account, args.diagnose)
+        return 0
 
     account = os.environ.get("AZURE_STORAGE_ACCOUNT", "labdataplatform")
 
@@ -177,10 +184,3 @@ def diagnose_blobs(account: str, code: str):
         prefixes.add(b.name.split("/")[0] + "/" + b.name.split("/")[1] if "/" in b.name else b.name)
     print(f"[diagnose] prefixes starting with {code[:3]}: {sorted(prefixes)[:10]}")
 
-
-if __name__ == "__main__" and "--diagnose" in sys.argv:
-    idx = sys.argv.index("--diagnose")
-    code = sys.argv[idx + 1]
-    account = os.environ.get("AZURE_STORAGE_ACCOUNT", "labdataplatform")
-    diagnose_blobs(account, code)
-    sys.exit(0)

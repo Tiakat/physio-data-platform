@@ -82,7 +82,7 @@ def save_state_merge(account: str, state: dict, codes=None,
     """
     import time
     from azure.core.exceptions import ResourceNotFoundError
-    from azure.core.match_conditions import MatchConditions
+    from azure.core import MatchConditions
 
     blob = _blob(account, PROCESSED, STATE_BLOB)
     legacy = state.get("legacy", {})

@@ -42,6 +42,7 @@ on:
           - find-labels
           - verify-processing
           - fetch-graphs
+          - make-graphs-container
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -277,6 +278,8 @@ jobs:
             python -m tools.verify_processing
           elif [ "${{ inputs.task }}" = "fetch-graphs" ]; then
             python -m tools.fetch_sample_graphs
+          elif [ "${{ inputs.task }}" = "make-graphs-container" ]; then
+            python -m tools.make_graphs_container
           else
             python -m tools.recon_layouts
           fi

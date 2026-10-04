@@ -81,7 +81,7 @@ def save_state_merge(account: str, state: dict, codes=None,
     shard never overwrites another writer's fresh ETT state with a stale copy.
     """
     import time
-    from azure.core.exceptions import ResourceNotFoundError
+    from azure.core.exceptions import ResourceNotFoundError, ResourceModifiedError
     from azure.core import MatchConditions
 
     blob = _blob(account, PROCESSED, STATE_BLOB)
@@ -114,6 +114,11 @@ def save_state_merge(account: str, state: dict, codes=None,
                     match_condition=MatchConditions.IfNotModified,
                     etag=etag, metadata={"enc": "fernet"})
             return
+        except ResourceModifiedError:
+            # 412 Precondition Failed: another shard won the race; reload
+            # the fresh state and merge again.
+            time.sleep(1 + attempt)
+            continue
         except Exception as exc:  # noqa: BLE001
             if "412" in str(exc) or "ConditionNotMet" in type(exc).__name__:
                 time.sleep(1 + attempt)

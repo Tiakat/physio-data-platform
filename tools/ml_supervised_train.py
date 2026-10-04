@@ -57,7 +57,9 @@ def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path) -> bool:
           f"{scores.mean():.3f} +- {scores.std():.3f} "
           f"({len(X)} windows, {np.mean(y):.1%} artifact)", flush=True)
     model.fit(X, y)
-    with open(out / f"{signal}_model.pkl", "wb") as f:
+    safe = "".join(c if c.isalnum() or c in ("-", "_", ".") else "_"
+                    for c in signal)
+    with open(out / f"{safe}_model.pkl", "wb") as f:
         pickle.dump(model, f)
     (out / f"{signal}_report.json").write_text(json.dumps({
         "signal": signal,

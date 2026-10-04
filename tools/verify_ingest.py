@@ -154,3 +154,33 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def diagnose_blobs(account: str, code: str):
+    """Dump stored-vs-actual blob mismatch details for one project."""
+    import json
+    state = load_state(account)
+    files = state.get("legacy", {}).get(code, {}).get("files", {})
+    blobs = list_azure_blobs(account, code)
+    print(f"[diagnose] {code}: {len(blobs)} blobs under {code}/parquet/")
+    for rel, f in sorted(files.items()):
+        if isinstance(f, dict) and f.get("status") == "ok":
+            stored = f.get("stored", "")
+            mark = "OK " if stored in blobs else "MISS"
+            if mark == "MISS":
+                print(f"  {mark} {stored}  <- {rel[:80]}")
+    # Also show what prefixes exist
+    svc = azure_auth.get_blob_service_client(account)
+    container = svc.get_container_client("rawdata")
+    prefixes = set()
+    for b in container.list_blobs(name_starts_with=code[:3]):
+        prefixes.add(b.name.split("/")[0] + "/" + b.name.split("/")[1] if "/" in b.name else b.name)
+    print(f"[diagnose] prefixes starting with {code[:3]}: {sorted(prefixes)[:10]}")
+
+
+if __name__ == "__main__" and "--diagnose" in sys.argv:
+    idx = sys.argv.index("--diagnose")
+    code = sys.argv[idx + 1]
+    account = os.environ.get("AZURE_STORAGE_ACCOUNT", "labdataplatform")
+    diagnose_blobs(account, code)
+    sys.exit(0)

@@ -1,0 +1,38 @@
+name: publish-feed
+
+# Publishes the de-identified website feed (reports/feed/archive.json,
+# built by the daily pipeline from the stage-2 digest, k=5 suppressed
+# aggregates only -- no patient data) into this repo, so the liam-v2
+# website can read it at a stable URL via PHYSIO_FEED_URL.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      AZURE_STORAGE_ACCOUNT: labdataplatform
+      AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download feed from Azure
+        run: |
+          mkdir -p reports/feed
+          az storage blob download \
+            --account-name labdataplatform \
+            --container-name reports \
+            --name feed/archive.json \
+            --file reports/feed/archive.json \
+            --auth-mode key --account-key "$AZURE_STORAGE_KEY"
+          ls -la reports/feed/
+      - name: Commit feed
+        run: |
+          git config user.name "pipeline-bot"
+          git config user.email "pipeline-bot@users.noreply.github.com"
+          git add reports/feed/archive.json
+          git diff --cached --quiet && echo "no changes" || git commit -m "Update website feed (archive.json)"
+          git push

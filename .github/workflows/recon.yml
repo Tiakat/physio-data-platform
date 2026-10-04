@@ -43,6 +43,7 @@ on:
           - verify-processing
           - fetch-graphs
           - make-graphs-container
+          - validate-processing
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -280,6 +281,8 @@ jobs:
             python -m tools.fetch_sample_graphs
           elif [ "${{ inputs.task }}" = "make-graphs-container" ]; then
             python -m tools.make_graphs_container
+          elif [ "${{ inputs.task }}" = "validate-processing" ]; then
+            python -m tools.validate_processing
           else
             python -m tools.recon_layouts
           fi
@@ -294,6 +297,7 @@ jobs:
             fetched/
             filter_pilot_out/
             graph_samples/
+            validation_report/
             processed_out/
             shared_out/
             ml_out/

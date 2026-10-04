@@ -40,6 +40,7 @@ on:
           - ml-unsup-train
           - ml-sup-train
           - find-labels
+          - verify-processing
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -271,6 +272,8 @@ jobs:
             DROPBOX_APP_SECRET="${{ secrets.DROPBOX_APP_SECRET }}" \
             DROPBOX_REFRESH_TOKEN="${{ secrets.DROPBOX_REFRESH_TOKEN }}" \
             python -m tools.find_labels
+          elif [ "${{ inputs.task }}" = "verify-processing" ]; then
+            python -m tools.verify_processing
           else
             python -m tools.recon_layouts
           fi

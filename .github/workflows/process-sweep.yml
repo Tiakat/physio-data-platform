@@ -98,5 +98,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sweep-${{ github.run_id }}-${{ strategy.job-index }}
-          path: sweep_out/
+          # lineage + chunk report only: hashes + counts, no patient data.
+          # Per-patient graphs stay out of artifacts (patient waveforms).
+          path: |
+            sweep_out/**/lineage.json
+            sweep_out/_chunk_report.json
           if-no-files-found: ignore

@@ -1,0 +1,58 @@
+name: ingest-parallel
+
+# 5x parallel ingest, one matrix job per project shard. Each shard ingests
+# only its projects (LEGACY_PROJECTS) and merges its per-project state into
+# the shared encrypted blob with an ETag-guarded read-modify-write, so
+# shards never clobber each other. State is saved after every chunk, so a
+# timed-out shard resumes where it left off on the next dispatch.
+#
+# Do NOT dispatch while the daily pipeline (or another ingest-parallel run)
+# is active: both write ingest state and would redo each other's work.
+
+on:
+  workflow_dispatch:
+    inputs:
+      budget_gb:
+        description: "Per-project source-data budget for this wave (GB)"
+        required: false
+        default: "4"
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: 0
+            projects: "DEXREM"
+          - shard: 1
+            projects: "IPAMS,ESMONOL"
+          - shard: 2
+            projects: "PROMISES,V-RAPS"
+          - shard: 3
+            projects: "SILVR,POSBRAIN"
+          - shard: 4
+            projects: "COLECTOMIE,MONREPI,PVB-ABDO"
+    env:
+      AZURE_STORAGE_ACCOUNT: labdataplatform
+      AZURE_STORAGE_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+      DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+      DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+      DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+      PIPELINE_DATA_KEY: ${{ secrets.PIPELINE_DATA_KEY }}
+      LEGACY_PROJECTS: ${{ matrix.projects }}
+      LEGACY_BUDGET_GB: ${{ inputs.budget_gb }}
+      INGEST_CHUNK_GB: "1.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Ingest shard ${{ matrix.shard }} (${{ matrix.projects }})
+        run: python -m tools.ingest_shard

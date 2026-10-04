@@ -44,6 +44,7 @@ on:
           - fetch-graphs
           - make-graphs-container
           - validate-processing
+          - validate-external
           - qc-notify
           - ml-incremental
           - fetch-dict
@@ -284,6 +285,8 @@ jobs:
             python -m tools.make_graphs_container
           elif [ "${{ inputs.task }}" = "validate-processing" ]; then
             python -m tools.validate_processing
+          elif [ "${{ inputs.task }}" = "validate-external" ]; then
+            python -m tools.validate_external
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)
@@ -322,6 +325,7 @@ jobs:
             filter_pilot_out/
             graph_samples/
             validation_report/
+            external_validation_report/
             qc_report/
             processed_out/
             shared_out/

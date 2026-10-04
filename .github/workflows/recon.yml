@@ -168,12 +168,19 @@ jobs:
                 --out "ml_out/$PROJ"
             done
             # Durable model store (artifacts expire after 90 days).
-            az storage blob upload-batch \
-              --account-name labdataplatform \
-              --source ml_out --destination processed \
-              --destination-path "ml_models/unsup/${{ inputs.ml_project }}/" \
-              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
-              --overwrite
+            # Upload each project's models to its own Azure path
+            IFS=',' read -ra PROJS <<< "${{ inputs.ml_project }}"
+            for PROJ in "${PROJS[@]}"; do
+              PROJ=$(echo "$PROJ" | xargs)
+              if [ -d "ml_out/$PROJ" ]; then
+                az storage blob upload-batch \
+                  --account-name labdataplatform \
+                  --source "ml_out/$PROJ" --destination processed \
+                  --destination-path "ml_models/unsup/${PROJ}/" \
+                  --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+                  --overwrite
+              fi
+            done
           elif [ "${{ inputs.task }}" = "ingest-progress" ]; then
             echo "=== DEXREM progress ==="
             COUNT=$(az storage blob list \

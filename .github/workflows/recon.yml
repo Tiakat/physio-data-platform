@@ -39,6 +39,7 @@ on:
           - fetch-shared
           - ml-unsup-train
           - ml-sup-train
+          - find-labels
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -248,6 +249,12 @@ jobs:
               --destination-path "ml_models/sup/${{ inputs.ml_signal }}/" \
               --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
               --overwrite
+          elif [ "${{ inputs.task }}" = "find-labels" ]; then
+            pip install requests -q
+            DROPBOX_APP_KEY="${{ secrets.DROPBOX_APP_KEY }}" \
+            DROPBOX_APP_SECRET="${{ secrets.DROPBOX_APP_SECRET }}" \
+            DROPBOX_REFRESH_TOKEN="${{ secrets.DROPBOX_REFRESH_TOKEN }}" \
+            python -m tools.find_labels
           else
             python -m tools.recon_layouts
           fi

@@ -41,6 +41,7 @@ on:
           - ml-sup-train
           - find-labels
           - verify-processing
+          - fetch-graphs
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -274,6 +275,8 @@ jobs:
             python -m tools.find_labels
           elif [ "${{ inputs.task }}" = "verify-processing" ]; then
             python -m tools.verify_processing
+          elif [ "${{ inputs.task }}" = "fetch-graphs" ]; then
+            python -m tools.fetch_sample_graphs
           else
             python -m tools.recon_layouts
           fi
@@ -287,6 +290,7 @@ jobs:
             presence_out/
             fetched/
             filter_pilot_out/
+            graph_samples/
             processed_out/
             shared_out/
             ml_out/

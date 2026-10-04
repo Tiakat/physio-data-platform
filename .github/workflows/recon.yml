@@ -149,16 +149,24 @@ jobs:
               --out shared_out
           elif [ "${{ inputs.task }}" = "ml-unsup-train" ]; then
             mkdir -p ml_out processed_dl
-            az storage blob download-batch \
-              --account-name labdataplatform \
-              --source processed \
-              --pattern "processed/level2/${{ inputs.ml_project }}/*" \
-              --destination processed_dl \
-              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
-            python -m tools.ml_unsupervised_train \
-              --project "${{ inputs.ml_project }}" \
-              --parquet-dir processed_dl \
-              --out ml_out
+            # Support comma-separated projects in ml_project (e.g. "IPAMS,SILVR")
+            # to avoid GitHub cancelling rapid sequential dispatches.
+            IFS=',' read -ra PROJS <<< "${{ inputs.ml_project }}"
+            for PROJ in "${PROJS[@]}"; do
+              PROJ=$(echo "$PROJ" | xargs)
+              echo "[ml-unsup] === Processing project: $PROJ ==="
+              rm -rf processed_dl && mkdir -p processed_dl
+              az storage blob download-batch \
+                --account-name labdataplatform \
+                --source processed \
+                --pattern "processed/level2/${PROJ}/*" \
+                --destination processed_dl \
+                --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+              python -m tools.ml_unsupervised_train \
+                --project "$PROJ" \
+                --parquet-dir processed_dl \
+                --out "ml_out/$PROJ"
+            done
             # Durable model store (artifacts expire after 90 days).
             az storage blob upload-batch \
               --account-name labdataplatform \

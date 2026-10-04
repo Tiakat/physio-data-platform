@@ -50,6 +50,7 @@ on:
           - audit-supervisors
           - continuity-check
           - meta-supervisor
+          - export-csv
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -316,6 +317,8 @@ jobs:
             python -m tools.continuity_check
           elif [ "${{ inputs.task }}" = "meta-supervisor" ]; then
             python -m tools.meta_supervisor
+          elif [ "${{ inputs.task }}" = "export-csv" ]; then
+            python -m tools.export_filtered_csv
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)

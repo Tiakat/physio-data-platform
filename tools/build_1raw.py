@@ -84,10 +84,16 @@ def dest_exists(container, blob: str) -> bool:
 
 
 def load_state(account: str) -> dict:
-    svc = azure_auth.get_blob_service_client(account)
-    blob = svc.get_blob_client("processed", "processed/_pipeline/state.json.enc")
-    raw = blob.download_blob().readall()
-    return json.loads(decrypt_bytes(raw).decode("utf-8"))
+    # State was in 'processed' container which may have been deleted.
+    # Try to load, but return empty dict if not found (caller handles fallback).
+    try:
+        svc = azure_auth.get_blob_service_client(account)
+        blob = svc.get_blob_client("processed", "processed/_pipeline/state.json.enc")
+        raw = blob.download_blob().readall()
+        return json.loads(decrypt_bytes(raw).decode("utf-8"))
+    except Exception as e:
+        print(f"[1raw] State not found ({e}), will build mapping from Dropbox", flush=True)
+        return {}
 
 
 def load_profile(code: str) -> dict:

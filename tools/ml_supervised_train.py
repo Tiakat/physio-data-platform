@@ -141,6 +141,10 @@ def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path,
                     for c in signal)
     with open(out / f"{safe}_model.pkl", "wb") as f:
         pickle.dump(model, f)
+    # Flag unreliable models
+    reliability = "RELIABLE" if te_f1 >= 0.8 else "UNRELIABLE"
+    if te_f1 < 0.8:
+        print(f"[ml-sup-train] WARNING: {signal} test F1 {te_f1:.3f} < 0.8 - flagged UNRELIABLE", flush=True)
     (out / f"{safe}_report.json").write_text(json.dumps({
         "signal": signal,
         "n_windows": len(X),
@@ -153,6 +157,8 @@ def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path,
         "test_f1": float(te_f1),
         "test_mcc": float(te_mcc),
         "label_source": label_source,
+        "reliability": reliability,
+        "uses_morphology": is_art_signal(signal),
     }, indent=1))
     return True
 
@@ -160,7 +166,8 @@ def train_one(signal: str, X: np.ndarray, y: np.ndarray, out: Path,
 def extract_labeled_windows(signal: np.ndarray, window: int = 100,
                             step: int = 50,
                             timestamps: np.ndarray | None = None,
-                            real_segments: list | None = None
+                            real_segments: list | None = None,
+                            signal_name: str = ""
                             ) -> tuple[np.ndarray, np.ndarray]:
     """Sliding window features with aligned labels.
 
@@ -195,13 +202,98 @@ def extract_labeled_windows(signal: np.ndarray, window: int = 100,
         if lab is None:
             lab = 1 if nan_frac > 0.2 else 0
         diffs = np.abs(np.diff(wv)) if len(wv) > 1 else np.array([0])
-        feats.append([
+        base_feats = [
             np.mean(wv), np.std(wv), np.min(wv), np.max(wv),
             np.max(wv) - np.min(wv), np.median(wv),
             np.max(diffs), len(np.unique(np.round(wv, 2))),
-        ])
+        ]
+        # Add ART morphology features for arterial pressure signals
+        if is_art_signal(signal_name):
+            morph_feats = extract_art_morphology_features(wv)
+            # Pad base feats to match non-ART length, then append morphology
+            feats.append(base_feats + morph_feats)
+        else:
+            # Pad with zeros to keep feature dimension consistent
+            feats.append(base_feats + [0.0] * 12)
         labels.append(lab)
     return np.array(feats), np.array(labels)
+
+def extract_art_morphology_features(wv: np.ndarray, fs_hz: float = 1.0) -> list:
+    """ART-specific morphology features.
+    
+    Captures arterial pressure waveform characteristics that distinguish
+    real physiology from artifacts:
+    - Dicrotic notch: small secondary peak after systolic peak
+    - Pulse pressure: systolic - diastolic
+    - Upstroke slope: max dP/dt during systole
+    - Beat regularity: variation in peak-to-peak intervals
+    """
+    feats = []
+    if len(wv) < 20:
+        return [0.0] * 12
+    
+    # Basic pulse pressure
+    sys_p = float(np.max(wv))
+    dia_p = float(np.min(wv))
+    pp = sys_p - dia_p
+    feats.extend([sys_p, dia_p, pp])
+    
+    # Upstroke slope (max positive derivative)
+    diffs = np.diff(wv)
+    pos_diffs = diffs[diffs > 0]
+    max_upstroke = float(np.max(pos_diffs)) if len(pos_diffs) > 0 else 0.0
+    mean_upstroke = float(np.mean(pos_diffs)) if len(pos_diffs) > 0 else 0.0
+    feats.extend([max_upstroke, mean_upstroke])
+    
+    # Find peaks (simplified)
+    from scipy.signal import find_peaks
+    try:
+        peaks, _ = find_peaks(wv, distance=10, prominence=pp * 0.1 if pp > 0 else 1)
+        n_beats = len(peaks)
+        feats.append(float(n_beats))
+        
+        if n_beats >= 2:
+            # Beat-to-beat interval regularity
+            intervals = np.diff(peaks)
+            feats.append(float(np.mean(intervals)))
+            feats.append(float(np.std(intervals) / (np.mean(intervals) + 1e-6)))  # CV
+            
+            # Dicrotic notch detection: look for secondary peak between main peaks
+            notch_count = 0
+            for i in range(len(peaks) - 1):
+                segment = wv[peaks[i]:peaks[i+1]]
+                if len(segment) > 10:
+                    # Find local maxima in the downstroke
+                    sub_peaks, _ = find_peaks(segment, distance=5)
+                    # Notch is a small peak after the main peak, before the valley
+                    if len(sub_peaks) > 0:
+                        notch_count += 1
+            feats.append(float(notch_count) / max(n_beats - 1, 1))  # Notch ratio
+        else:
+            feats.extend([0.0, 0.0, 0.0])
+        
+        # Systolic/diastolic ratio (should be ~1.5-2.0 for normal ART)
+        feats.append(float(sys_p / (dia_p + 1e-6)))
+        
+        # Waveform area (integral)
+        feats.append(float(np.trapz(wv - dia_p)))
+        
+    except ImportError:
+        # scipy not available, use basic features
+        feats.extend([0.0] * 6)
+    except Exception:
+        feats.extend([0.0] * 6)
+    
+    return feats
+
+
+def is_art_signal(signal_name: str) -> bool:
+    """Check if signal is arterial pressure (needs morphology features)."""
+    low = signal_name.lower()
+    return any(kw in low for kw in ["art", "rad ", "rad_", "bra ", "bra_", 
+                                     "abp", "arterial", "ibp", "nbp"])
+
+
 
 
 
@@ -275,7 +367,7 @@ def main(argv=None):
             if np.isnan(sig).all():
                 continue
             segs = real_labels.get((proj, pat, col)) if (proj and pat) else None
-            X, y = extract_labeled_windows(sig, timestamps=ts, real_segments=segs)
+            X, y = extract_labeled_windows(sig, timestamps=ts, real_segments=segs, signal_name=col)
             n = len(X)
             if n == 0:
                 continue

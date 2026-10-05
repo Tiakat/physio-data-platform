@@ -25,7 +25,7 @@ name: recon
 #                    structure 1-Raw/{PROJECT}/{patient}/{device}/{file}.csv.
 #                    Real Dropbox patient names, device subfolders, all CSVs
 #                    with text/csv for browser preview. Sample-first via
-#                    1raw_project input.
+#                    build1raw_project input.
 #   erase-all        -> deletes EVERYTHING except 1-Raw. K's clean restart:
 #                    "all the other containers erase them we will start from
 #                    new". Requires erase_all_confirm=YES-ERASE-ALL; runs only
@@ -136,7 +136,7 @@ on:
         description: "erase-old: must be YES-DELETE-OLD to run"
         required: false
         default: ""
-      1raw_project:
+      build1raw_project:
         description: "build-1raw: project code, or 'all'"
         required: false
         default: "COLECTOMIE"
@@ -465,7 +465,7 @@ jobs:
             # text/csv for browser preview. Sample-first: default COLECTOMIE.
             mkdir -p 1raw_out
             python -m tools.build_1raw \
-              --project "${{ inputs.1raw_project }}" \
+              --project "${{ inputs.build1raw_project }}" \
               --out 1raw_out
           elif [ "${{ inputs.task }}" = "erase-all" ]; then
             # Deletes EVERYTHING except 1-Raw. ONLY with explicit token.

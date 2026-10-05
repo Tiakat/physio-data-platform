@@ -142,6 +142,10 @@ on:
         description: "build-1raw: project code, or 'all'"
         required: false
         default: "COLECTOMIE"
+      build1raw_max_patients:
+        description: "build-1raw: test mode, max patients (empty = all)"
+        required: false
+        default: ""
       erase_all_confirm:
         description: "erase-all: must be YES-ERASE-ALL to run"
         required: false
@@ -473,10 +477,17 @@ jobs:
             # K's clean restart: 1-Raw/{PROJECT}/{patient}/{device}/{file}.csv.
             # Real Dropbox patient names, device subfolders, CSVs with
             # text/csv for browser preview. Sample-first: default COLECTOMIE.
+            # Test mode: build1raw_max_patients limits to the first N
+            # patients; empty string = all patients (no limit).
+            MAX_PATIENTS_ARG=""
+            if [ -n "${{ inputs.build1raw_max_patients }}" ]; then
+              MAX_PATIENTS_ARG="--max-patients ${{ inputs.build1raw_max_patients }}"
+            fi
             mkdir -p 1raw_out
             python -m tools.build_1raw \
               --project "${{ inputs.build1raw_project }}" \
-              --out 1raw_out
+              --out 1raw_out \
+              $MAX_PATIENTS_ARG
           elif [ "${{ inputs.task }}" = "erase-all" ]; then
             # Deletes EVERYTHING except 1-Raw. ONLY with explicit token.
             # Runs only after K verifies 1-Raw.

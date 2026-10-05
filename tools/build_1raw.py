@@ -12,6 +12,12 @@ Source: Dropbox /Liam/Projets actifs/{project_dropbox_folder}/{data_root}/...
 Direct ingest: download -> parse -> CSV -> upload. No intermediate blobs,
 no hash matching needed. Patient names come straight from Dropbox paths.
 
+K's rule (enforced here): before uploading anything, the script builds the
+authoritative set of patient folder names from Dropbox folder entries and
+only uploads files whose patient name EXACTLY matches one of them
+(case-sensitive, no normalization). Non-matching files are skipped and
+logged; no provisional or guessed patient folders are ever created.
+
 Usage:
     python -m tools.build_1raw --project COLECTOMIE
     python -m tools.build_1raw --project all
@@ -168,16 +174,22 @@ def should_skip(filename: str) -> bool:
     return False
 
 
-def list_dropbox_files(dbx, root: str) -> list[dict]:
-    """List all data files under a Dropbox root (recursive)."""
+def list_dropbox_tree(dbx, root: str) -> tuple[list[dict], list[str]]:
+    """List all data files and folder names under a Dropbox root (recursive).
+
+    Returns (files, folder_names). Folder names are the EXACT names as
+    reported by Dropbox (entry.name); they are used to build the
+    authoritative set of patient folders for exact-match validation.
+    """
     import dropbox
 
     files: list[dict] = []
+    folders: list[str] = []
     try:
         result = dbx.files_list_folder(root, recursive=True)
     except Exception as e:
         print(f"[1raw] Dropbox list failed for {root}: {e}", flush=True)
-        return files
+        return files, folders
 
     while True:
         for entry in result.entries:
@@ -191,10 +203,23 @@ def list_dropbox_files(dbx, root: str) -> list[dict]:
                     "name": entry.name,
                     "size": entry.size,
                 })
+            elif isinstance(entry, dropbox.files.FolderMetadata):
+                folders.append(entry.name)
         if not result.has_more:
             break
         result = dbx.files_list_folder_continue(result.cursor)
-    return files
+    return files, folders
+
+
+def is_patient_folder_name(name: str, regex: re.Pattern | None) -> bool:
+    """True if a Dropbox folder name qualifies as a patient folder.
+
+    Uses the SAME criteria as extract_patient_folder: the profile's
+    patient_dir_regex match, or all-digits when no regex is configured.
+    """
+    if regex:
+        return bool(regex.match(name))
+    return name.isdigit()
 
 
 def parse_file_to_df(local_path: str, filename: str, device: str) -> pd.DataFrame | None:
@@ -252,18 +277,31 @@ def build_1raw_project(svc, dbx, project: str) -> dict:
 
     regex = load_patient_regex(project)
 
+    # --- K's rule: patient folder names in 1-raw must match Dropbox EXACTLY ---
+    # Build the authoritative set of patient folder names from Dropbox folder
+    # entries themselves (exact strings, case-sensitive). Any file whose
+    # extracted patient name is not in this set is SKIPPED, never uploaded
+    # under a guessed or provisional name.
+    valid_patients: set[str] = set()
+
     # Collect files from all data roots
     all_files: list[dict] = []
     for data_root in data_roots:
         root = f"{DROPBOX_ROOT}/{dropbox_folder}/{data_root}"
         print(f"[1raw] listing Dropbox: {root}", flush=True)
-        files = list_dropbox_files(dbx, root)
-        print(f"[1raw]   {len(files)} files", flush=True)
+        files, folders = list_dropbox_tree(dbx, root)
+        print(f"[1raw]   {len(files)} files, {len(folders)} folders", flush=True)
         all_files.extend(files)
+        for fname in folders:
+            if is_patient_folder_name(fname, regex):
+                valid_patients.add(fname)
 
     print(f"[1raw] {project}: {len(all_files)} Dropbox files total", flush=True)
+    print(f"[1raw] {project}: {len(valid_patients)} patient folders in Dropbox: "
+          f"{sorted(valid_patients)}", flush=True)
 
-    done, skipped, no_patient, parse_fail = 0, 0, 0, 0
+    done, skipped, no_patient, name_mismatch, parse_fail = 0, 0, 0, 0, 0
+    mismatched_names: set[str] = set()
     examples: list[str] = []
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -276,6 +314,17 @@ def build_1raw_project(svc, dbx, project: str) -> dict:
             patient = extract_patient_folder(relpath, regex)
             if not patient:
                 no_patient += 1
+                continue
+
+            # K's rule: EXACT match against Dropbox patient folders.
+            # Case-sensitive, no trimming, no normalization, no fuzzy
+            # matching. A non-matching name is NEVER created in 1-raw.
+            if patient not in valid_patients:
+                name_mismatch += 1
+                mismatched_names.add(patient)
+                if len(mismatched_names) <= 20:
+                    print(f"[1raw] SKIP name-mismatch: '{patient}' is not a "
+                          f"Dropbox patient folder ({relpath})", flush=True)
                 continue
 
             device = normalize_device(device_from_path(relpath, project))
@@ -325,10 +374,17 @@ def build_1raw_project(svc, dbx, project: str) -> dict:
                       flush=True)
 
     print(f"[1raw] {project}: {done} new, {skipped} existed, "
-          f"{no_patient} no-patient, {parse_fail} failed", flush=True)
+          f"{no_patient} no-patient, {name_mismatch} name-mismatch, "
+          f"{parse_fail} failed", flush=True)
+    if mismatched_names:
+        print(f"[1raw] {project}: mismatched names skipped (never created): "
+              f"{sorted(mismatched_names)}", flush=True)
     return {
         "new": done, "skipped": skipped,
-        "no_patient": no_patient, "failed": parse_fail,
+        "no_patient": no_patient, "name_mismatch": name_mismatch,
+        "mismatched_names": sorted(mismatched_names),
+        "failed": parse_fail,
+        "dropbox_patients": len(valid_patients),
         "example_paths": examples,
     }
 

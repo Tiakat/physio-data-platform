@@ -31,6 +31,7 @@
 - After K verifies results: convert back to parquet
 - Device folders: infinity, bettercare, bis, nol, pumps, etc. based on source
 - BIS: convert to CSV (parse .r2a/.spa → CSV)
+- **Hashes must match Dropbox**: SHA256 of each file in 1-raw must equal the Dropbox source hash. Store hash in blob metadata. Weekly ingest uses hashes to detect changed/new files.
 
 ## Filtering
 - Must be signal-specific, transparent, auditable (never generic)

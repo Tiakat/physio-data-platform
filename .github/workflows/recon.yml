@@ -65,6 +65,7 @@ on:
           - count-graphs
           - smart-filter-pilot
           - ml-incremental
+          - build-promises-labels
           - fetch-dict
           - azure-inventory
           - find-complete-patient
@@ -290,7 +291,23 @@ jobs:
             python -m tools.ml_incremental \
               --out ml_out \
               --manifest ml_out/training_manifest.json
-          elif [ "${{ inputs.task }}" = "ml-sup-train" ]; then
+                    elif [ "${{ inputs.task }}" = "build-promises-labels" ]; then
+            mkdir -p labels_out
+            pip install requests pandas -q
+            DROPBOX_APP_KEY="${{ secrets.DROPBOX_APP_KEY }}" \
+            DROPBOX_APP_SECRET="${{ secrets.DROPBOX_APP_SECRET }}" \
+            DROPBOX_REFRESH_TOKEN="${{ secrets.DROPBOX_REFRESH_TOKEN }}" \
+            python -m tools.build_promises_labels --out labels_out/promises_labels.csv
+            # Upload to Azure (private, NOT the public repo)
+            az storage blob upload \
+              --account-name labdataplatform \
+              --container-name processed \
+              --name "ml_models/promises_labels.csv" \
+              --file labels_out/promises_labels.csv \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --overwrite
+            cp labels_out/promises_labels.csv ./promises_labels_artifact.csv
+elif [ "${{ inputs.task }}" = "ml-sup-train" ]; then
             mkdir -p ml_out processed_dl
             az storage blob download-batch \
               --account-name labdataplatform \

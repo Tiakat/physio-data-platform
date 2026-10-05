@@ -58,13 +58,7 @@ def safe_patient(label: str) -> str:
 
 def ensure_containers(svc):
     for name in NEW_CONTAINERS:
-        try:
-            svc.create_container(name)
-            print(f"[restructure] created container: {name}", flush=True)
-        except Exception as exc:  # already exists
-            if "ContainerAlreadyExists" not in type(exc).__name__:
-                raise
-            print(f"[restructure] container exists: {name}", flush=True)
+        azure_auth.ensure_container(svc, name)
 
 
 def blob_names(container, prefix=""):

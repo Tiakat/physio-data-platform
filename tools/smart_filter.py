@@ -192,6 +192,12 @@ def sanitize(name: str) -> str:
 _MODEL_CACHE = {}
 _MODEL_BLOB_MAP = None  # filename -> blob path
 
+# SSL-transformer model cache (Azure processed/ml_models/ssl/).
+# Preferred over RF when available; RF stays as fallback.
+_SSL_MODEL_CACHE = {}
+_SSL_BLOB_MAP = None  # filename -> blob path
+_SSL_TORCH_OK = None  # lazy torch availability check
+
 
 def _model_blob_map(svc):
     """List once per process: model filename -> blob path."""
@@ -332,6 +338,118 @@ def ml_artifact_mask(values: np.ndarray, model, signal_name: str = "") -> np.nda
                 mask[i:i + ML_WINDOW] = True
     except Exception as e:
         print(f"[smart-filter] ML predict failed: {e}", flush=True)
+        return np.zeros(n, dtype=bool)
+    return mask
+
+
+def _torch_available() -> bool:
+    global _SSL_TORCH_OK
+    if _SSL_TORCH_OK is None:
+        try:
+            import torch  # noqa: F401
+            _SSL_TORCH_OK = True
+        except Exception:
+            _SSL_TORCH_OK = False
+    return _SSL_TORCH_OK
+
+
+def _ssl_blob_map(svc):
+    """List once per process: ssl model filename -> blob path."""
+    global _SSL_BLOB_MAP
+    if _SSL_BLOB_MAP is not None:
+        return _SSL_BLOB_MAP
+    _SSL_BLOB_MAP = {}
+    try:
+        container = svc.get_container_client("processed")
+        for b in container.list_blobs(
+                name_starts_with="processed/ml_models/ssl/"):
+            name = b["name"] if isinstance(b, dict) else b.name
+            fname = name.rsplit("/", 1)[-1]
+            if fname.endswith("_ssl.pt"):
+                _SSL_BLOB_MAP[fname] = name
+    except Exception as e:
+        print(f"[smart-filter] ssl model listing failed: {e}", flush=True)
+    print(f"[smart-filter] found {len(_SSL_BLOB_MAP)} SSL transformer models",
+          flush=True)
+    return _SSL_BLOB_MAP
+
+
+def get_ssl_model(svc, col: str):
+    """Return the SSL-transformer for a column, or None.
+
+    Preferred over the RF model when present. Returns None (RF fallback)
+    when torch is unavailable, svc is None, or no _ssl.pt exists.
+    """
+    if svc is None or not _torch_available():
+        return None
+    safe = sanitize(col)
+    if safe in _SSL_MODEL_CACHE:
+        return _SSL_MODEL_CACHE[safe]
+    blob = _ssl_blob_map(svc).get(f"{safe}_ssl.pt")
+    if blob is None:
+        # Family-level fallback, mirroring get_model().
+        fam = classify_family(col)
+        for fname, bpath in _ssl_blob_map(svc).items():
+            if fname.startswith(fam.replace("_", "")) or \
+                    fname.upper().startswith(fam):
+                blob = bpath
+                break
+    if blob is None:
+        _SSL_MODEL_CACHE[safe] = None
+        return None
+    try:
+        from tools.ssl_transformer import load_ssl_model
+        data = svc.get_blob_client(
+            container="processed", blob=blob).download_blob().readall()
+        import tempfile, os
+        # torch.load needs a file-like; write to temp then load.
+        with tempfile.NamedTemporaryFile(suffix=".pt", delete=False) as tf:
+            tf.write(data)
+            tmp = tf.name
+        try:
+            model = load_ssl_model(tmp, device="cpu")
+        finally:
+            os.unlink(tmp)
+        _SSL_MODEL_CACHE[safe] = model
+        print(f"[smart-filter] loaded SSL transformer for {col} ({blob})",
+              flush=True)
+        return model
+    except Exception as e:
+        print(f"[smart-filter] SSL load failed for {col}: {e}", flush=True)
+        _SSL_MODEL_CACHE[safe] = None
+        return None
+
+
+def ssl_artifact_mask(values: np.ndarray, model, threshold: float = 0.5,
+                      ) -> np.ndarray:
+    """Classify 100-sample windows with the SSL transformer; True = artifact."""
+    n = len(values)
+    mask = np.zeros(n, dtype=bool)
+    if model is None or n < ML_WINDOW:
+        return mask
+    try:
+        from tools.ssl_transformer import predict_windows
+        wins = []
+        idxs = []
+        for i in range(0, n - ML_WINDOW + 1, ML_STEP):
+            w = values[i:i + ML_WINDOW]
+            if np.isnan(w).mean() > 0.5:
+                continue
+            wv = w.copy()
+            if np.isnan(wv).any():
+                good = ~np.isnan(wv)
+                wv = np.interp(np.arange(len(wv)), np.arange(len(wv))[good],
+                               wv[good])
+            wins.append(wv.astype(np.float32))
+            idxs.append(i)
+        if not wins:
+            return mask
+        probs = predict_windows(model, np.stack(wins), device="cpu")
+        for i, p in zip(idxs, probs):
+            if p >= threshold:
+                mask[i:i + ML_WINDOW] = True
+    except Exception as e:
+        print(f"[smart-filter] SSL predict failed: {e}", flush=True)
         return np.zeros(n, dtype=bool)
     return mask
 
@@ -526,17 +644,26 @@ def smart_filter_frame(df: pd.DataFrame, t_seconds: np.ndarray,
             dmask, reasons = dict_artifact_mask(values, t, family)
             entry["reasons"].update(reasons)
 
-            # ML pass (falls back gracefully to dictionary-only).
-            model = get_model(svc, col)
-            mmask = ml_artifact_mask(values, model, signal_name=col) if model is not None \
-                else np.zeros(n, dtype=bool)
-            if model is not None:
+            # ML pass: SSL-transformer preferred, RF fallback,
+            # then dictionary-only. Never raises.
+            ssl_model = get_ssl_model(svc, col)
+            model = get_model(svc, col) if ssl_model is None else None
+            if ssl_model is not None:
+                mmask = ssl_artifact_mask(values, ssl_model)
+                entry["model"] = "ssl_transformer"
+                log["models_used"] += 1
+                if mmask.any():
+                    entry["reasons"]["ml_predicted_artifact"] = \
+                        int(mmask.sum())
+            elif model is not None:
+                mmask = ml_artifact_mask(values, model, signal_name=col)
                 entry["model"] = "ml_supervised_rf"
                 log["models_used"] += 1
                 if mmask.any():
                     entry["reasons"]["ml_predicted_artifact"] = \
                         int(mmask.sum())
             else:
+                mmask = np.zeros(n, dtype=bool)
                 log["dict_only"] += 1
 
             combined = (dmask | mmask) & valid

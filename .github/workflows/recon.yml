@@ -298,11 +298,15 @@ jobs:
               --pattern "processed/level2/*/*" \
               --destination processed_dl \
               --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            LABELS_ARG=""
+            if [ -f data/labels/promises_labels.csv ]; then
+              LABELS_ARG="--labels-csv data/labels/promises_labels.csv"
+            fi
             python -m tools.ml_supervised_train \
               --signal "${{ inputs.ml_signal }}" \
               --parquet-dir processed_dl \
               --out ml_out \
-              --labels-csv data/labels/promises_labels.csv
+              $LABELS_ARG
             # Durable model store (artifacts expire after 90 days).
             az storage blob upload-batch \
               --account-name labdataplatform \

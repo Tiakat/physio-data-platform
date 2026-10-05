@@ -14,6 +14,13 @@ name: recon
 #                    (for bringing census outputs back as an artifact)
 #   pilot-filter  -> Phase 9+ filtering pilot on a few decrypted parquets
 #                    (draft intervals; filtered CSV + QC + PNG graph)
+#   restructure-azure -> K's 4-container layout (raw/processed/graphes/analysis)
+#                    decrypts parquets to CSV, migrates graphs; old containers
+#                    untouched. Sample-first via restructure_project input.
+#   erase-old        -> deletes old containers (rawdata, processed, graphs,
+#                    reports, filtered-csv) + swaps processed_new -> processed.
+#                    Requires erase_confirm=YES-DELETE-OLD; runs only after K
+#                    verifies the new containers.
 # Neither task moves, renames, or deletes anything.
 
 on:
@@ -67,6 +74,8 @@ on:
           - diagnose-blobs
           - identifier-columns
           - signal-presence
+          - restructure-azure
+          - erase-old
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -97,6 +106,14 @@ on:
         default: ""
       migrate_project:
         description: "migrate-graphs: project code"
+        required: false
+        default: ""
+      restructure_project:
+        description: "restructure-azure: project code, or 'all'"
+        required: false
+        default: "COLECTOMIE"
+      erase_confirm:
+        description: "erase-old: must be YES-DELETE-OLD to run"
         required: false
         default: ""
 
@@ -346,6 +363,18 @@ jobs:
             python -m tools.fetch_new_graphs
           elif [ "${{ inputs.task }}" = "count-graphs" ]; then
             python -m tools.count_graphs --overfilter-report overfilter/report.json
+          elif [ "${{ inputs.task }}" = "restructure-azure" ]; then
+            # K's 4-container restructure: raw/processed/graphes/analysis.
+            # Sample-first: default input is COLECTOMIE; run with 'all' after.
+            mkdir -p restructure_out
+            python -m tools.restructure_azure \
+              --project "${{ inputs.restructure_project }}" \
+              --out restructure_out
+          elif [ "${{ inputs.task }}" = "erase-old" ]; then
+            # Deletes old containers ONLY with explicit confirmation token.
+            # Runs only after K verifies the 4 new containers.
+            python -m tools.erase_old_containers \
+              --confirm "${{ inputs.erase_confirm }}"
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)
@@ -399,4 +428,5 @@ jobs:
             dict_out/
             inv_out/
             patient_out/
+            restructure_out/
           if-no-files-found: ignore

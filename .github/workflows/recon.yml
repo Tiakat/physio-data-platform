@@ -92,6 +92,8 @@ on:
           - erase-old
           - build-1raw
           - erase-all
+          - pipeline-chain
+          - pipeline-stage
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -144,6 +146,14 @@ on:
         description: "erase-all: must be YES-ERASE-ALL to run"
         required: false
         default: ""
+      chain_project:
+        description: "Project for pipeline-chain (default all)"
+        required: false
+        default: "all"
+      chain_stage:
+        description: "Stage(s) for pipeline-stage: all or e.g. 2,3"
+        required: false
+        default: "all"
       eval_project:
         description: "eval-unsupervised: project code"
         required: false
@@ -508,6 +518,14 @@ jobs:
             if [ -f data/labels/promises_labels.csv ]; then
               LABELS_ARG="--labels-csv data/labels/promises_labels.csv"
             fi
+            elif [ "${{ inputs.task }}" = "pipeline-chain" ]; then
+              echo "=== PIPELINE CHAIN (all stages) ==="
+              python -m tools.pipeline_chain --stage all \
+                --project "${{ inputs.chain_project }}" --out chain_out
+            elif [ "${{ inputs.task }}" = "pipeline-stage" ]; then
+              echo "=== PIPELINE STAGE ${{ inputs.chain_stage }} ==="
+              python -m tools.pipeline_chain --stage "${{ inputs.chain_stage }}" \
+                --project "${{ inputs.chain_project }}" --out chain_out
             # Pull pretrained encoder if requested.
             PRE_ARG=""
             if [ -n "${{ inputs.ssl_pretrained }}" ]; then
@@ -612,4 +630,5 @@ jobs:
             restructure_out/
             ssl_out/
             1raw_out/
+              chain_out/
           if-no-files-found: ignore

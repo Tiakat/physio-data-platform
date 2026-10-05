@@ -92,7 +92,7 @@ def main():
     from azure.storage.blob import BlobSasPermissions, generate_blob_sas
 
     staging_cc = svc.get_container_client(STAGING)
-    svc.create_container("processed")
+    azure_auth.ensure_container(svc, "processed")
     print("[erase-old] created fresh 'processed' container", flush=True)
     dest_cc = svc.get_container_client("processed")
 

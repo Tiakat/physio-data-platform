@@ -47,7 +47,9 @@ def main():
             pass
 
         data = proc.get_blob_client(blob_name).download_blob().readall()
-        graphs.get_blob_client(dest).upload_blob(data, overwrite=True)
+        graphs.get_blob_client(dest).upload_blob(
+            data, overwrite=True,
+            content_settings={"content_type": "image/png"})
         done += 1
         if done % 100 == 0:
             print(f"[migrate-graphs] {done} migrated...", flush=True)

@@ -1,34 +1,28 @@
-"""Build K's clean 1-Raw container.
+"""Build K's clean 1-raw container.
 
-K's spec: "rawdata rename it 1-Raw in it only csv files in each project and
-all the patients must be within so its the template 1-Raw in it the projects
-in each of them the patients in each of them folders for infinity, bis ect
-based on what they have in them csv or bis format (if we can convert it and
-it will still work as csv it will be better for me to read them) nothing
-more in raw. all the other containers erase them we will start from new"
-
-Structure:
-    1-Raw/{PROJECT}/{patient}/{device}/{file}.csv
+K's spec: "1-raw" with only CSV files. Template:
+    1-raw/{PROJECT}/{patient}/{device}/{file}.csv
 
 - PROJECT: COLECTOMIE, DEXREM, etc. (10 projects)
 - patient: REAL Dropbox folder name (e.g. "103"), NEVER provisional numbers
 - device: infinity, bettercare, bis, nol, pumps, etc. (from source)
 - file.csv: decrypted parquet -> CSV, content_type=text/csv (clickable preview)
 
-Source: rawdata/{PROJECT}/parquet/*.parquet.enc
-Patient: ingest state (blob -> Dropbox path -> patient folder via profile regex)
-Device: blob name <device>_<sha8> cross-checked with Dropbox path device folders
+Source: rawdata/{PROJECT}/**/*.parquet.enc
+Patient mapping: Dropbox content_hash matching (no state file needed).
+  1. List Dropbox files for project -> {content_hash: (path, patient, device)}
+  2. List rawdata blobs with metadata -> {dropbox_content_hash: blob_name}
+  3. Match by content_hash -> blob -> (patient, device, relpath)
 
 BIS: .r2a (binary EEG) and .spa (pipe-delimited trends) were parsed at ingest
-into standardized parquets (tools/process_bis.py). Converting those parquets
-to CSV gives K the readable CSV format she asked for.
+into standardized parquets. Converting those parquets to CSV gives readable CSVs.
 
 Usage:
     python -m tools.build_1raw --project COLECTOMIE
     python -m tools.build_1raw --project all
 
 Resumable: blobs that already exist at the destination are skipped.
-Nothing is deleted by this tool (see tools/erase_all_except_1raw.py).
+Nothing is deleted by this tool.
 """
 
 from __future__ import annotations
@@ -47,6 +41,7 @@ from tools import azure_auth  # noqa: E402
 import pandas as pd  # noqa: E402
 
 CONTAINER = "1-raw"
+DROPBOX_ROOT = "/Liam/Projets actifs"
 
 # Normalize ingest device codes -> K's device folder names.
 DEVICE_FOLDERS = {
@@ -70,6 +65,25 @@ def decrypt_bytes(data: bytes) -> bytes:
     return Fernet(key).decrypt(data)
 
 
+def get_dropbox_client():
+    """Dropbox client using app key/secret + refresh token (same as ingest)."""
+    import dropbox
+
+    app_key = os.getenv("DROPBOX_APP_KEY")
+    app_secret = os.getenv("DROPBOX_APP_SECRET")
+    refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
+    if not app_key or not app_secret or not refresh_token:
+        raise RuntimeError(
+            "DROPBOX_APP_KEY / DROPBOX_APP_SECRET / DROPBOX_REFRESH_TOKEN "
+            "must be set"
+        )
+    return dropbox.Dropbox(
+        oauth2_refresh_token=refresh_token,
+        app_key=app_key,
+        app_secret=app_secret,
+    )
+
+
 def blob_names(container, prefix=""):
     for b in container.list_blobs(name_starts_with=prefix):
         yield b["name"] if isinstance(b, dict) else b.name
@@ -83,26 +97,24 @@ def dest_exists(container, blob: str) -> bool:
         return False
 
 
-def load_state(account: str) -> dict:
-    # State was in 'processed' container which may have been deleted.
-    # Try to load, but return empty dict if not found (caller handles fallback).
-    try:
-        svc = azure_auth.get_blob_service_client(account)
-        blob = svc.get_blob_client("processed", "processed/_pipeline/state.json.enc")
-        raw = blob.download_blob().readall()
-        return json.loads(decrypt_bytes(raw).decode("utf-8"))
-    except Exception as e:
-        print(f"[1raw] State not found ({e}), will build mapping from Dropbox", flush=True)
+def load_projects_config() -> dict:
+    """Load config/projects.yaml for dropbox folder names and data_roots."""
+    import yaml
+
+    p = Path(__file__).resolve().parent.parent / "config" / "projects.yaml"
+    if not p.exists():
         return {}
+    return yaml.safe_load(p.read_text()) or {}
 
 
 def load_profile(code: str) -> dict:
     """Load the project profile YAML (device_dir_map, patient_dir_regex)."""
+    import yaml
+
     for fname in [f"{code.lower()}.yaml", f"{code.lower()}.yml"]:
         p = Path(__file__).resolve().parent.parent / "profiles" / fname
         if p.exists():
             try:
-                import yaml
                 return yaml.safe_load(p.read_text()) or {}
             except Exception:
                 pass
@@ -121,53 +133,21 @@ def load_patient_regex(code: str) -> re.Pattern | None:
 
 
 def extract_patient_folder(relpath: str, regex: re.Pattern | None) -> str | None:
+    """Extract the REAL patient folder name from a Dropbox relative path.
+
+    Returns the exact folder name string (e.g. "103"), never a made-up number.
+    """
     parts = relpath.replace("\\", "/").split("/")
     if regex:
         for part in parts:
-            if regex.match(part):
+            m = regex.match(part)
+            if m:
+                # Return the exact folder name as it appears in Dropbox
                 return part
+    # Fallback: pure-digit folder
     for part in parts:
         if part.isdigit():
             return part
-    return None
-
-
-def build_blob_info_map(account: str) -> dict[str, dict]:
-    """Map Azure rawdata blob name -> {patient, relpath}.
-
-    Patient is the REAL Dropbox folder name, never a provisional number.
-    """
-    print("[1raw] loading ingest state for real Dropbox patient names...",
-          flush=True)
-    state = load_state(account)
-    mapping: dict[str, dict] = {}
-    regex_cache: dict[str, re.Pattern | None] = {}
-    legacy = state.get("legacy", {})
-    for code, proj_data in legacy.items():
-        if code not in regex_cache:
-            regex_cache[code] = load_patient_regex(code)
-        regex = regex_cache[code]
-        files = proj_data.get("files", {})
-        for relpath, entry in files.items():
-            if not isinstance(entry, dict) or entry.get("status") != "ok":
-                continue
-            blob = entry.get("stored")
-            if not blob:
-                continue
-            patient = extract_patient_folder(relpath, regex)
-            if patient:
-                mapping[blob] = {"patient": patient, "relpath": relpath}
-    print(f"[1raw] mapped {len(mapping)} blobs to real Dropbox patient folders",
-          flush=True)
-    return mapping
-
-
-def device_from_blob_name(blob: str) -> str | None:
-    """Extract device from rawdata blob name: {PROJECT}/parquet/{device}_{sha8}.parquet.enc"""
-    base = blob.rsplit("/", 1)[-1]
-    m = re.match(r"^(.+)_([0-9a-fA-F]{8})\.parquet\.enc$", base)
-    if m:
-        return m.group(1).lower()
     return None
 
 
@@ -175,7 +155,6 @@ def device_from_dropbox_path(relpath: str, code: str) -> str | None:
     """Determine device from Dropbox path folders via profile device_dir_map."""
     doc = load_profile(code)
     dir_map = doc.get("layout", {}).get("device_dir_map", {})
-    # Normalize map keys to lowercase for case-insensitive matching
     norm_map = {k.lower(): v for k, v in dir_map.items()}
     parts = relpath.replace("\\", "/").lower().split("/")
     for part in parts:
@@ -184,15 +163,137 @@ def device_from_dropbox_path(relpath: str, code: str) -> str | None:
     # Also check tiers.A_parsed patterns by file extension
     fname = parts[-1] if parts else ""
     tiers = doc.get("tiers", {}).get("A_parsed", [])
+    import fnmatch
+
     for tier in tiers:
         if not isinstance(tier, dict):
             continue
         pattern = tier.get("pattern", "")
         device = tier.get("device", "")
-        # Simple glob matching on the filename
-        import fnmatch
         if pattern and fnmatch.fnmatch(fname, pattern.lower()):
             return device
+    return None
+
+
+def list_dropbox_files(dbx, root: str) -> dict[str, dict]:
+    """List all files under a Dropbox root.
+
+    Returns: {content_hash: {"path": full_path, "relpath": rel, "size": size}}
+    If multiple files share a content_hash (duplicates), keeps the first.
+    """
+    import dropbox
+
+    files: dict[str, dict] = {}
+    try:
+        result = dbx.files_list_folder(root, recursive=True)
+    except Exception as e:
+        print(f"[1raw] Dropbox list failed for {root}: {e}", flush=True)
+        return files
+
+    while True:
+        for entry in result.entries:
+            if isinstance(entry, dropbox.files.FileMetadata):
+                ch = entry.content_hash
+                if ch not in files:  # keep first on duplicates
+                    rel = entry.path_display[len(root):].lstrip("/")
+                    files[ch] = {
+                        "path": entry.path_display,
+                        "relpath": rel,
+                        "size": entry.size,
+                        "name": entry.name,
+                    }
+        if not result.has_more:
+            break
+        result = dbx.files_list_folder_continue(result.cursor)
+    return files
+
+
+def build_blob_info_map(account: str, project: str) -> dict[str, dict]:
+    """Map Azure rawdata blob name -> {patient, device, relpath, filename}.
+
+    Uses Dropbox content_hash matching (no state file needed):
+    1. List Dropbox files for project -> content_hash -> path info
+    2. List rawdata blobs with metadata -> dropbox_content_hash -> blob
+    3. Match and extract patient/device from Dropbox path.
+
+    Patient is the REAL Dropbox folder name, never a provisional number.
+    """
+    print(f"[1raw] building Dropbox -> blob mapping for {project}...",
+          flush=True)
+
+    # --- 1. Dropbox listing ---
+    cfg = load_projects_config()
+    projects_cfg = cfg.get("projects", {})
+    proj_cfg = projects_cfg.get(project, {})
+    dropbox_folder = proj_cfg.get("dropbox", project)
+    data_roots = proj_cfg.get("data_roots", ["Database/RawData"])
+
+    dbx = get_dropbox_client()
+    dbx_files: dict[str, dict] = {}  # content_hash -> info
+    for data_root in data_roots:
+        root = f"{DROPBOX_ROOT}/{dropbox_folder}/{data_root}"
+        print(f"[1raw] listing Dropbox: {root}", flush=True)
+        files = list_dropbox_files(dbx, root)
+        print(f"[1raw]   found {len(files)} files", flush=True)
+        for ch, info in files.items():
+            if ch not in dbx_files:
+                dbx_files[ch] = info
+    print(f"[1raw] Dropbox total: {len(dbx_files)} unique files", flush=True)
+
+    # --- 2. rawdata blobs with metadata ---
+    svc = azure_auth.get_blob_service_client(account)
+    src = svc.get_container_client("rawdata")
+    blob_by_hash: dict[str, str] = {}  # dropbox_content_hash -> blob name
+    n_blobs = 0
+    for b in src.list_blobs(name_starts_with=f"{project}/"):
+        n_blobs += 1
+        name = b["name"] if isinstance(b, dict) else b.name
+        if not name.endswith(".parquet.enc"):
+            continue
+        try:
+            props = src.get_blob_client(name).get_blob_properties()
+            meta = props.metadata or {}
+            ch = meta.get("dropbox_content_hash")
+            if ch:
+                blob_by_hash[ch] = name
+        except Exception:
+            pass
+    print(f"[1raw] rawdata blobs: {n_blobs}, with content_hash: "
+          f"{len(blob_by_hash)}", flush=True)
+
+    # --- 3. Match ---
+    regex = load_patient_regex(project)
+    mapping: dict[str, dict] = {}
+    matched, no_patient = 0, 0
+    for ch, blob in blob_by_hash.items():
+        info = dbx_files.get(ch)
+        if not info:
+            continue
+        relpath = info["relpath"]
+        patient = extract_patient_folder(relpath, regex)
+        if not patient:
+            no_patient += 1
+            continue
+        device = device_from_dropbox_path(relpath, project)
+        mapping[blob] = {
+            "patient": patient,  # EXACT Dropbox folder name
+            "device": device,
+            "relpath": relpath,
+            "filename": info["name"],
+        }
+        matched += 1
+
+    print(f"[1raw] matched {matched} blobs to Dropbox files "
+          f"({no_patient} without patient folder)", flush=True)
+    return mapping
+
+
+def device_from_blob_name(blob: str) -> str | None:
+    """Extract device from rawdata blob name: {PROJECT}/.../{device}_{sha8}.parquet.enc"""
+    base = blob.rsplit("/", 1)[-1]
+    m = re.match(r"^(.+)_([0-9a-fA-F]{8})\.parquet\.enc$", base)
+    if m:
+        return m.group(1).lower()
     return None
 
 
@@ -204,11 +305,9 @@ def normalize_device(device: str | None) -> str:
     return DEVICE_FOLDERS.get(d, d)
 
 
-def original_stem(relpath: str) -> str:
+def original_stem(filename: str) -> str:
     """Original Dropbox filename without extension, sanitized for blob names."""
-    fname = relpath.replace("\\", "/").rsplit("/", 1)[-1]
-    stem = fname.rsplit(".", 1)[0] if "." in fname else fname
-    # Sanitize: keep alphanumerics, dash, underscore, dot
+    stem = filename.rsplit(".", 1)[0] if "." in filename else filename
     stem = re.sub(r"[^A-Za-z0-9._-]+", "_", stem).strip("._")
     return stem[:80] or "file"
 
@@ -221,7 +320,7 @@ def sha8_from_blob(blob: str) -> str:
 
 def build_1raw(svc, project: str,
                blob_info: dict[str, dict]) -> tuple[int, int, int, list]:
-    """rawdata/{PROJECT}/**/*.parquet.enc -> 1-Raw/{PROJECT}/{patient}/{device}/{file}.csv"""
+    """rawdata/{PROJECT}/**/*.parquet.enc -> 1-raw/{PROJECT}/{patient}/{device}/{file}.csv"""
     src = svc.get_container_client("rawdata")
     dst = svc.get_container_client(CONTAINER)
     done, skipped, unmapped = 0, 0, 0
@@ -233,25 +332,15 @@ def build_1raw(svc, project: str,
         if not info or not info.get("patient"):
             unmapped += 1
             continue  # Skip rather than use a wrong/provisional name
-        patient = info["patient"]
+        patient = info["patient"]  # EXACT Dropbox folder name
         relpath = info["relpath"]
+        filename = info["filename"]
 
-        # Device: blob name first, Dropbox path as cross-check
-        device = device_from_blob_name(blob)
-        path_device = device_from_dropbox_path(relpath, project)
-        if path_device and device:
-            # Prefer the Dropbox path device when they disagree, but log it
-            norm_blob = normalize_device(device)
-            norm_path = normalize_device(path_device)
-            if norm_blob != norm_path:
-                print(f"[1raw] device mismatch {blob}: "
-                      f"blob={norm_blob} path={norm_path} -> using path",
-                      flush=True)
-            device_folder = norm_path
-        else:
-            device_folder = normalize_device(device or path_device)
+        # Device: Dropbox path first (more reliable), blob name as fallback
+        device = info.get("device") or device_from_blob_name(blob)
+        device_folder = normalize_device(device)
 
-        stem = original_stem(relpath)
+        stem = original_stem(filename)
         sha8 = sha8_from_blob(blob)
         dest = f"{project}/{patient}/{device_folder}/{stem}_{sha8}.csv"
         if len(examples) < 5:
@@ -301,12 +390,9 @@ def main():
     account = os.environ["AZURE_STORAGE_ACCOUNT"]
     svc = azure_auth.get_blob_service_client(account)
 
-    # Create the 1-Raw container (private by default)
+    # Create the 1-raw container (private by default)
     azure_auth.ensure_container(svc, CONTAINER)
     print(f"[1raw] container ready: {CONTAINER}", flush=True)
-
-    # Build the global blob -> {patient, relpath} map ONCE
-    blob_info = build_blob_info_map(account)
 
     projects = list_projects(svc) if args.project.strip().lower() == "all" \
         else [args.project.strip().upper()]
@@ -315,6 +401,9 @@ def main():
     manifest: dict = {"container": CONTAINER, "projects": {}}
     for project in projects:
         print(f"[1raw] === {project} ===", flush=True)
+        # Build the blob -> {patient, device, relpath} map per project
+        # (Dropbox listing is per-project, more efficient than global)
+        blob_info = build_blob_info_map(account, project)
         new, skipped, unmapped, examples = build_1raw(svc, project, blob_info)
         manifest["projects"][project] = {
             "new": new, "skipped": skipped, "unmapped": unmapped,

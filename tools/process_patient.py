@@ -282,7 +282,7 @@ def main(argv=None):
     # USE_SMART_FILTER=1 -> knowledge-driven filtering (dictionary hard
     # bounds + trained ML models + safety rails that can never wipe a
     # signal). Default keeps the legacy process_frame path.
-    smart_mode = os.environ.get("USE_SMART_FILTER", "0") == "1"
+    smart_mode = os.environ.get("USE_SMART_FILTER", "1") == "1"
     filter_log = None
     if smart_mode:
         from tools.smart_filter import smart_filter_frame

@@ -46,7 +46,7 @@ from tools import azure_auth  # noqa: E402
 
 import pandas as pd  # noqa: E402
 
-CONTAINER = "1-Raw"
+CONTAINER = "1-raw"
 
 # Normalize ingest device codes -> K's device folder names.
 DEVICE_FOLDERS = {

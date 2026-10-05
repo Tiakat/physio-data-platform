@@ -117,6 +117,10 @@ on:
         description: "restructure-azure: project code, or 'all'"
         required: false
         default: "COLECTOMIE"
+      restructure_erase_wrong:
+        description: "restructure-azure: set to 1 to delete blobs with provisional patient names first"
+        required: false
+        default: "0"
       erase_confirm:
         description: "erase-old: must be YES-DELETE-OLD to run"
         required: false
@@ -424,9 +428,13 @@ jobs:
             # K's 4-container restructure: raw/processed/graphes/analysis.
             # Sample-first: default input is COLECTOMIE; run with 'all' after.
             mkdir -p restructure_out
+            ERASE_FLAG=""
+            if [ "${{ inputs.restructure_erase_wrong }}" = "1" ]; then
+              ERASE_FLAG="--erase-wrong"
+            fi
             python -m tools.restructure_azure \
               --project "${{ inputs.restructure_project }}" \
-              --out restructure_out
+              --out restructure_out $ERASE_FLAG
           elif [ "${{ inputs.task }}" = "erase-old" ]; then
             # Deletes old containers ONLY with explicit confirmation token.
             # Runs only after K verifies the 4 new containers.

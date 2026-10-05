@@ -32,6 +32,7 @@
 - Device folders: infinity, bettercare, bis, nol, pumps, etc. based on source
 - BIS: convert to CSV (parse .r2a/.spa → CSV)
 - **Hashes must match Dropbox**: SHA256 of each file in 1-raw must equal the Dropbox source hash. Store hash in blob metadata. Weekly ingest uses hashes to detect changed/new files.
+- **Hash chain across all 4 containers**: Every file in 2-processed, 3-graphes, 4-analysis must carry the source hash from 1-raw (like an IP address to trace back). This creates full provenance: 4-analysis → 3-graphes → 2-processed → 1-raw → Dropbox.
 
 ## Filtering
 - Must be signal-specific, transparent, auditable (never generic)

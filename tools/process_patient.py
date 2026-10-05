@@ -378,7 +378,8 @@ def main(argv=None):
             svc.get_blob_client(
                 container="graphs",
                 blob=f"{args.project}/{safe_patient}/{png.name}").upload_blob(
-                    png.read_bytes(), overwrite=True)
+                    png.read_bytes(), overwrite=True,
+                    content_settings={"content_type": "image/png"})
         print(f"[process-patient] uploaded {n_graphs} graphs to graphs/{args.project}/{safe_patient}/", flush=True)
     except Exception as e:
         print(f"[process-patient] WARNING: graph upload failed: {e}", flush=True)

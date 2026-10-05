@@ -279,9 +279,21 @@ def main(argv=None):
           flush=True)
 
     # Process ALL signals (no column restriction).
-    filt, qc, review = process_frame(
-        df, None, configs, index, missing_codes, source="process_patient",
-        time_index=t)
+    # USE_SMART_FILTER=1 -> knowledge-driven filtering (dictionary hard
+    # bounds + trained ML models + safety rails that can never wipe a
+    # signal). Default keeps the legacy process_frame path.
+    smart_mode = os.environ.get("USE_SMART_FILTER", "0") == "1"
+    filter_log = None
+    if smart_mode:
+        from tools.smart_filter import smart_filter_frame
+        filt, qc, filter_log = smart_filter_frame(df, t, svc)
+        review = {"smart_filter": True}
+        print("[process-patient] filtering via smart_filter "
+              "(knowledge-driven)", flush=True)
+    else:
+        filt, qc, review = process_frame(
+            df, None, configs, index, missing_codes,
+            source="process_patient", time_index=t)
 
     duration_s = float(t.max() - t.min()) if len(t) else 0.0
     # Lineage: hashes + counts only, no patient data.
@@ -298,6 +310,10 @@ def main(argv=None):
         "columns": len(df.columns),
         "duration_s": duration_s,
         "time_method": time_method,
+        "smart_filter": smart_mode,
+        "filter_log_summary": (
+            {k: v for k, v in filter_log.items() if k != "columns"}
+            if filter_log else None),
         "fs_hz": fs,
         "draft_configs": drafts,
         "qc_summary": {

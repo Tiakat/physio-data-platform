@@ -52,6 +52,8 @@ on:
           - meta-supervisor
           - export-csv
           - migrate-graphs
+          - detect-overfilter
+          - ml-feedback
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -326,6 +328,10 @@ jobs:
             python -m tools.export_filtered_csv
           elif [ "${{ inputs.task }}" = "migrate-graphs" ]; then
             python -m tools.migrate_graphs --project "${{ inputs.migrate_project }}"
+          elif [ "${{ inputs.task }}" = "detect-overfilter" ]; then
+            python -m tools.detect_overfilter
+          elif [ "${{ inputs.task }}" = "ml-feedback" ]; then
+            python -m tools.ml_feedback --overfilter-report overfilter/report.json
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)
@@ -364,6 +370,8 @@ jobs:
             filter_pilot_out/
             graph_samples/
             validation_report/
+            overfilter/
+            ml_feedback/
             external_validation_report/
             qc_report/
             supervisor_audit/

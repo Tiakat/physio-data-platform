@@ -38,3 +38,8 @@ cryptography>=42
 
 # Filter pilot graphs
 matplotlib>=3.8
+
+# Deep learning (SSL transformer, CNN comparison)
+# NOTE: on GitHub Actions CPU runners install via:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0

@@ -250,18 +250,70 @@ def get_model(svc, col: str):
         return None
 
 
-def _window_features(wv: np.ndarray) -> list:
-    """8 features, IDENTICAL to tools/ml_supervised_train.py."""
+def _is_art_signal(signal_name: str) -> bool:
+    """Check if signal is arterial pressure (uses morphology features)."""
+    low = signal_name.lower()
+    return any(kw in low for kw in ["art", "rad ", "rad_", "bra ", "bra_",
+                                     "abp", "arterial", "ibp", "nbp"])
+
+
+def _art_morphology_features(wv: np.ndarray) -> list:
+    """12 ART morphology features, IDENTICAL to tools/ml_supervised_train.py."""
+    if len(wv) < 20:
+        return [0.0] * 12
+    sys_p = float(np.max(wv))
+    dia_p = float(np.min(wv))
+    pp = sys_p - dia_p
+    feats = [sys_p, dia_p, pp]
+    diffs = np.diff(wv)
+    pos_diffs = diffs[diffs > 0]
+    feats.append(float(np.max(pos_diffs)) if len(pos_diffs) > 0 else 0.0)
+    feats.append(float(np.mean(pos_diffs)) if len(pos_diffs) > 0 else 0.0)
+    try:
+        from scipy.signal import find_peaks
+        peaks, _ = find_peaks(wv, distance=10, prominence=pp * 0.1 if pp > 0 else 1)
+        n_beats = len(peaks)
+        feats.append(float(n_beats))
+        if n_beats >= 2:
+            intervals = np.diff(peaks)
+            feats.append(float(np.mean(intervals)))
+            feats.append(float(np.std(intervals) / (np.mean(intervals) + 1e-6)))
+            notch_count = 0
+            for i in range(len(peaks) - 1):
+                segment = wv[peaks[i]:peaks[i+1]]
+                if len(segment) > 10:
+                    sub_peaks, _ = find_peaks(segment, distance=5)
+                    if len(sub_peaks) > 0:
+                        notch_count += 1
+            feats.append(float(notch_count) / max(n_beats - 1, 1))
+        else:
+            feats.extend([0.0, 0.0, 0.0])
+        feats.append(float(sys_p / (dia_p + 1e-6)))
+        feats.append(float(np.trapz(wv - dia_p)))
+    except Exception:
+        feats.extend([0.0] * 6)
+    # Ensure exactly 12
+    while len(feats) < 12:
+        feats.append(0.0)
+    return feats[:12]
+
+
+def _window_features(wv: np.ndarray, signal_name: str = "") -> list:
+    """8 base features + 12 ART morphology (if arterial). IDENTICAL to ml_supervised_train."""
     diffs = np.abs(np.diff(wv)) if len(wv) > 1 else np.array([0.0])
-    return [
+    base = [
         float(np.mean(wv)), float(np.std(wv)),
         float(np.min(wv)), float(np.max(wv)),
         float(np.max(wv) - np.min(wv)), float(np.median(wv)),
         float(np.max(diffs)), float(len(np.unique(np.round(wv, 2)))),
     ]
+    if _is_art_signal(signal_name):
+        return base + _art_morphology_features(wv)
+    else:
+        return base + [0.0] * 12
 
 
-def ml_artifact_mask(values: np.ndarray, model) -> np.ndarray:
+def ml_artifact_mask(values: np.ndarray, model, signal_name: str = "") -> np.ndarray:
     """Classify 100-sample windows with the trained RF; True = artifact."""
     n = len(values)
     mask = np.zeros(n, dtype=bool)
@@ -476,7 +528,7 @@ def smart_filter_frame(df: pd.DataFrame, t_seconds: np.ndarray,
 
             # ML pass (falls back gracefully to dictionary-only).
             model = get_model(svc, col)
-            mmask = ml_artifact_mask(values, model) if model is not None \
+            mmask = ml_artifact_mask(values, model, signal_name=col) if model is not None \
                 else np.zeros(n, dtype=bool)
             if model is not None:
                 entry["model"] = "ml_supervised_rf"

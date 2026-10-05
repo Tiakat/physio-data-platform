@@ -307,7 +307,7 @@ jobs:
               --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
               --overwrite
             cp labels_out/promises_labels.csv ./promises_labels_artifact.csv
-elif [ "${{ inputs.task }}" = "ml-sup-train" ]; then
+          elif [ "${{ inputs.task }}" = "ml-sup-train" ]; then
             mkdir -p ml_out processed_dl
             az storage blob download-batch \
               --account-name labdataplatform \

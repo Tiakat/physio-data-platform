@@ -26,6 +26,15 @@ name: recon
 #                    Real Dropbox patient names, device subfolders, all CSVs
 #                    with text/csv for browser preview. Sample-first via
 #                    build1raw_project input.
+#   migrate-1raw     -> K's recycle: builds 1-raw from Azure rawdata instead
+#                    of re-downloading Dropbox. Decrypts the existing
+#                    rawdata/{PROJECT}/parquet/*.parquet.enc blobs, resolves
+#                    patient identity from the ingest's own encrypted parse
+#                    catalogs (rawdata/{PROJECT}/catalog*.json.enc), converts
+#                    to CSV and uploads 1-raw/{PROJECT}/{patient}/{device}/
+#                    {file}.csv. Real Dropbox patient names only (exact-match
+#                    validated), never guessed. Sample-first via
+#                    migrate1raw_project input.
 #   erase-all        -> deletes EVERYTHING except 1-Raw. K's clean restart:
 #                    "all the other containers erase them we will start from
 #                    new". Requires erase_all_confirm=YES-ERASE-ALL; runs only
@@ -91,6 +100,7 @@ on:
           - restructure-azure
           - erase-old
           - build-1raw
+          - migrate-1raw
           - erase-all
           - pipeline-chain
           - pipeline-stage
@@ -144,6 +154,14 @@ on:
         default: "COLECTOMIE"
       build1raw_max_patients:
         description: "build-1raw: test mode, max patients (empty = all)"
+        required: false
+        default: ""
+      migrate1raw_project:
+        description: "migrate-1raw: project code, or 'all'"
+        required: false
+        default: "COLECTOMIE"
+      migrate1raw_max_patients:
+        description: "migrate-1raw: test mode, max patients (empty = all)"
         required: false
         default: ""
       erase_all_confirm:
@@ -488,6 +506,20 @@ jobs:
               --project "${{ inputs.build1raw_project }}" \
               --out 1raw_out \
               $MAX_PATIENTS_ARG
+          elif [ "${{ inputs.task }}" = "migrate-1raw" ]; then
+            # K's recycle: 1-raw from Azure rawdata (no Dropbox downloads).
+            # Identity from the ingest's own encrypted parse catalogs;
+            # real Dropbox patient names only, exact-match validated.
+            # Sample-first: default COLECTOMIE.
+            MIG_MAX_PATIENTS_ARG=""
+            if [ -n "${{ inputs.migrate1raw_max_patients }}" ]; then
+              MIG_MAX_PATIENTS_ARG="--max-patients ${{ inputs.migrate1raw_max_patients }}"
+            fi
+            mkdir -p migrate_out
+            python -m tools.migrate_rawdata_to_1raw \
+              --project "${{ inputs.migrate1raw_project }}" \
+              --out migrate_out \
+              $MIG_MAX_PATIENTS_ARG
           elif [ "${{ inputs.task }}" = "erase-all" ]; then
             # Deletes EVERYTHING except 1-Raw. ONLY with explicit token.
             # Runs only after K verifies 1-Raw.

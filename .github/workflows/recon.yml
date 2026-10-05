@@ -21,6 +21,15 @@ name: recon
 #                    reports, filtered-csv) + swaps processed_new -> processed.
 #                    Requires erase_confirm=YES-DELETE-OLD; runs only after K
 #                    verifies the new containers.
+#   build-1raw       -> K's clean restart: builds the 1-Raw container with
+#                    structure 1-Raw/{PROJECT}/{patient}/{device}/{file}.csv.
+#                    Real Dropbox patient names, device subfolders, all CSVs
+#                    with text/csv for browser preview. Sample-first via
+#                    1raw_project input.
+#   erase-all        -> deletes EVERYTHING except 1-Raw. K's clean restart:
+#                    "all the other containers erase them we will start from
+#                    new". Requires erase_all_confirm=YES-ERASE-ALL; runs only
+#                    after K verifies 1-Raw.
 # Neither task moves, renames, or deletes anything.
 
 on:
@@ -81,6 +90,8 @@ on:
           - signal-presence
           - restructure-azure
           - erase-old
+          - build-1raw
+          - erase-all
       fetch_prefix:
         description: "Blob prefix for fetch-recon (e.g. recon/schemas_20261001_2012/)"
         required: false
@@ -123,6 +134,14 @@ on:
         default: "0"
       erase_confirm:
         description: "erase-old: must be YES-DELETE-OLD to run"
+        required: false
+        default: ""
+      1raw_project:
+        description: "build-1raw: project code, or 'all'"
+        required: false
+        default: "COLECTOMIE"
+      erase_all_confirm:
+        description: "erase-all: must be YES-ERASE-ALL to run"
         required: false
         default: ""
       eval_project:
@@ -440,6 +459,19 @@ jobs:
             # Runs only after K verifies the 4 new containers.
             python -m tools.erase_old_containers \
               --confirm "${{ inputs.erase_confirm }}"
+          elif [ "${{ inputs.task }}" = "build-1raw" ]; then
+            # K's clean restart: 1-Raw/{PROJECT}/{patient}/{device}/{file}.csv.
+            # Real Dropbox patient names, device subfolders, CSVs with
+            # text/csv for browser preview. Sample-first: default COLECTOMIE.
+            mkdir -p 1raw_out
+            python -m tools.build_1raw \
+              --project "${{ inputs.1raw_project }}" \
+              --out 1raw_out
+          elif [ "${{ inputs.task }}" = "erase-all" ]; then
+            # Deletes EVERYTHING except 1-Raw. ONLY with explicit token.
+            # Runs only after K verifies 1-Raw.
+            python -m tools.erase_all_except_1raw \
+              --confirm "${{ inputs.erase_all_confirm }}"
           elif [ "${{ inputs.task }}" = "ssl-pretrain" ]; then
             # Self-supervised contrastive pretraining on unlabeled windows.
             # Pilot scale: 100 files by default; scale up after verification.
@@ -579,4 +611,5 @@ jobs:
             patient_out/
             restructure_out/
             ssl_out/
+            1raw_out/
           if-no-files-found: ignore

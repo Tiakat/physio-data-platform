@@ -62,8 +62,11 @@ def ensure_containers(svc):
             svc.create_container(name)
             print(f"[restructure] created container: {name}", flush=True)
         except Exception as exc:  # already exists
-            if "ContainerAlreadyExists" not in type(exc).__name__:
-                raise
+            exc_name = type(exc).__name__
+            if "ResourceExistsError" not in exc_name and "ContainerAlreadyExists" not in exc_name:
+                # Also check error code for Azure SDK
+                if getattr(exc, 'error_code', '') != 'ContainerAlreadyExists':
+                    raise
             print(f"[restructure] container exists: {name}", flush=True)
 
 

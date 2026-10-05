@@ -55,6 +55,7 @@ on:
           - detect-overfilter
           - ml-feedback
           - fetch-new-graphs
+          - count-graphs
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -334,7 +335,9 @@ jobs:
           elif [ "${{ inputs.task }}" = "ml-feedback" ]; then
             python -m tools.ml_feedback
           elif [ "${{ inputs.task }}" = "fetch-new-graphs" ]; then
-            python -m tools.fetch_new_graphs --overfilter-report overfilter/report.json
+            python -m tools.fetch_new_graphs
+          elif [ "${{ inputs.task }}" = "count-graphs" ]; then
+            python -m tools.count_graphs --overfilter-report overfilter/report.json
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)

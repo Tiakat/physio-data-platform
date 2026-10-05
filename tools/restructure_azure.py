@@ -10,7 +10,7 @@ Same architecture everywhere: {PROJECT}/{patient}/files.
 - processed/{PROJECT}/{patient}/{file}.csv
     Source: decrypt processed/level2/{PROJECT}/{patient}/*.parquet.enc -> CSV.
     Because a 'processed' container already exists with the old level2 layout,
-    CSVs are staged in 'processed_new'; the erase-old phase swaps it into place.
+    CSVs are staged in 'processed-new'; the erase-old phase swaps it into place.
 - graphes/{PROJECT}/{patient}/{file}.png
     Source: processed/level2/{PROJECT}/{patient}/graphs/*.png AND the existing
     graphs/{PROJECT}/{patient}/*.png (dedup by destination name).
@@ -41,7 +41,7 @@ from tools import azure_auth  # noqa: E402
 
 import pandas as pd  # noqa: E402
 
-STAGING_PROCESSED = "processed_new"
+STAGING_PROCESSED = "processed-new"
 NEW_CONTAINERS = ["raw", "graphes", "analysis", STAGING_PROCESSED]
 
 
@@ -62,11 +62,8 @@ def ensure_containers(svc):
             svc.create_container(name)
             print(f"[restructure] created container: {name}", flush=True)
         except Exception as exc:  # already exists
-            exc_name = type(exc).__name__
-            if "ResourceExistsError" not in exc_name and "ContainerAlreadyExists" not in exc_name:
-                # Also check error code for Azure SDK
-                if getattr(exc, 'error_code', '') != 'ContainerAlreadyExists':
-                    raise
+            if "ContainerAlreadyExists" not in type(exc).__name__:
+                raise
             print(f"[restructure] container exists: {name}", flush=True)
 
 
@@ -143,7 +140,7 @@ def migrate_raw(svc, project: str, lineage_map: dict[str, str]) -> tuple[int, in
 
 
 def migrate_processed(svc, project: str) -> tuple[int, int]:
-    """processed/level2/{PROJECT}/{patient}/*.parquet.enc -> processed_new/.../*.csv"""
+    """processed/level2/{PROJECT}/{patient}/*.parquet.enc -> processed-new/.../*.csv"""
     src = svc.get_container_client("processed")
     dst = svc.get_container_client(STAGING_PROCESSED)
     done, skipped = 0, 0

@@ -54,6 +54,7 @@ on:
           - migrate-graphs
           - detect-overfilter
           - ml-feedback
+          - fetch-new-graphs
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -331,7 +332,9 @@ jobs:
           elif [ "${{ inputs.task }}" = "detect-overfilter" ]; then
             python -m tools.detect_overfilter
           elif [ "${{ inputs.task }}" = "ml-feedback" ]; then
-            python -m tools.ml_feedback --overfilter-report overfilter/report.json
+            python -m tools.ml_feedback
+          elif [ "${{ inputs.task }}" = "fetch-new-graphs" ]; then
+            python -m tools.fetch_new_graphs --overfilter-report overfilter/report.json
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)
@@ -380,6 +383,7 @@ jobs:
             processed_out/
             shared_out/
             ml_out/
+            new_graph_samples/
             dict_out/
             inv_out/
             patient_out/

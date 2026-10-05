@@ -56,6 +56,7 @@ on:
           - ml-feedback
           - fetch-new-graphs
           - count-graphs
+          - smart-filter-pilot
           - ml-incremental
           - fetch-dict
           - azure-inventory
@@ -162,6 +163,13 @@ jobs:
               --patient "${{ inputs.pp_patient }}" \
               --blob "${{ inputs.pp_blob }}" \
               --out processed_out
+          elif [ "${{ inputs.task }}" = "smart-filter-pilot" ]; then
+            mkdir -p smart_pilot_out
+            USE_SMART_FILTER=1 python -m tools.process_patient \
+              --project "${{ inputs.pp_project }}" \
+              --patient "${{ inputs.pp_patient }}" \
+              --blob "${{ inputs.pp_blob }}" \
+              --out smart_pilot_out
           elif [ "${{ inputs.task }}" = "fetch-shared" ]; then
             mkdir -p shared_out
             python -m tools.fetch_shared_zip \
@@ -387,6 +395,7 @@ jobs:
             shared_out/
             ml_out/
             new_graph_samples/
+            smart_pilot_out/
             dict_out/
             inv_out/
             patient_out/

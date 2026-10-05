@@ -2,7 +2,7 @@
 
 K: "all the other containers erase them we will start from new"
 
-Deletes every container except "1-Raw":
+Deletes every container except "1-raw":
     rawdata, processed, processed-new, graphs, graphes, reports,
     filtered-csv, analysis, raw, $logs (attempted; system container may
     refuse - non-fatal)
@@ -28,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tools import azure_auth  # noqa: E402
 
-KEEP = "1-Raw"
+KEEP = "1-raw"
 CONFIRM_TOKEN = "YES-ERASE-ALL"
 SYSTEM_CONTAINER = "$logs"
 

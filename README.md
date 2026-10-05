@@ -1,109 +1,110 @@
-# Physiological Research Data Platform
+# Physio Data Platform
 
-A private research data platform for ingesting and validating heterogeneous physiological
-recordings from multiple research projects.
+An automated pipeline for **physiological signal processing**: ingest → filter →
+graph → analyze. Built for intraoperative monitoring data (ECG, blood pressure,
+EEG, SpO₂, respiration), with signal-specific filtering, artifact detection,
+and ML-augmented QC.
 
-The repository contains source code and configuration only. Research data, credentials,
-and other sensitive material are never stored in GitHub.
+## Try it now (no credentials needed)
 
-## Current phase
+```bash
+git clone https://github.com/Tiakat/physio-data-platform.git
+cd physio-data-platform
+pip install -r requirements.txt
 
-### Phase 1 — Data discovery and validation
+# Run the full demo on open data (60 s ECG, ~10 seconds)
+python tools/portfolio_demo.py --out docs/portfolio/
+```
 
-Completed:
+See [docs/portfolio/](docs/portfolio/) for example outputs: raw-vs-filtered
+graphs, artifact detection detail views, and statistics.
 
-- Connected the development environment to Azure Blob Storage.
-- Established the private GitHub repository.
-- Defined the six active research projects.
-- Restricted ingestion to project `Database/RawData` folders.
-- Identified heterogeneous file formats and device sources.
-- Implemented recursive data discovery.
-- Implemented file-level validation.
-- Implemented SHA-256 checksums.
-- Implemented duplicate detection.
-- Implemented project-specific configuration profiles.
-- Implemented device-specific parsers/validators for supported formats.
-- Tested Azure uploads with small and large files.
-- Tested resumable/retry-style ingestion behaviour.
-- Verified uploaded files against their SHA-256 checksums.
-- Distinguished validation failures from missing modality coverage.
-- Completed validation across all six active projects.
+![ECG raw vs filtered](docs/portfolio/ecg_graph.png)
 
-## Projects
+## Architecture
 
-The platform currently supports six active research projects:
+```
+┌──────────┐     ┌─────────────┐     ┌──────────────┐     ┌───────────┐     ┌────────────┐
+│  Source  │────▶│    1-raw    │────▶│ 2-processed  │────▶│ 3-graphes │────▶│ 4-analysis │
+│ (devices)│     │ (CSV, human │     │  (filtered,   │     │  (PNG per │     │ (stats +   │
+│          │     │  readable)  │     │   QC flags)  │     │  signal)  │     │  ML models)│
+└──────────┘     └─────────────┘     └──────────────┘     └───────────┘     └────────────┘
+```
 
-- PROMISES
-- IPAMS
-- DEXREM
-- V-RAPS
-- SILVR
-- ESMONOL
+Four containers, one connected chain. Every derivative carries the source hash
+"like an IP address" — full provenance from analysis back to the raw file.
 
-Project-specific characteristics and patient counts are maintained in the project
-profiles and validation outputs rather than in this README.
+## Key components
 
-Warnings are recorded separately from failures. For example, a missing
-modality or device signal is not automatically treated as a corrupt file.
+| Component | Description |
+|-----------|-------------|
+| `tools/signal_processing.py` | Signal-specific filtering engine (867 lines). Per-signal configs, never treats missing values as zero, preserves waveform morphology. |
+| `tools/smart_filter.py` | ML-augmented artifact detection: Random Forest + self-supervised Transformer, with rule-based fallback. |
+| `tools/open_data.py` | Open-data loader: synthetic ECG generator + PhysioNet MIT-BIH downloader. No credentials required. |
+| `tools/portfolio_demo.py` | End-to-end demo: open data → QC → filter → graphs → stats. |
+| `tools/build_1raw.py` | Ingest to `1-raw/` with exact patient-name validation. |
+| `tools/pipeline_chain.py` | Automatic chain: `1-raw → 2-processed → 3-graphes → 4-analysis`. |
+| `tools/supervisor.py` | Stage supervisors + continuity checks + meta-supervisor. |
 
-## Validation principles
+## Signal coverage
 
-The platform currently separates three concepts:
+50+ physiological signals with literature-backed normal ranges and artifact
+patterns (`docs/signal_norms_labeling_ground_truth.md`):
 
-### Validation
+- **Cardiac**: ECG, HR, ART (arterial pressure), NBP/NIBP
+- **Respiratory**: SpO₂, RR, EtCO₂, airway pressure
+- **Neurological**: BIS (bispectral index), EEG, NOL (nociception)
+- **Other**: Temperature, infusion pump rates (propofol, remifentanil)
 
-Is the file intact, readable, and structurally valid?
+## Filtering principles
 
-### Coverage
+- **Signal-specific**: each signal gets its own filter (no generic Hampel-everything)
+- **Transparent**: raw + filtered preserved side-by-side with full reproducibility log
+- **Safe**: never treats missing as zero; never removes 100% of a signal;
+  if >50% would be removed, retain original and flag for review
+- **Physiological**: SpO₂ flat at 98–99% is normal (no smoothing); NBP gaps are
+  expected (cuff intervals, never interpolated); pump data are exposures, not signals
 
-Which devices and physiological modalities are actually present for a patient?
+## Machine learning
 
-### Inclusion
+- **Supervised**: Random Forest per signal (artifact vs clean), trained on
+  expert-labeled segments
+- **Self-supervised**: Transformer pre-trained on unlabeled signals, fine-tuned
+  for artifact detection
+- **Unsupervised**: clustering for patient phenotyping
+- **Comparison**: `tools/compare_models.py` benchmarks RF vs CNN vs Transformer vs SSL-Transformer
 
-Does a particular analysis require a modality that this patient does not have?
+ML runs on filtered derivatives only — raw data is never modified by models.
+The rule-based engine remains as the auditable baseline.
 
-A missing modality is therefore not automatically an ingestion failure.
+## Production deployment
 
-## Current supported data sources
+In production, the pipeline runs on:
+- **Azure Blob Storage**: 4 containers (`1-raw`, `2-processed`, `3-graphes`, `4-analysis`)
+- **GitHub Actions**: weekday incremental ingest, full pipeline runs
+- **Privacy**: containers are private; no patient data in the repo or CI artifacts
 
-The codebase currently contains parsers/validation logic for supported physiological
-recording sources including:
+## Project structure
 
-- NOL / Medasense
-- Infinity
-- BetterCare
-- Pump-related recordings
+```
+├── tools/               # Pipeline scripts (ingest, filter, graphs, ML, supervisors)
+├── backbone/            # Device parsers (Infinity, BetterCare, BIS, NOL, pumps)
+├── profiles/            # Per-project configurations (10 projects)
+├── configs/signals/     # Per-signal filter configurations
+├── docs/
+│   ├── portfolio/       # Demo outputs (open data, safe to share)
+│   └── signal_norms_*.md # Literature-backed signal norms
+├── app/                 # Streamlit researcher dashboard
+└── tests/               # Unit tests
+```
 
-Additional formats are retained for future handling rather than being forced through
-an unsupported parser.
+## Documentation
 
-## Repository structure
+- [Portfolio demo](docs/portfolio/) — run it yourself, see the outputs
+- [Signal norms](docs/signal_norms_labeling_ground_truth.md) — 50 signals, literature-backed
+- [Rules](docs/katia_rules.md) — pipeline requirements and conventions
 
-```text
-backbone/
-    config.py
-    discover.py
-    validate.py
-    qc.py
-    parsers/
-        _common.py
-        nol_medasense.py
-        infinity.py
-        bettercare.py
-        pump.py
+## License
 
-profiles/
-    _variables.yaml
-    promises.yaml
-    ipams.yaml
-    dexrem.yaml
-    v-raps.yaml
-    silvr.yaml
-    esmonol.yaml
-
-ingest/
-    rules.yaml
-
-tools/
-    sync_dropbox.py
-    validate_project.py
+MIT — see LICENSE (if present). Open data demo uses the MIT-BIH Arrhythmia
+Database from PhysioNet (Goldberger et al., 2000).

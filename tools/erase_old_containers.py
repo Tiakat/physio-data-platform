@@ -8,8 +8,8 @@ Deletes: rawdata, processed (old level2 layout), graphs, reports, filtered-csv
 
 Then performs the processed swap, because Azure has no container rename:
   1. create new empty 'processed' container
-  2. server-side copy every blob processed_new/* -> processed/*
-  3. delete 'processed_new'
+  2. server-side copy every blob processed-new/* -> processed/*
+  3. delete 'processed-new'
 
 Final state: exactly 4 containers - raw, processed, graphes, analysis.
 
@@ -32,7 +32,7 @@ from tools import azure_auth  # noqa: E402
 
 OLD_CONTAINERS = ["rawdata", "processed", "graphs", "reports", "filtered-csv"]
 SYSTEM_CONTAINER = "$logs"
-STAGING = "processed_new"
+STAGING = "processed-new"
 FINAL = ["raw", "processed", "graphes", "analysis"]
 CONFIRM_TOKEN = "YES-DELETE-OLD"
 
@@ -88,7 +88,7 @@ def main():
         except Exception as exc:
             print(f"[erase-old] could not delete '{c}': {exc}", flush=True)
 
-    # 3. Processed swap: processed_new -> processed (server-side copy).
+    # 3. Processed swap: processed-new -> processed (server-side copy).
     from azure.storage.blob import BlobSasPermissions, generate_blob_sas
 
     staging_cc = svc.get_container_client(STAGING)
@@ -109,7 +109,7 @@ def main():
                 f"{STAGING}/{blob_name}?{sas}")
 
     blobs = [b.name for b in staging_cc.list_blobs()]
-    print(f"[erase-old] copying {len(blobs)} blobs processed_new -> processed...",
+    print(f"[erase-old] copying {len(blobs)} blobs processed-new -> processed...",
           flush=True)
     for i, name in enumerate(blobs, 1):
         dest = dest_cc.get_blob_client(name)
@@ -128,10 +128,10 @@ def main():
     # Verify counts match before dropping staging.
     n_src = count_blobs(svc, STAGING)
     n_dst = count_blobs(svc, "processed")
-    print(f"[erase-old] verify: processed_new={n_src} processed={n_dst}",
+    print(f"[erase-old] verify: processed-new={n_src} processed={n_dst}",
           flush=True)
     if n_src != n_dst:
-        print("[erase-old] ABORT: count mismatch, keeping processed_new.",
+        print("[erase-old] ABORT: count mismatch, keeping processed-new.",
               flush=True)
         sys.exit(1)
 

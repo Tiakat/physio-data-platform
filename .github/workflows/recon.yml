@@ -67,6 +67,9 @@ on:
           - ml-incremental
           - build-promises-labels
           - eval-unsupervised
+          - ssl-pretrain
+          - ssl-finetune
+          - compare-models
           - fetch-dict
           - azure-inventory
           - find-complete-patient
@@ -122,6 +125,22 @@ on:
         description: "eval-unsupervised: project code"
         required: false
         default: "DEXREM"
+      ssl_signal:
+        description: "ssl-pretrain/ssl-finetune/compare-models: signal name (e.g. ART)"
+        required: false
+        default: "ART"
+      ssl_max_files:
+        description: "ssl tasks: max parquet files to use (pilot scale)"
+        required: false
+        default: "100"
+      ssl_epochs:
+        description: "ssl tasks: training epochs"
+        required: false
+        default: "10"
+      ssl_pretrained:
+        description: "ssl-finetune: encoder .pt path in ml_out/ssl (blank = from scratch)"
+        required: false
+        default: ""
 
 concurrency:
   group: physio-recon
@@ -413,6 +432,90 @@ jobs:
             # Runs only after K verifies the 4 new containers.
             python -m tools.erase_old_containers \
               --confirm "${{ inputs.erase_confirm }}"
+          elif [ "${{ inputs.task }}" = "ssl-pretrain" ]; then
+            # Self-supervised contrastive pretraining on unlabeled windows.
+            # Pilot scale: 100 files by default; scale up after verification.
+            pip install torch --index-url https://download.pytorch.org/whl/cpu -q
+            mkdir -p ssl_out processed_dl
+            az storage blob download-batch \
+              --account-name labdataplatform \
+              --source processed \
+              --pattern "processed/level2/*/*" \
+              --destination processed_dl \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            python -m tools.ssl_transformer --mode pretrain \
+              --parquet-dir processed_dl --out ssl_out \
+              --signal "${{ inputs.ssl_signal }}" \
+              --max-files "${{ inputs.ssl_max_files }}" \
+              --epochs "${{ inputs.ssl_epochs }}" --device cpu
+            az storage blob upload-batch \
+              --account-name labdataplatform \
+              --source ssl_out --destination processed \
+              --destination-path "ml_models/ssl/" \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --overwrite
+          elif [ "${{ inputs.task }}" = "ssl-finetune" ]; then
+            # Fine-tune (pretrained encoder or from scratch) on labels.
+            pip install torch --index-url https://download.pytorch.org/whl/cpu -q
+            mkdir -p ssl_out processed_dl
+            az storage blob download-batch \
+              --account-name labdataplatform \
+              --source processed \
+              --pattern "processed/level2/*/*" \
+              --destination processed_dl \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            LABELS_ARG=""
+            if [ -f data/labels/promises_labels.csv ]; then
+              LABELS_ARG="--labels-csv data/labels/promises_labels.csv"
+            fi
+            # Pull pretrained encoder if requested.
+            PRE_ARG=""
+            if [ -n "${{ inputs.ssl_pretrained }}" ]; then
+              az storage blob download \
+                --account-name labdataplatform \
+                --container-name processed \
+                --name "ml_models/ssl/${{ inputs.ssl_pretrained }}" \
+                --file "ssl_out/${{ inputs.ssl_pretrained }}" \
+                --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+                || echo "pretrained encoder download failed; training from scratch"
+              PRE_ARG="--pretrained ssl_out/${{ inputs.ssl_pretrained }}"
+            fi
+            python -m tools.ssl_transformer --mode finetune \
+              --parquet-dir processed_dl --out ssl_out \
+              --signal "${{ inputs.ssl_signal }}" $PRE_ARG $LABELS_ARG \
+              --max-files "${{ inputs.ssl_max_files }}" \
+              --epochs "${{ inputs.ssl_epochs }}" --device cpu
+            az storage blob upload-batch \
+              --account-name labdataplatform \
+              --source ssl_out --destination processed \
+              --destination-path "ml_models/ssl/" \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --overwrite
+          elif [ "${{ inputs.task }}" = "compare-models" ]; then
+            # Head-to-head: RF vs 1D-CNN vs Transformer vs SSL-Transformer.
+            pip install torch --index-url https://download.pytorch.org/whl/cpu -q
+            mkdir -p ssl_out processed_dl
+            az storage blob download-batch \
+              --account-name labdataplatform \
+              --source processed \
+              --pattern "processed/level2/*/*" \
+              --destination processed_dl \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            LABELS_ARG=""
+            if [ -f data/labels/promises_labels.csv ]; then
+              LABELS_ARG="--labels-csv data/labels/promises_labels.csv"
+            fi
+            python -m tools.compare_models \
+              --parquet-dir processed_dl --out ssl_out \
+              --signal "${{ inputs.ssl_signal }}" $LABELS_ARG \
+              --max-files "${{ inputs.ssl_max_files }}" \
+              --epochs "${{ inputs.ssl_epochs }}" --device cpu
+            az storage blob upload-batch \
+              --account-name labdataplatform \
+              --source ssl_out --destination processed \
+              --destination-path "ml_models/ssl/" \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
+              --overwrite
           elif [ "${{ inputs.task }}" = "qc-notify" ]; then
             python -m tools.qc_notifier | tee qc_notifier.log
             N=$(grep -oP '^QC_ISSUES_FOUND=\K[0-9]+' qc_notifier.log || echo 0)
@@ -467,4 +570,5 @@ jobs:
             inv_out/
             patient_out/
             restructure_out/
+            ssl_out/
           if-no-files-found: ignore

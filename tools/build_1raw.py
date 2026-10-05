@@ -68,22 +68,34 @@ SKIP_NAMES = {"thumbs.db", ".ds_store"}
 
 
 def get_dropbox_client():
-    """Dropbox client using app key/secret + refresh token."""
+    # Verbatim from tools/sync_dropbox_cloud.py (proven working ingest).
     import dropbox
 
     app_key = os.getenv("DROPBOX_APP_KEY")
     app_secret = os.getenv("DROPBOX_APP_SECRET")
     refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
-    if not app_key or not app_secret or not refresh_token:
-        raise RuntimeError(
-            "DROPBOX_APP_KEY / DROPBOX_APP_SECRET / DROPBOX_REFRESH_TOKEN "
-            "must be set"
-        )
-    return dropbox.Dropbox(
+
+    if not app_key:
+        raise RuntimeError("DROPBOX_APP_KEY is missing from .env")
+
+    if not app_secret:
+        raise RuntimeError("DROPBOX_APP_SECRET is missing from .env")
+
+    if not refresh_token:
+        raise RuntimeError("DROPBOX_REFRESH_TOKEN is missing from .env")
+
+    client = dropbox.Dropbox(
         oauth2_refresh_token=refresh_token,
         app_key=app_key,
         app_secret=app_secret,
     )
+
+    account = client.users_get_current_account()
+
+    print("Dropbox authentication successful.", flush=True)
+    print(f"Connected account: {account.name.display_name}", flush=True)
+
+    return client
 
 
 def load_projects_config() -> dict:

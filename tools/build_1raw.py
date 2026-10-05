@@ -277,8 +277,13 @@ def sanitize_filename(name: str) -> str:
     return (stem[:80] or "file") + ".csv"
 
 
-def build_1raw_project(svc, dbx, project: str) -> dict:
-    """Direct Dropbox -> 1-raw for one project."""
+def build_1raw_project(svc, dbx, project: str,
+                      max_patients: int | None = None) -> dict:
+    """Direct Dropbox -> 1-raw for one project.
+
+    max_patients: test mode — process only the first N patient folders
+    (sorted), instead of the whole project.
+    """
     dst = svc.get_container_client(CONTAINER)
 
     cfg = load_projects_config()
@@ -311,6 +316,20 @@ def build_1raw_project(svc, dbx, project: str) -> dict:
     print(f"[1raw] {project}: {len(all_files)} Dropbox files total", flush=True)
     print(f"[1raw] {project}: {len(valid_patients)} patient folders in Dropbox: "
           f"{sorted(valid_patients)}", flush=True)
+
+    # Test mode: limit to the first N patient folders (sorted). The kept
+    # names remain exact Dropbox strings — K's exact-match rule still holds.
+    if max_patients is not None and max_patients > 0:
+        kept = sorted(valid_patients)[:max_patients]
+        print(f"[1raw] limiting to first {len(kept)} patients (test mode): "
+              f"{kept}", flush=True)
+        valid_patients = set(kept)
+        kept_files = [f for f in all_files
+                      if extract_patient_folder(f["relpath"], regex)
+                      in valid_patients]
+        print(f"[1raw] {project}: {len(kept_files)}/{len(all_files)} files "
+              f"kept after patient limit", flush=True)
+        all_files = kept_files
 
     done, skipped, no_patient, name_mismatch, parse_fail = 0, 0, 0, 0, 0
     mismatched_names: set[str] = set()
@@ -414,7 +433,14 @@ def main():
                     help="Project code (e.g. COLECTOMIE) or 'all'")
     ap.add_argument("--out", default="1raw_out",
                     help="Local dir for the migration manifest")
+    ap.add_argument("--max-patients", type=int, default=None,
+                    help="Test mode: process only the first N patient "
+                         "folders (sorted). Omit for all patients.")
     args = ap.parse_args()
+
+    if args.max_patients:
+        print(f"[1raw] TEST MODE: max {args.max_patients} patients",
+              flush=True)
 
     account = os.environ["AZURE_STORAGE_ACCOUNT"]
     svc = azure_auth.get_blob_service_client(account)
@@ -433,7 +459,8 @@ def main():
     manifest: dict = {"container": CONTAINER, "projects": {}}
     for project in projects:
         print(f"[1raw] === {project} ===", flush=True)
-        manifest["projects"][project] = build_1raw_project(svc, dbx, project)
+        manifest["projects"][project] = build_1raw_project(
+            svc, dbx, project, max_patients=args.max_patients)
 
     outdir = Path(args.out)
     outdir.mkdir(parents=True, exist_ok=True)

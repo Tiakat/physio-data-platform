@@ -66,6 +66,7 @@ on:
           - smart-filter-pilot
           - ml-incremental
           - build-promises-labels
+          - eval-unsupervised
           - fetch-dict
           - azure-inventory
           - find-complete-patient
@@ -117,6 +118,10 @@ on:
         description: "erase-old: must be YES-DELETE-OLD to run"
         required: false
         default: ""
+      eval_project:
+        description: "eval-unsupervised: project code"
+        required: false
+        default: "DEXREM"
 
 concurrency:
   group: physio-recon
@@ -291,7 +296,7 @@ jobs:
             python -m tools.ml_incremental \
               --out ml_out \
               --manifest ml_out/training_manifest.json
-                    elif [ "${{ inputs.task }}" = "build-promises-labels" ]; then
+          elif [ "${{ inputs.task }}" = "build-promises-labels" ]; then
             mkdir -p labels_out
             pip install requests pandas -q
             DROPBOX_APP_KEY="${{ secrets.DROPBOX_APP_KEY }}" \
@@ -307,6 +312,18 @@ jobs:
               --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}" \
               --overwrite
             cp labels_out/promises_labels.csv ./promises_labels_artifact.csv
+          elif [ "${{ inputs.task }}" = "eval-unsupervised" ]; then
+            mkdir -p eval_out processed_dl
+            az storage blob download-batch \
+              --account-name labdataplatform \
+              --source processed \
+              --pattern "processed/level2/${{ inputs.eval_project }}/*" \
+              --destination processed_dl \
+              --auth-mode key --account-key "${{ secrets.AZURE_STORAGE_KEY }}"
+            python -m tools.evaluate_unsupervised \
+              --project "${{ inputs.eval_project }}" \
+              --parquet-dir processed_dl \
+              --out eval_out
           elif [ "${{ inputs.task }}" = "ml-sup-train" ]; then
             mkdir -p ml_out processed_dl
             az storage blob download-batch \

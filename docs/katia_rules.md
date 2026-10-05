@@ -45,6 +45,13 @@ Dropbox → 1-raw → 2-processed → 3-graphes → 4-analysis
 - Only processes what's missing
 - Linked as one continuous chain with supervisors
 
+## Supervisors
+- **One supervisor per step**: monitors its own stage (ingest, process, graphs, analysis)
+- **Continuity checkers between steps**: verify handoff (e.g., 1-raw → 2-processed: did all patients transfer? any missing? any corrupted?)
+- **Meta-supervisor (general)**: oversees all supervisors, reports overall health, alerts on failures
+- Supervisors must be linked as one chain, not isolated
+- Each supervisor: done or not done must be explicit
+
 ## Graphs
 - Every non-empty column gets a graph
 - Directly browseable in Azure (content_type=image/png), no downloading

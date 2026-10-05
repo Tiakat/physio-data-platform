@@ -43,3 +43,6 @@ matplotlib>=3.8
 # NOTE: on GitHub Actions CPU runners install via:
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu
 torch>=2.0
+
+# Open data (PhysioNet MIT-BIH) - optional, demo falls back to synthetic
+wfdb>=4.0

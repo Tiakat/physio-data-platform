@@ -156,6 +156,10 @@ def map_dexrem(parts):
     # files directly under the patient folder -> route by extension
     if len(rest) == 1:
         return route_by_extension(rest[0], patient)
+    # BIS export wrappers directly under patient (no bis/ folder)
+    if BIS_WRAPPER_RE.match(rest[0]):
+        sub = flatten_bis_wrappers(rest)
+        return ["Database", "ExtractedData", "BIS", patient] + sub
     dev = canonical_device(rest[0])
     if dev is None:
         return None
@@ -180,6 +184,9 @@ def map_promises_analyzed(parts):
             if n is not None:
                 return (["Database", "AnalyzedData", f"Patient {n}", "infinity"]
                         + parts[3:])
+            # "Promises" folder = study-level aggregates, not per-patient
+            if parts[2].lower() == "promises":
+                return ["Database", "AnalyzedData", "_study"] + parts[3:]
         return None
     if sub.startswith("2-BetterCare"):
         # BetterCare_Combined/Patient_38/...

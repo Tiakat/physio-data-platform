@@ -1,0 +1,773 @@
+variables:
+  AGE:
+    definition: Age ()
+    domain: demographic
+    filter_method: demographic
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 18-100
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: years
+  AIR_CONS:
+    definition: Air cons (L^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: null
+    filter_required: pending
+    interpolation: never
+    normal_range: null
+    processing_class: counter
+    source: dictionary_v1
+    unit: null
+  APNEA_DUR:
+    definition: Apn Dur (s^^ISO+)
+    domain: alarm
+    filter_method: null
+    filter_required: pending
+    interpolation: conditional
+    normal_range: null
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: null
+  ARR:
+    definition: ARR (^^ISO+)
+    domain: null
+    filter_method: event marker
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: none
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: event
+  ART_DIA:
+    definition: ART M Dias
+    domain: null
+    filter_method: damping detection; reject <15 or >200 mmHg
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 60-90
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  ART_MEAN:
+    definition: ART M
+    domain: null
+    filter_method: derived from SYS/DIA; reject if SYS<DIA
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 65-110
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  ART_SYS:
+    definition: ART M Sys
+    domain: null
+    filter_method: damping detection (square wave test); reject <30 or >300 mmHg
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 90-140
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  AUDIO_PAUSE:
+    definition: Audio pause (^^ISO+)
+    domain: alarm
+    filter_method: none
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: event
+    source: dictionary_v1
+    unit: N/A
+  BIS:
+    definition: BIS (^^ISO+)
+    domain: physiological_signal
+    filter_method: SQI gate; reject if SQI<50; EMG artifact rejection
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 40-60 (surgical anesthesia)
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: index (0-100)
+  CBS_HOSE:
+    definition: Cbs+hose (mL/hpa^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: none; rolling median 3-5 for visualization only
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: mL/hPa
+  CHOSE:
+    definition: Chose (mL/hpa^^ISO+)
+    domain: ventilator_setting
+    filter_method: none
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: mL/hPa
+  CVP:
+    definition: CVP M
+    domain: null
+    filter_method: reject <0 or >30 mmHg; respiratory variation check
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 2-8
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  DES_CONS:
+    definition: Des cons ()
+    domain: ventilator_setting_extra
+    filter_method: consumption total
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: counter
+    source: dictionary_v1
+    unit: mL
+  DEVICENAME:
+    definition: DEVICENAME
+    domain: demographic
+    filter_method: none
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: metadata
+    source: dictionary_v1
+    unit: N/A
+  DEVICE_CHECK:
+    definition: Device check (^^ISO+)
+    domain: metadata
+    filter_method: none
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: event
+    source: dictionary_v1
+    unit: N/A
+  DO2:
+    definition: DO2 (%^^ISO+)
+    domain: physiological_signal
+    filter_method: calculated; range check 200-2500
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 800-1200 mL/min
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mL/min
+  ELASTANCE:
+    definition: E (mbar/L^^ISO+)
+    domain: ventilator_setting
+    filter_method: none; robust outlier QC only
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: hPa/L
+  ENF_CONS:
+    definition: Enf cons (mL^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: consumption total
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: counter
+    source: dictionary_v1
+    unit: mL
+  ETCO2:
+    definition: etCO2
+    domain: null
+    filter_method: reject <5 or >100 mmHg; check capnogram morphology
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 35-45
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  ETN2O:
+    definition: etN2O (%^^ISO+)
+    domain: physiological_signal
+    filter_method: agent analyzer; range check 0-80%
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 0-70%
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  ETO2:
+    definition: etO2 (%^^ISO+)
+    domain: physiological_signal
+    filter_method: agent analyzer; range check 0-100%
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 25-100%
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: '%'
+  ETPRIMA:
+    definition: etPrimA (%^^ISO+)
+    domain: anesthesia_setting
+    filter_method: agent analyzer
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 0-8
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: '%'
+  ETSECA:
+    definition: etSecA (%^^ISO+)
+    domain: anesthesia_setting
+    filter_method: agent analyzer
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 0-8
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: '%'
+  ET_DES:
+    definition: etDes (%^^ISO+)
+    domain: null
+    filter_method: agent analyzer; range check 0-18%
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 4-8 (1 MAC ~6%)
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  ET_SEVO:
+    definition: etSev (%^^ISO+)
+    domain: null
+    filter_method: agent analyzer; range check 0-8%
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 1.5-2.5 (1 MAC ~2%)
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  FG_AIR:
+    definition: FG V'Air (mL)
+    domain: ventilator_setting_extra
+    filter_method: none
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: setting
+    source: dictionary_v1
+    unit: mL/min
+  FG_DES:
+    definition: FG Des (kpa^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: fresh gas setting
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: kPa
+  FG_ISO:
+    definition: FG Iso (kpa^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: fresh gas setting
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: kPa
+  FG_N2O:
+    definition: FG V'N2O (mL/min^)
+    domain: ventilator_setting_extra
+    filter_method: none
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: setting
+    source: dictionary_v1
+    unit: mL/min
+  FG_O2:
+    definition: FG O2 (%^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: fresh gas setting
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  FG_SEV:
+    definition: FG Sev (kpa^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: fresh gas setting
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: kPa
+  FIO2:
+    definition: FiO2 (%^^ISO+)
+    domain: ventilator_setting
+    filter_method: ventilator setting
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 21-100
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: '%'
+  HAL_CONS:
+    definition: Hal cons (mL^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: consumption total
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: counter
+    source: dictionary_v1
+    unit: mL
+  HEIGHT:
+    definition: Height (cm^^ISO+)
+    domain: demographic
+    filter_method: demographic
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: null
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: cm
+  HR:
+    definition: HR
+    domain: null
+    filter_method: SQI-weighted Kalman; reject beat-to-beat change >20%; Pan-Tompkins
+      QRS
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 60-100
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: bpm
+  INDES:
+    definition: inDes (%^^ISO+)
+    domain: anesthesia_setting
+    filter_method: agent analyzer
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  INHAL:
+    definition: inHal (%^^ISO+)
+    domain: anesthesia_setting
+    filter_method: agent analyzer
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  INISO:
+    definition: inIso (%^^ISO+)
+    domain: ventilator_setting
+    filter_method: agent analyzer
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 0-5
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  INPRIMA:
+    definition: inPrimA (%^^ISO+)
+    domain: anesthesia_setting
+    filter_method: agent analyzer
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 0-8
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: '%'
+  INSEVO:
+    definition: inSev (%^^ISO+)
+    domain: anesthesia_setting
+    filter_method: agent analyzer
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: '%'
+  ISO_CONS:
+    definition: Iso cons (mL^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: consumption total
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: counter
+    source: dictionary_v1
+    unit: mL
+  LEAK_BS:
+    definition: Leak BS ()
+    domain: ventilator_setting
+    filter_method: none; flag high values, do not delete
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: null
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: mL/min
+  MAC:
+    definition: xMAC (^^ISO+)
+    domain: null
+    filter_method: calculated from age-adjusted agent concentration
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 0.8-1.2
+    processing_class: anesthesia
+    source: dictionary_v1
+    unit: MAC
+  MVE:
+    definition: MV ()
+    domain: ventilator_setting
+    filter_method: ventilator-derived
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 5-10
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: L/min
+  NBP_DIA:
+    definition: NBP D (mm(hg)^^ISO+)
+    domain: null
+    filter_method: see NBP_SYS
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 60-90
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  NBP_MEAN:
+    definition: NIBP M
+    domain: null
+    filter_method: see NBP_SYS
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 65-110
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  NBP_SYS:
+    definition: NBP S ()
+    domain: physiological_signal
+    filter_method: reject if ART-NBP gradient >30 mmHg sustained; cuff artifact rejection
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 90-140
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  O2_CONS:
+    definition: O2 cons (L^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: consumption total
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: counter
+    source: dictionary_v1
+    unit: L
+  PACED:
+    definition: '%PACED (%^^ISO+)'
+    domain: event
+    filter_method: null
+    filter_required: pending
+    interpolation: conditional
+    normal_range: null
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: null
+  PA_DIA:
+    definition: PA M Dias
+    domain: null
+    filter_method: see PA_SYS
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 8-15
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  PA_MEAN:
+    definition: PA M
+    domain: null
+    filter_method: see PA_SYS
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 10-20
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  PA_SYS:
+    definition: PA M Sys
+    domain: null
+    filter_method: reject <5 or >80 mmHg; damping check
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 15-30
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mmHg
+  PEEP:
+    definition: PEEP (mbar^^ISO+)
+    domain: null
+    filter_method: ventilator setting; range check 0-25
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 5-10
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: cmH2O
+  PIP:
+    definition: PIP (mbar^^ISO+)
+    domain: ventilator_setting
+    filter_method: ventilator-derived
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 15-30
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: mbar
+  PMEAN:
+    definition: Pmean (mbar^^ISO+)
+    domain: ventilator_setting
+    filter_method: ventilator-derived
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 8-15
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: mbar
+  PPLAT:
+    definition: Pplat (mbar^^ISO+)
+    domain: ventilator_setting
+    filter_method: ventilator-derived
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 15-25
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: mbar
+  PVC:
+    definition: PVC
+    domain: null
+    filter_method: reject >30/min sustained
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 0-5
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: /min
+  RESP:
+    definition: RESP
+    domain: null
+    filter_method: derived from capnography or impedance
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: null
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: /min
+  RRC:
+    definition: RRc
+    domain: ventilator_setting
+    filter_method: ventilator-derived
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 10-20
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: /min
+  RRMAND:
+    definition: RRmand (/min^^ISO+)
+    domain: ventilator_setting
+    filter_method: ventilator setting
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 10-20
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: /min
+  RRSPON:
+    definition: RRp (/min)
+    domain: ventilator_setting
+    filter_method: ventilator-derived
+    filter_required: 'no'
+    interpolation: 'no'
+    normal_range: 10-30
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: /min
+  SEV_CONS:
+    definition: Sev cons (mL^^ISO+)
+    domain: ventilator_setting_extra
+    filter_method: consumption total
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: counter
+    source: dictionary_v1
+    unit: mL
+  SPO2:
+    definition: SpO2
+    domain: null
+    filter_method: plethysmograph quality gate; reject during low perfusion; median
+      filter 5s
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: 95-100
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: '%'
+  STAVF:
+    definition: STaVF (mm^^ISO+)
+    domain: physiological_signal
+    filter_method: reject >2mm elevation
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: -0.1 to 0.1mm
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mm
+  STAVL:
+    definition: STaVL (mm^^ISO+)
+    domain: physiological_signal
+    filter_method: reject >2mm elevation
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: -0.1 to 0.1mm
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mm
+  STAVR:
+    definition: STaVR (mm^^ISO+)
+    domain: physiological_signal
+    filter_method: reject >2mm elevation
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: -0.1 to 0.1mm
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mm
+  STI:
+    definition: STI (mm^^ISO+)
+    domain: physiological_signal
+    filter_method: reject >2mm elevation; baseline wander removal
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: -0.1 to 0.1mm
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mm
+  STII:
+    definition: STII (mm^^ISO+)
+    domain: physiological_signal
+    filter_method: reject >2mm elevation; baseline wander removal
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: -0.1 to 0.1mm
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mm
+  STIII:
+    definition: STIII (mm^^ISO+)
+    domain: physiological_signal
+    filter_method: reject >2mm elevation; baseline wander removal
+    filter_required: 'yes'
+    interpolation: conditional
+    normal_range: -0.1 to 0.1mm
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mm
+  STV:
+    definition: STV (mm^^ISO+)
+    domain: physiological_signal
+    filter_method: null
+    filter_required: pending
+    interpolation: conditional
+    normal_range: null
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: null
+  TCASE:
+    definition: Tcase (min^^ISO+)
+    domain: metadata
+    filter_method: none; detect resets
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: metadata
+    source: dictionary_v1
+    unit: min
+  TEMP:
+    definition: Ta (cel^^ISO+)
+    domain: null
+    filter_method: reject <30 or >42 C; slow-moving, median filter
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 36.0-37.5
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: C
+  TIMESTAMP:
+    definition: Time (msecs)
+    domain: metadata
+    filter_method: never filter; check monotonicity/gaps
+    filter_required: 'no'
+    interpolation: never
+    normal_range: null
+    processing_class: metadata
+    source: dictionary_v1
+    unit: time
+  TV:
+    definition: VT
+    domain: null
+    filter_method: ventilator-derived; range check 200-1200 mL
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 400-600 (6-8 mL/kg)
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mL
+  VO2:
+    definition: FG V'O2 (mL)
+    domain: ventilator_setting_extra
+    filter_method: calculated; range check 50-800
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 200-350 mL/min
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: mL/min
+  VT:
+    definition: VTemand ()
+    domain: ventilator_setting
+    filter_method: null
+    filter_required: pending
+    interpolation: 'no'
+    normal_range: null
+    processing_class: ventilator
+    source: dictionary_v1
+    unit: null
+  WEIGHT:
+    definition: Weight (kg^^ISO+)
+    domain: demographic
+    filter_method: demographic
+    filter_required: 'no'
+    interpolation: conditional
+    normal_range: 40-200
+    processing_class: scalar_physiology
+    source: dictionary_v1
+    unit: kg

@@ -184,9 +184,11 @@ def map_promises_analyzed(parts):
             if n is not None:
                 return (["Database", "AnalyzedData", f"Patient {n}", "infinity"]
                         + parts[3:])
-            # "Promises" folder = study-level aggregates, not per-patient
-            if parts[2].lower() == "promises":
-                return ["Database", "AnalyzedData", "_study"] + parts[3:]
+            # study-level aggregates ("Promises", "results_10mmhg.ect", ...)
+            if (parts[2].lower() == "promises"
+                    or parts[2].startswith("results_")):
+                return (["Database", "AnalyzedData", "_study", parts[2]]
+                        + parts[3:])
         return None
     if sub.startswith("2-BetterCare"):
         # BetterCare_Combined/Patient_38/...
@@ -225,6 +227,10 @@ def map_promises_top_extracted(parts):
             if n is not None:
                 return ["Database", "ExtractedData", "Infinity",
                         f"Patient {n}"] + parts[4:]
+            # files directly under infinity_brute/ = study-level aggregates
+            if parts[2] == "infinity_brute":
+                return (["Database", "AnalyzedData", "_study", "infinity_brute"]
+                        + parts[3:])
         return None
     if parts[1] == "Superposition":
         if len(parts) >= 3:

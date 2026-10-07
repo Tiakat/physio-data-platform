@@ -218,6 +218,9 @@ def map_promises_top_extracted(parts):
     # ExtractedData/Infinity/infinity_brute/<patient>/...
     # ExtractedData/Superposition/Patient_*/...
     # ExtractedData/bettercare/<n>/... or bettercare/BetterCare1/<patient>/...
+    # files directly under ExtractedData/ (e.g. PROMISES_DATA_LABELS_*.csv)
+    if len(parts) == 2:
+        return ["Database", "AnalyzedData", "_study"] + parts[1:]
     if len(parts) < 3:
         return None
     if parts[1] == "Infinity" and parts[2] in ("Included Patients",

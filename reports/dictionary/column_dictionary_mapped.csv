@@ -216,14 +216,14 @@ COLECTOMIE,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pendin
 COLECTOMIE,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 COLECTOMIE,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,45,4,preexisting,artifacts: none (analyzer)
 COLECTOMIE,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
-COLECTOMIE,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: inspired desflurane; needs signal mapping
+COLECTOMIE,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,45,4,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 COLECTOMIE,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
-COLECTOMIE,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: inspired halothane; needs signal mapping
+COLECTOMIE,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,45,4,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 COLECTOMIE,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 COLECTOMIE,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 COLECTOMIE,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
-COLECTOMIE,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: inspired sevoflurane; needs signal mapping
+COLECTOMIE,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,45,4,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 COLECTOMIE,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: inspired xMAC; needs signal mapping
 COLECTOMIE,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: leak; needs signal mapping
 COLECTOMIE,infinity,nr,,pending,unknown,pending,pending,pending,pending,pending,pending,pending,49,0,review,no dictionary alias; no-rule-matched
@@ -410,14 +410,14 @@ DEXREM,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pen
 DEXREM,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,1,0,preexisting,artifacts: none (analyzer)
 DEXREM,infinity,i (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
 DEXREM,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
-DEXREM,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: inspired desflurane; needs signal mapping
+DEXREM,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,1,0,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 DEXREM,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
-DEXREM,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: inspired halothane; needs signal mapping
+DEXREM,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,1,0,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 DEXREM,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 DEXREM,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
 DEXREM,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 DEXREM,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
-DEXREM,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: inspired sevoflurane; needs signal mapping
+DEXREM,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,1,0,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 DEXREM,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: inspired xMAC; needs signal mapping
 DEXREM,infinity,leak BS M/S (),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: leak; needs signal mapping
 DEXREM,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: leak; needs signal mapping
@@ -637,14 +637,14 @@ ESMONOL,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pe
 ESMONOL,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,15,1,preexisting,artifacts: none (analyzer)
 ESMONOL,infinity,etSev (),ET_SEVO,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,1,15,alias_base,artifacts: none (analyzer)
 ESMONOL,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
-ESMONOL,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: inspired desflurane; needs signal mapping
+ESMONOL,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,15,1,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 ESMONOL,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
-ESMONOL,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: inspired halothane; needs signal mapping
+ESMONOL,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,15,1,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 ESMONOL,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 ESMONOL,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 ESMONOL,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
-ESMONOL,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: inspired sevoflurane; needs signal mapping
+ESMONOL,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,15,1,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 ESMONOL,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: inspired xMAC; needs signal mapping
 ESMONOL,infinity,leak (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,15,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: leak; needs signal mapping
@@ -864,16 +864,16 @@ IPAMS,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pend
 IPAMS,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,36,5,preexisting,artifacts: none (analyzer)
 IPAMS,infinity,etSev (),ET_SEVO,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,1,40,alias_base,artifacts: none (analyzer)
 IPAMS,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
-IPAMS,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: inspired desflurane; needs signal mapping
-IPAMS,infinity,inDes (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,classified,Infinity param: inspired desflurane; needs signal mapping
+IPAMS,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,36,5,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
+IPAMS,infinity,inDes (),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,1,40,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 IPAMS,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
-IPAMS,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: inspired halothane; needs signal mapping
+IPAMS,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,36,5,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 IPAMS,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 IPAMS,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 IPAMS,infinity,inPrimA (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 IPAMS,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
-IPAMS,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: inspired sevoflurane; needs signal mapping
+IPAMS,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,36,5,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 IPAMS,infinity,inxMAC (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,classified,Infinity param: inspired xMAC; needs signal mapping
 IPAMS,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: inspired xMAC; needs signal mapping
 IPAMS,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: leak; needs signal mapping
@@ -1081,15 +1081,15 @@ MONREPI,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,p
 MONREPI,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 MONREPI,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,20,1,preexisting,artifacts: none (analyzer)
 MONREPI,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
-MONREPI,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: inspired desflurane; needs signal mapping
+MONREPI,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,20,1,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 MONREPI,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
-MONREPI,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: inspired halothane; needs signal mapping
+MONREPI,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,20,1,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 MONREPI,infinity,inIso (%^),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,20,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 MONREPI,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 MONREPI,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
 MONREPI,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 MONREPI,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
-MONREPI,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: inspired sevoflurane; needs signal mapping
+MONREPI,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,20,1,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 MONREPI,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: inspired xMAC; needs signal mapping
 MONREPI,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: leak; needs signal mapping
 MONREPI,infinity,nr,,pending,unknown,pending,pending,pending,pending,pending,pending,pending,21,0,review,no dictionary alias; no-rule-matched
@@ -1277,14 +1277,14 @@ POSBRAIN,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,
 POSBRAIN,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 POSBRAIN,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,14,3,preexisting,artifacts: none (analyzer)
 POSBRAIN,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
-POSBRAIN,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: inspired desflurane; needs signal mapping
+POSBRAIN,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,14,3,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 POSBRAIN,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
-POSBRAIN,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: inspired halothane; needs signal mapping
+POSBRAIN,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,14,3,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 POSBRAIN,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 POSBRAIN,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
 POSBRAIN,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 POSBRAIN,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
-POSBRAIN,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: inspired sevoflurane; needs signal mapping
+POSBRAIN,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,14,3,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 POSBRAIN,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: inspired xMAC; needs signal mapping
 POSBRAIN,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: leak; needs signal mapping
 POSBRAIN,infinity,nr,,pending,unknown,pending,pending,pending,pending,pending,pending,pending,17,0,review,no dictionary alias; no-rule-matched
@@ -1556,17 +1556,17 @@ PROMISES,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,p
 PROMISES,infinity,etSecA (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 PROMISES,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,54,5,preexisting,artifacts: none (analyzer)
 PROMISES,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
-PROMISES,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: inspired desflurane; needs signal mapping
+PROMISES,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,54,5,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 PROMISES,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
-PROMISES,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: inspired halothane; needs signal mapping
+PROMISES,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,54,5,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 PROMISES,infinity,inIso (%^^ISO),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 PROMISES,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 PROMISES,infinity,inIso (),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 PROMISES,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
 PROMISES,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 PROMISES,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
-PROMISES,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: inspired sevoflurane; needs signal mapping
-PROMISES,infinity,inSev (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,2,57,classified,Infinity param: inspired sevoflurane; needs signal mapping
+PROMISES,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,54,5,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
+PROMISES,infinity,inSev (),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,2,57,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 PROMISES,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: inspired xMAC; needs signal mapping
 PROMISES,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: leak; needs signal mapping
 PROMISES,infinity,nr,,pending,unknown,pending,pending,pending,pending,pending,pending,pending,59,0,review,no dictionary alias; no-rule-matched
@@ -1751,14 +1751,14 @@ PVB-ABDO,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,
 PVB-ABDO,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 PVB-ABDO,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,8,2,preexisting,artifacts: none (analyzer)
 PVB-ABDO,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
-PVB-ABDO,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: inspired desflurane; needs signal mapping
+PVB-ABDO,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,8,2,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 PVB-ABDO,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
-PVB-ABDO,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: inspired halothane; needs signal mapping
+PVB-ABDO,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,8,2,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 PVB-ABDO,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 PVB-ABDO,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
 PVB-ABDO,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 PVB-ABDO,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
-PVB-ABDO,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: inspired sevoflurane; needs signal mapping
+PVB-ABDO,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,8,2,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 PVB-ABDO,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: inspired xMAC; needs signal mapping
 PVB-ABDO,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: leak; needs signal mapping
 PVB-ABDO,infinity,nr,,pending,unknown,pending,pending,pending,pending,pending,pending,pending,10,0,review,no dictionary alias; no-rule-matched
@@ -1911,14 +1911,14 @@ SILVR,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pen
 SILVR,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 SILVR,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,4,15,preexisting,artifacts: none (analyzer)
 SILVR,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,review,no dictionary alias; no-rule-matched
-SILVR,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: inspired desflurane; needs signal mapping
+SILVR,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,4,15,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 SILVR,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,review,no dictionary alias; no-rule-matched
-SILVR,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: inspired halothane; needs signal mapping
+SILVR,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,4,15,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 SILVR,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 SILVR,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,review,no dictionary alias; no-rule-matched
 SILVR,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 SILVR,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,review,no dictionary alias; no-rule-matched
-SILVR,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: inspired sevoflurane; needs signal mapping
+SILVR,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,4,15,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 SILVR,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: inspired xMAC; needs signal mapping
 SILVR,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: leak; needs signal mapping
 SILVR,infinity,nr,,pending,unknown,pending,pending,pending,pending,pending,pending,pending,19,0,review,no dictionary alias; no-rule-matched
@@ -2094,15 +2094,15 @@ V-RAPS,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pe
 V-RAPS,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 V-RAPS,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,23,5,preexisting,artifacts: none (analyzer)
 V-RAPS,infinity,inCO2 (mm(hg)^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,review,no dictionary alias; no-rule-matched
-V-RAPS,infinity,inDes (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: inspired desflurane; needs signal mapping
+V-RAPS,infinity,inDes (%^^ISO+),INDES,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired desflurane %,pending,23,5,auto-mapped,Infinity param: inspired desflurane; needs signal mapping
 V-RAPS,infinity,inEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,review,no dictionary alias; no-rule-matched
-V-RAPS,infinity,inHal (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: inspired halothane; needs signal mapping
-V-RAPS,infinity,inHal (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,27,classified,Infinity param: inspired halothane; needs signal mapping
+V-RAPS,infinity,inHal (%^^ISO+),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,23,5,auto-mapped,Infinity param: inspired halothane; needs signal mapping
+V-RAPS,infinity,inHal (),INHAL,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired halothane %,pending,1,27,auto-mapped,Infinity param: inspired halothane; needs signal mapping
 V-RAPS,infinity,inIso (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: initial isoflurane? verify; needs signal mapping
 V-RAPS,infinity,inN2O (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,review,no dictionary alias; no-rule-matched
 V-RAPS,infinity,inPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: inspired primary agent? verify; needs signal mapping
 V-RAPS,infinity,inSecA (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,review,no dictionary alias; no-rule-matched
-V-RAPS,infinity,inSev (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: inspired sevoflurane; needs signal mapping
+V-RAPS,infinity,inSev (%^^ISO+),INSEVO,anesthesia_setting,unknown,%,1 Hz,no,agent analyzer,pending,inspired sevoflurane %,pending,23,5,auto-mapped,Infinity param: inspired sevoflurane; needs signal mapping
 V-RAPS,infinity,inxMAC (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: inspired xMAC; needs signal mapping
 V-RAPS,infinity,leak BS M/S (mL/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: leak; needs signal mapping
 V-RAPS,infinity,nr,,pending,unknown,pending,pending,pending,pending,pending,pending,pending,28,0,review,no dictionary alias; no-rule-matched

@@ -32,9 +32,9 @@ sync_one() {  # $1 = dropbox subpath, $2 = dest subdir, rest = extra rclone excl
     --transfers 8 --checkers 16 --stats 60s --stats-log-level NOTICE
 }
 
-sync_one "DEXREM/Included patients" "DEXREM"
+sync_one "DEXREM/Database" "DEXREM"
 for p in ESMONOL IPAMS MONREPI POSBRAIN PROMISES SILVR V-RAPS; do
-  sync_one "$p/Database/RawData" "$p"
+  sync_one "$p/Database" "$p"
 done
 sync_one "Colectomie en ambulatoire/Database" "COLECTOMIE" --exclude "Patient non inclus*/**"
 sync_one "PVB abdo/Database" "PVB-ABDO"

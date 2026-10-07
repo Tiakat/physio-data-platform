@@ -69,8 +69,8 @@ COLECTOMIE,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pe
 COLECTOMIE,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: compliance hose? verify; needs signal mapping
 COLECTOMIE,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,49,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-COLECTOMIE,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: oxygen delivery? verify; needs signal mapping
-COLECTOMIE,infinity,DO2 (),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,48,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+COLECTOMIE,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,DO2 (),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,1,48,auto-mapped,auto-mapped from Infinity standard; verify
 COLECTOMIE,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,34,15,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 COLECTOMIE,infinity,Des cons (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,48,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 COLECTOMIE,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -88,8 +88,8 @@ COLECTOMIE,infinity,FG V'Air (mL),,ventilator_setting_extra,unknown,pending,pend
 COLECTOMIE,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 COLECTOMIE,infinity,FG V'N2O (mL/min^),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,48,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 COLECTOMIE,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-COLECTOMIE,infinity,FG V'O2 (mL),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,48,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-COLECTOMIE,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+COLECTOMIE,infinity,FG V'O2 (mL),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,1,48,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
 COLECTOMIE,infinity,FG flow (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,48,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 COLECTOMIE,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 COLECTOMIE,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: fraction of inspired O2; needs signal mapping
@@ -166,14 +166,14 @@ COLECTOMIE,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pend
 COLECTOMIE,infinity,SEF (hz^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,17,32,review,candidate dictionary entry: spectral edge frequency (BIS family)
 COLECTOMIE,infinity,SQI (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,17,32,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,39,10,classified,Infinity param: ventilator standby state; needs signal mapping
-COLECTOMIE,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: ST lead I; needs signal mapping
-COLECTOMIE,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: ST lead II; needs signal mapping
-COLECTOMIE,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: ST lead III; needs signal mapping
-COLECTOMIE,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-COLECTOMIE,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,41,8,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-COLECTOMIE,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: ST aVF; needs signal mapping
-COLECTOMIE,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: ST aVL; needs signal mapping
-COLECTOMIE,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: ST aVR; needs signal mapping
+COLECTOMIE,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,41,8,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
 COLECTOMIE,infinity,Selected agen (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,48,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 COLECTOMIE,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -190,7 +190,7 @@ COLECTOMIE,infinity,Tb (cel^^ISO+),TEMP,physiological_signal,unknown,C,0.1 Hz (e
 COLECTOMIE,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: test/case marker? verify; needs signal mapping
 COLECTOMIE,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
-COLECTOMIE,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: O2 consumption? verify; needs signal mapping
+COLECTOMIE,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
 COLECTOMIE,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,49,0,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,45,4,alias_base,artifacts: circuit disconnect; leak
 COLECTOMIE,infinity,VTe (mL^^ISO+),TV,pending,pending,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,43,6,preexisting,artifacts: circuit disconnect; leak
@@ -210,8 +210,8 @@ COLECTOMIE,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analy
 COLECTOMIE,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
 COLECTOMIE,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,review,no dictionary alias; no-rule-matched
-COLECTOMIE,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: end-tidal N2O; needs signal mapping
-COLECTOMIE,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: end-tidal O2; needs signal mapping
+COLECTOMIE,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
+COLECTOMIE,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,45,4,auto-mapped,auto-mapped from Infinity standard; verify
 COLECTOMIE,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 COLECTOMIE,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,45,4,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 COLECTOMIE,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,45,4,preexisting,artifacts: none (analyzer)
@@ -296,7 +296,7 @@ DEXREM,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pend
 DEXREM,infinity,Chose (mL/hpa^^),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: compliance hose? verify; needs signal mapping
 DEXREM,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: compliance hose? verify; needs signal mapping
 DEXREM,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-DEXREM,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+DEXREM,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
 DEXREM,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 DEXREM,infinity,Des cons (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 DEXREM,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -311,7 +311,7 @@ DEXREM,infinity,FG O2 (%^^ISO+),,ventilator_setting_extra,unknown,pending,pendin
 DEXREM,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 DEXREM,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 DEXREM,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-DEXREM,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+DEXREM,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
 DEXREM,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 DEXREM,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: fraction of inspired O2; needs signal mapping
 DEXREM,infinity,Flow trigger set (L/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
@@ -360,14 +360,14 @@ DEXREM,infinity,RRmand (/min^^ISO+),,ventilator_setting,unknown,pending,pending,
 DEXREM,infinity,RRp (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: respiratory rate parameter; needs signal mapping
 DEXREM,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: spontaneous respiratory rate; needs signal mapping
 DEXREM,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ventilator standby state; needs signal mapping
-DEXREM,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST lead I; needs signal mapping
-DEXREM,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST lead II; needs signal mapping
-DEXREM,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST lead III; needs signal mapping
-DEXREM,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-DEXREM,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-DEXREM,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST aVF; needs signal mapping
-DEXREM,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST aVL; needs signal mapping
-DEXREM,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: ST aVR; needs signal mapping
+DEXREM,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
 DEXREM,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 DEXREM,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 DEXREM,infinity,Sev tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -383,7 +383,7 @@ DEXREM,infinity,Tb (cel^^ISO+),TEMP,physiological_signal,unknown,C,0.1 Hz (every
 DEXREM,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: test/case marker? verify; needs signal mapping
 DEXREM,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
 DEXREM,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
-DEXREM,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: O2 consumption? verify; needs signal mapping
+DEXREM,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
 DEXREM,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
 DEXREM,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,1,0,alias_base,artifacts: circuit disconnect; leak
 DEXREM,infinity,VTe (mL^^ISO+),TV,pending,pending,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,1,0,preexisting,artifacts: circuit disconnect; leak
@@ -402,9 +402,9 @@ DEXREM,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyzer;
 DEXREM,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
 DEXREM,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
 DEXREM,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,review,no dictionary alias; no-rule-matched
-DEXREM,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: end-tidal N2O; needs signal mapping
-DEXREM,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: end-tidal O2; needs signal mapping
-DEXREM,infinity,etO2 (),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: end-tidal O2; needs signal mapping
+DEXREM,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
+DEXREM,infinity,etO2 (),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,1,0,auto-mapped,auto-mapped from Infinity standard; verify
 DEXREM,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 DEXREM,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,0,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 DEXREM,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,1,0,preexisting,artifacts: none (analyzer)
@@ -517,7 +517,7 @@ ESMONOL,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pendi
 ESMONOL,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: compliance hose? verify; needs signal mapping
 ESMONOL,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,16,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-ESMONOL,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+ESMONOL,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
 ESMONOL,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,13,3,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 ESMONOL,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 ESMONOL,infinity,Des tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -532,7 +532,7 @@ ESMONOL,infinity,FG O2 (%^^ISO+),,ventilator_setting_extra,unknown,pending,pendi
 ESMONOL,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 ESMONOL,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 ESMONOL,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-ESMONOL,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+ESMONOL,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
 ESMONOL,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 ESMONOL,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: fraction of inspired O2; needs signal mapping
 ESMONOL,infinity,Flow trigger set (L/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,13,3,review,no dictionary alias; no-rule-matched
@@ -586,15 +586,15 @@ ESMONOL,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending
 ESMONOL,infinity,SEF (hz^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,2,14,review,candidate dictionary entry: spectral edge frequency (BIS family)
 ESMONOL,infinity,SQI (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,2,14,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ventilator standby state; needs signal mapping
-ESMONOL,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST lead I; needs signal mapping
-ESMONOL,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST lead II; needs signal mapping
-ESMONOL,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST lead III; needs signal mapping
-ESMONOL,infinity,STV (mm^^ISO),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,15,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-ESMONOL,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-ESMONOL,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-ESMONOL,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST aVF; needs signal mapping
-ESMONOL,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST aVL; needs signal mapping
-ESMONOL,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: ST aVR; needs signal mapping
+ESMONOL,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STV (mm^^ISO),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,15,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
 ESMONOL,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 ESMONOL,infinity,Sev cons (mL^^I),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,15,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 ESMONOL,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -611,7 +611,7 @@ ESMONOL,infinity,Tb (cel^^ISO+),TEMP,physiological_signal,unknown,C,0.1 Hz (ever
 ESMONOL,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: test/case marker? verify; needs signal mapping
 ESMONOL,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
-ESMONOL,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: O2 consumption? verify; needs signal mapping
+ESMONOL,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
 ESMONOL,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,16,0,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,15,1,alias_base,artifacts: circuit disconnect; leak
 ESMONOL,infinity,VTe (mL^^ISO+),TV,pending,pending,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,15,1,preexisting,artifacts: circuit disconnect; leak
@@ -630,8 +630,8 @@ ESMONOL,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyzer
 ESMONOL,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
 ESMONOL,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,review,no dictionary alias; no-rule-matched
-ESMONOL,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: end-tidal N2O; needs signal mapping
-ESMONOL,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: end-tidal O2; needs signal mapping
+ESMONOL,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
+ESMONOL,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,15,1,auto-mapped,auto-mapped from Infinity standard; verify
 ESMONOL,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 ESMONOL,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,15,1,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 ESMONOL,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,15,1,preexisting,artifacts: none (analyzer)
@@ -725,7 +725,7 @@ IPAMS,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pending
 IPAMS,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: compliance hose? verify; needs signal mapping
 IPAMS,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,41,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-IPAMS,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+IPAMS,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
 IPAMS,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,11,30,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 IPAMS,infinity,Des cons (mL^),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 IPAMS,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -744,7 +744,7 @@ IPAMS,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pend
 IPAMS,infinity,FG V'Air (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 IPAMS,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 IPAMS,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-IPAMS,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+IPAMS,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
 IPAMS,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 IPAMS,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: fraction of inspired O2; needs signal mapping
 IPAMS,infinity,Flow trigger set (L/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,11,30,review,no dictionary alias; no-rule-matched
@@ -811,14 +811,14 @@ IPAMS,infinity,RRmand (/min^^ISO+),,ventilator_setting,unknown,pending,pending,p
 IPAMS,infinity,RRp (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: respiratory rate parameter; needs signal mapping
 IPAMS,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: spontaneous respiratory rate; needs signal mapping
 IPAMS,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,25,16,classified,Infinity param: ventilator standby state; needs signal mapping
-IPAMS,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST lead I; needs signal mapping
-IPAMS,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST lead II; needs signal mapping
-IPAMS,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST lead III; needs signal mapping
-IPAMS,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-IPAMS,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-IPAMS,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST aVF; needs signal mapping
-IPAMS,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST aVL; needs signal mapping
-IPAMS,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: ST aVR; needs signal mapping
+IPAMS,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
 IPAMS,infinity,Selected agent unit (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 IPAMS,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 IPAMS,infinity,Sev cons (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -837,7 +837,7 @@ IPAMS,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pendi
 IPAMS,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,V (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
-IPAMS,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: O2 consumption? verify; needs signal mapping
+IPAMS,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
 IPAMS,infinity,VENT T (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,40,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,41,0,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,36,5,alias_base,artifacts: circuit disconnect; leak
@@ -857,8 +857,8 @@ IPAMS,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyzer; 
 IPAMS,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
 IPAMS,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,review,no dictionary alias; no-rule-matched
-IPAMS,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: end-tidal N2O; needs signal mapping
-IPAMS,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: end-tidal O2; needs signal mapping
+IPAMS,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
+IPAMS,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,36,5,auto-mapped,auto-mapped from Infinity standard; verify
 IPAMS,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 IPAMS,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,36,5,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 IPAMS,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,36,5,preexisting,artifacts: none (analyzer)
@@ -965,8 +965,8 @@ MONREPI,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pendi
 MONREPI,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
 MONREPI,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: compliance hose? verify; needs signal mapping
 MONREPI,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,21,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-MONREPI,infinity,DO2 (%),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,20,classified,Infinity param: oxygen delivery? verify; needs signal mapping
-MONREPI,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+MONREPI,infinity,DO2 (%),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,1,20,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
 MONREPI,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,7,14,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 MONREPI,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 MONREPI,infinity,Des tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -980,7 +980,7 @@ MONREPI,infinity,FG O2 (%^^ISO+),,ventilator_setting_extra,unknown,pending,pendi
 MONREPI,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 MONREPI,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 MONREPI,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-MONREPI,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+MONREPI,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
 MONREPI,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 MONREPI,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: fraction of inspired O2; needs signal mapping
 MONREPI,infinity,Flow trigger set (L/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,7,14,review,no dictionary alias; no-rule-matched
@@ -1032,15 +1032,15 @@ MONREPI,infinity,RRmand (/min^^ISO+),,ventilator_setting,unknown,pending,pending
 MONREPI,infinity,RRp (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: respiratory rate parameter; needs signal mapping
 MONREPI,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: spontaneous respiratory rate; needs signal mapping
 MONREPI,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,17,4,classified,Infinity param: ventilator standby state; needs signal mapping
-MONREPI,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST lead I; needs signal mapping
-MONREPI,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST lead II; needs signal mapping
-MONREPI,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST lead III; needs signal mapping
-MONREPI,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-MONREPI,infinity,STV+ (),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,20,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-MONREPI,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-MONREPI,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST aVF; needs signal mapping
-MONREPI,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST aVL; needs signal mapping
-MONREPI,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: ST aVR; needs signal mapping
+MONREPI,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STV+ (),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,20,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
 MONREPI,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 MONREPI,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 MONREPI,infinity,Sev tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -1056,7 +1056,7 @@ MONREPI,infinity,Tcase (),,metadata,unknown,pending,pending,pending,pending,pend
 MONREPI,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: test/case marker? verify; needs signal mapping
 MONREPI,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
 MONREPI,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
-MONREPI,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: O2 consumption? verify; needs signal mapping
+MONREPI,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
 MONREPI,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
 MONREPI,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,20,1,alias_base,artifacts: circuit disconnect; leak
 MONREPI,infinity,VTe (mL^^ISO+),TV,pending,pending,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,18,3,preexisting,artifacts: circuit disconnect; leak
@@ -1075,8 +1075,8 @@ MONREPI,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyzer
 MONREPI,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
 MONREPI,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
 MONREPI,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,review,no dictionary alias; no-rule-matched
-MONREPI,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: end-tidal N2O; needs signal mapping
-MONREPI,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: end-tidal O2; needs signal mapping
+MONREPI,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
+MONREPI,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,20,1,auto-mapped,auto-mapped from Infinity standard; verify
 MONREPI,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 MONREPI,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,20,1,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 MONREPI,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,20,1,preexisting,artifacts: none (analyzer)
@@ -1171,7 +1171,7 @@ POSBRAIN,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pend
 POSBRAIN,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
 POSBRAIN,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: compliance hose? verify; needs signal mapping
 POSBRAIN,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,17,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-POSBRAIN,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+POSBRAIN,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
 POSBRAIN,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 POSBRAIN,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 POSBRAIN,infinity,Des tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -1186,7 +1186,7 @@ POSBRAIN,infinity,FG Sev (),,ventilator_setting_extra,unknown,pending,pending,pe
 POSBRAIN,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 POSBRAIN,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 POSBRAIN,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-POSBRAIN,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+POSBRAIN,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
 POSBRAIN,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 POSBRAIN,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: fraction of inspired O2; needs signal mapping
 POSBRAIN,infinity,Flow trigger set (L/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
@@ -1230,15 +1230,15 @@ POSBRAIN,infinity,RRmand (/min^^ISO+),,ventilator_setting,unknown,pending,pendin
 POSBRAIN,infinity,RRp (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: respiratory rate parameter; needs signal mapping
 POSBRAIN,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: spontaneous respiratory rate; needs signal mapping
 POSBRAIN,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,13,4,classified,Infinity param: ventilator standby state; needs signal mapping
-POSBRAIN,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST lead I; needs signal mapping
-POSBRAIN,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST lead II; needs signal mapping
-POSBRAIN,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST lead III; needs signal mapping
-POSBRAIN,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-POSBRAIN,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-POSBRAIN,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST aVF; needs signal mapping
-POSBRAIN,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST aVL; needs signal mapping
-POSBRAIN,infinity,STaVR (),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,16,classified,Infinity param: ST aVR; needs signal mapping
-POSBRAIN,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: ST aVR; needs signal mapping
+POSBRAIN,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STaVR (),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,1,16,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
 POSBRAIN,infinity,Selected agent unit (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,16,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 POSBRAIN,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 POSBRAIN,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -1251,8 +1251,8 @@ POSBRAIN,infinity,Tb (cel^^ISO+),TEMP,physiological_signal,unknown,C,0.1 Hz (eve
 POSBRAIN,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: test/case marker? verify; needs signal mapping
 POSBRAIN,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
 POSBRAIN,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
-POSBRAIN,infinity,V'O2 (),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,16,classified,Infinity param: O2 consumption? verify; needs signal mapping
-POSBRAIN,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: O2 consumption? verify; needs signal mapping
+POSBRAIN,infinity,V'O2 (),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,1,16,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
 POSBRAIN,infinity,VENT T (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,16,review,no dictionary alias; no-rule-matched
 POSBRAIN,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,16,1,review,no dictionary alias; no-rule-matched
 POSBRAIN,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,14,3,alias_base,artifacts: circuit disconnect; leak
@@ -1271,8 +1271,8 @@ POSBRAIN,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyze
 POSBRAIN,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
 POSBRAIN,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
 POSBRAIN,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,review,no dictionary alias; no-rule-matched
-POSBRAIN,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: end-tidal N2O; needs signal mapping
-POSBRAIN,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: end-tidal O2; needs signal mapping
+POSBRAIN,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
+POSBRAIN,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,14,3,auto-mapped,auto-mapped from Infinity standard; verify
 POSBRAIN,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 POSBRAIN,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,14,3,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 POSBRAIN,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,14,3,preexisting,artifacts: none (analyzer)
@@ -1402,7 +1402,7 @@ PROMISES,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pend
 PROMISES,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,53,6,review,no dictionary alias; no-rule-matched
 PROMISES,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: compliance hose? verify; needs signal mapping
 PROMISES,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,59,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-PROMISES,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+PROMISES,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
 PROMISES,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,35,24,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 PROMISES,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 PROMISES,infinity,Des tot (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -1420,7 +1420,7 @@ PROMISES,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,p
 PROMISES,infinity,FG V'Air (mL/min^^IS),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 PROMISES,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 PROMISES,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-PROMISES,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+PROMISES,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
 PROMISES,infinity,FG flow (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 PROMISES,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 PROMISES,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: fraction of inspired O2; needs signal mapping
@@ -1504,14 +1504,14 @@ PROMISES,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pendin
 PROMISES,infinity,SEF (hz^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,5,54,review,candidate dictionary entry: spectral edge frequency (BIS family)
 PROMISES,infinity,SQI (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,5,54,review,no dictionary alias; no-rule-matched
 PROMISES,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,53,6,classified,Infinity param: ventilator standby state; needs signal mapping
-PROMISES,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: ST lead I; needs signal mapping
-PROMISES,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: ST lead II; needs signal mapping
-PROMISES,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: ST lead III; needs signal mapping
-PROMISES,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-PROMISES,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,53,6,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-PROMISES,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: ST aVF; needs signal mapping
-PROMISES,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: ST aVL; needs signal mapping
-PROMISES,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: ST aVR; needs signal mapping
+PROMISES,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,53,6,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
 PROMISES,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 PROMISES,infinity,Sev cons (),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 PROMISES,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -1530,7 +1530,7 @@ PROMISES,infinity,Tcase (),,metadata,unknown,pending,pending,pending,pending,pen
 PROMISES,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: test/case marker? verify; needs signal mapping
 PROMISES,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,53,6,review,no dictionary alias; no-rule-matched
 PROMISES,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
-PROMISES,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: O2 consumption? verify; needs signal mapping
+PROMISES,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
 PROMISES,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,57,2,review,no dictionary alias; no-rule-matched
 PROMISES,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,54,5,alias_base,artifacts: circuit disconnect; leak
 PROMISES,infinity,VTe (mL^^ISO+),TV,pending,pending,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,54,5,preexisting,artifacts: circuit disconnect; leak
@@ -1548,9 +1548,9 @@ PROMISES,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyze
 PROMISES,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
 PROMISES,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
 PROMISES,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,review,no dictionary alias; no-rule-matched
-PROMISES,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: end-tidal N2O; needs signal mapping
-PROMISES,infinity,etN2O (),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,Infinity param: end-tidal N2O; needs signal mapping
-PROMISES,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: end-tidal O2; needs signal mapping
+PROMISES,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,etN2O (),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,1,58,auto-mapped,auto-mapped from Infinity standard; verify
+PROMISES,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,54,5,auto-mapped,auto-mapped from Infinity standard; verify
 PROMISES,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 PROMISES,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,54,5,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 PROMISES,infinity,etSecA (),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,58,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
@@ -1640,7 +1640,7 @@ PVB-ABDO,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pend
 PVB-ABDO,infinity,Cdyn (L/bar^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
 PVB-ABDO,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: compliance hose? verify; needs signal mapping
 PVB-ABDO,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,10,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-PVB-ABDO,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+PVB-ABDO,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
 PVB-ABDO,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 PVB-ABDO,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 PVB-ABDO,infinity,Des tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -1654,7 +1654,7 @@ PVB-ABDO,infinity,FG O2 (%^^ISO+),,ventilator_setting_extra,unknown,pending,pend
 PVB-ABDO,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 PVB-ABDO,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 PVB-ABDO,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-PVB-ABDO,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+PVB-ABDO,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
 PVB-ABDO,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 PVB-ABDO,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: fraction of inspired O2; needs signal mapping
 PVB-ABDO,infinity,Flow trigger set (L/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
@@ -1704,15 +1704,15 @@ PVB-ABDO,infinity,RRmand (/min^^ISO+),,ventilator_setting,unknown,pending,pendin
 PVB-ABDO,infinity,RRp (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: respiratory rate parameter; needs signal mapping
 PVB-ABDO,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: spontaneous respiratory rate; needs signal mapping
 PVB-ABDO,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,7,3,classified,Infinity param: ventilator standby state; needs signal mapping
-PVB-ABDO,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST lead I; needs signal mapping
-PVB-ABDO,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST lead II; needs signal mapping
-PVB-ABDO,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST lead III; needs signal mapping
-PVB-ABDO,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-PVB-ABDO,infinity,STV+ (),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,9,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-PVB-ABDO,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-PVB-ABDO,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST aVF; needs signal mapping
-PVB-ABDO,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST aVL; needs signal mapping
-PVB-ABDO,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: ST aVR; needs signal mapping
+PVB-ABDO,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STV+ (),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,9,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
 PVB-ABDO,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 PVB-ABDO,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 PVB-ABDO,infinity,Sev tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -1727,7 +1727,7 @@ PVB-ABDO,infinity,Tb (cel^^ISO+),TEMP,physiological_signal,unknown,C,0.1 Hz (eve
 PVB-ABDO,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: test/case marker? verify; needs signal mapping
 PVB-ABDO,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
 PVB-ABDO,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
-PVB-ABDO,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: O2 consumption? verify; needs signal mapping
+PVB-ABDO,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
 PVB-ABDO,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,10,0,review,no dictionary alias; no-rule-matched
 PVB-ABDO,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,8,2,alias_base,artifacts: circuit disconnect; leak
 PVB-ABDO,infinity,VTe (mL^^ISO+),TV,pending,pending,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,8,2,preexisting,artifacts: circuit disconnect; leak
@@ -1745,8 +1745,8 @@ PVB-ABDO,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyze
 PVB-ABDO,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
 PVB-ABDO,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
 PVB-ABDO,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,review,no dictionary alias; no-rule-matched
-PVB-ABDO,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: end-tidal N2O; needs signal mapping
-PVB-ABDO,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: end-tidal O2; needs signal mapping
+PVB-ABDO,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
+PVB-ABDO,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,8,2,auto-mapped,auto-mapped from Infinity standard; verify
 PVB-ABDO,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 PVB-ABDO,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,8,2,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 PVB-ABDO,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,8,2,preexisting,artifacts: none (analyzer)
@@ -1823,7 +1823,7 @@ SILVR,infinity,Carrier gas (^^ISO+),,anesthesia_setting,unknown,pending,pending,
 SILVR,infinity,Cbs+hose (mL/hpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bhose\b; needs signal mapping
 SILVR,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: compliance hose? verify; needs signal mapping
 SILVR,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,19,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-SILVR,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+SILVR,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,4,15,auto-mapped,auto-mapped from Infinity standard; verify
 SILVR,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 SILVR,infinity,Des tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
 SILVR,infinity,Device check (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: device self-check flag; needs signal mapping
@@ -1835,7 +1835,7 @@ SILVR,infinity,FG O2 (%^^ISO+),,ventilator_setting_extra,unknown,pending,pending
 SILVR,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 SILVR,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 SILVR,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-SILVR,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+SILVR,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,4,15,auto-mapped,auto-mapped from Infinity standard; verify
 SILVR,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 SILVR,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: fraction of inspired O2; needs signal mapping
 SILVR,infinity,FiO2 (),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,18,classified,Infinity param: fraction of inspired O2; needs signal mapping
@@ -1872,14 +1872,14 @@ SILVR,infinity,RRmand (/min^^ISO+),,ventilator_setting,unknown,pending,pending,p
 SILVR,infinity,RRp (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: respiratory rate parameter; needs signal mapping
 SILVR,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: spontaneous respiratory rate; needs signal mapping
 SILVR,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,10,9,classified,Infinity param: ventilator standby state; needs signal mapping
-SILVR,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: ST lead I; needs signal mapping
-SILVR,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: ST lead II; needs signal mapping
-SILVR,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: ST lead III; needs signal mapping
-SILVR,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-SILVR,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,10,9,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-SILVR,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: ST aVF; needs signal mapping
-SILVR,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: ST aVL; needs signal mapping
-SILVR,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: ST aVR; needs signal mapping
+SILVR,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,10,9,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
 SILVR,infinity,Sel (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,18,review,no dictionary alias; no-rule-matched
 SILVR,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 SILVR,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
@@ -1888,7 +1888,7 @@ SILVR,infinity,SpO2 (%^^ISO+),SPO2,pending,pending,%,1 Hz,yes,plethysmograph qua
 SILVR,infinity,Standby (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,1,18,classified,Infinity param: ventilator standby state; needs signal mapping
 SILVR,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: test/case marker? verify; needs signal mapping
 SILVR,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,2,17,review,no dictionary alias; no-rule-matched
-SILVR,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,2,17,classified,Infinity param: O2 consumption? verify; needs signal mapping
+SILVR,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,2,17,auto-mapped,auto-mapped from Infinity standard; verify
 SILVR,infinity,VENT (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,18,review,no dictionary alias; no-rule-matched
 SILVR,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,19,0,review,no dictionary alias; no-rule-matched
 SILVR,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,3,16,alias_base,artifacts: circuit disconnect; leak
@@ -1905,8 +1905,8 @@ SILVR,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyzer; 
 SILVR,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,review,no dictionary alias; no-rule-matched
 SILVR,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,review,no dictionary alias; no-rule-matched
 SILVR,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,review,no dictionary alias; no-rule-matched
-SILVR,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: end-tidal N2O; needs signal mapping
-SILVR,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,11,8,classified,Infinity param: end-tidal O2; needs signal mapping
+SILVR,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,4,15,auto-mapped,auto-mapped from Infinity standard; verify
+SILVR,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,11,8,auto-mapped,auto-mapped from Infinity standard; verify
 SILVR,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 SILVR,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,4,15,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping
 SILVR,infinity,etSev (%^^ISO+),ET_SEVO,pending,pending,%,1 Hz,no,agent analyzer; range check 0-8%,pending,normal_range=1.5-2.5 (1 MAC ~2%); clean=titrated to BIS 40-60,pending,4,15,preexisting,artifacts: none (analyzer)
@@ -1987,7 +1987,7 @@ V-RAPS,infinity,Chose (),,ventilator_setting,unknown,pending,pending,pending,pen
 V-RAPS,infinity,Chose (m),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,27,classified,Infinity param: compliance hose? verify; needs signal mapping
 V-RAPS,infinity,Chose (mL/hpa^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: compliance hose? verify; needs signal mapping
 V-RAPS,infinity,DEVICENAME,,demographic,unknown,pending,pending,pending,pending,pending,pending,pending,28,0,classified,domain=demographic; rule:\bdevicename\b; needs signal mapping
-V-RAPS,infinity,DO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,22,6,classified,Infinity param: oxygen delivery? verify; needs signal mapping
+V-RAPS,infinity,DO2 (%^^ISO+),DO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 200-2500,pending,normal_range=800-1200 mL/min,pending,22,6,auto-mapped,auto-mapped from Infinity standard; verify
 V-RAPS,infinity,DPsupp set (mbar^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,1,27,classified,domain=ventilator_setting_extra; rule:\bdpsupp\b; needs signal mapping
 V-RAPS,infinity,Des cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 V-RAPS,infinity,Des tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -2003,7 +2003,7 @@ V-RAPS,infinity,FG O2 (%^^ISO+),,ventilator_setting_extra,unknown,pending,pendin
 V-RAPS,infinity,FG Sev (kpa^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 V-RAPS,infinity,FG V'Air (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 V-RAPS,infinity,FG V'N2O (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
-V-RAPS,infinity,FG V'O2 (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
+V-RAPS,infinity,FG V'O2 (mL/min^^ISO+),VO2,ventilator_setting_extra,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,23,5,auto-mapped,auto-mapped from Infinity standard; verify
 V-RAPS,infinity,FG flow (mL/min^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\bfg \b; needs signal mapping
 V-RAPS,infinity,FiO2 (%^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: fraction of inspired O2; needs signal mapping
 V-RAPS,infinity,Flow trigger set (L/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,27,review,no dictionary alias; no-rule-matched
@@ -2052,15 +2052,15 @@ V-RAPS,infinity,RRmand (/min^^ISO+),,ventilator_setting,unknown,pending,pending,
 V-RAPS,infinity,RRp (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: respiratory rate parameter; needs signal mapping
 V-RAPS,infinity,RRspon (/min^^ISO+),,ventilator_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: spontaneous respiratory rate; needs signal mapping
 V-RAPS,infinity,STANDBY (^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ventilator standby state; needs signal mapping
-V-RAPS,infinity,STI (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ST lead I; needs signal mapping
-V-RAPS,infinity,STII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ST lead II; needs signal mapping
-V-RAPS,infinity,STIII (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ST lead III; needs signal mapping
-V-RAPS,infinity,STV (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-V-RAPS,infinity,STV+ (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: ST segment value? verify lead; needs signal mapping
-V-RAPS,infinity,STaVF (mm^^I),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,1,27,classified,Infinity param: ST aVF; needs signal mapping
-V-RAPS,infinity,STaVF (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ST aVF; needs signal mapping
-V-RAPS,infinity,STaVL (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ST aVL; needs signal mapping
-V-RAPS,infinity,STaVR (mm^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: ST aVR; needs signal mapping
+V-RAPS,infinity,STI (mm^^ISO+),STI,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STII (mm^^ISO+),STII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STIII (mm^^ISO+),STIII,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation; baseline wander removal,pending,normal_range=-0.1 to 0.1mm; clean=<1mm deviation,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STV (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STV+ (mm^^ISO+),STV,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STaVF (mm^^I),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,1,27,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STaVF (mm^^ISO+),STAVF,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STaVL (mm^^ISO+),STAVL,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,STaVR (mm^^ISO+),STAVR,physiological_signal,unknown,mm,1 Hz,yes,reject >2mm elevation,pending,normal_range=-0.1 to 0.1mm,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
 V-RAPS,infinity,Selected agent unit (^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,domain=anesthesia_setting; rule:\bagent\b; needs signal mapping
 V-RAPS,infinity,Sev cons (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\bcons\b; needs signal mapping
 V-RAPS,infinity,Sev tot (mL^^ISO+),,ventilator_setting_extra,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,domain=ventilator_setting_extra; rule:\btot\b; needs signal mapping
@@ -2070,7 +2070,7 @@ V-RAPS,infinity,TC (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pe
 V-RAPS,infinity,Tcase (min^^ISO+),,metadata,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: test/case marker? verify; needs signal mapping
 V-RAPS,infinity,Ti set (s^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,1,27,review,no dictionary alias; no-rule-matched
 V-RAPS,infinity,V'CO2 (mL/min^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,18,10,review,no dictionary alias; no-rule-matched
-V-RAPS,infinity,V'O2 (0.01 L/min^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,18,10,classified,Infinity param: O2 consumption? verify; needs signal mapping
+V-RAPS,infinity,V'O2 (0.01 L/min^^ISO+),VO2,physiological_signal,unknown,mL/min,1 Hz,no,calculated; range check 50-800,pending,normal_range=200-350 mL/min,pending,18,10,auto-mapped,auto-mapped from Infinity standard; verify
 V-RAPS,infinity,VENT TYPE (),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,28,0,review,no dictionary alias; no-rule-matched
 V-RAPS,infinity,VT (mL^^ISO+),TV,physiological_signal,unknown,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,23,5,alias_base,artifacts: circuit disconnect; leak
 V-RAPS,infinity,VTe (mL^^ISO+),TV,pending,pending,mL,1 Hz,no,ventilator-derived; range check 200-1200 mL,pending,normal_range=400-600 (6-8 mL/kg); clean=6-8 mL/kg PBW,pending,24,4,preexisting,artifacts: circuit disconnect; leak
@@ -2087,8 +2087,8 @@ V-RAPS,infinity,etDes (%^^ISO+),ET_DES,pending,pending,%,1 Hz,no,agent analyzer;
 V-RAPS,infinity,etEnf (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,review,no dictionary alias; no-rule-matched
 V-RAPS,infinity,etHal (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,review,no dictionary alias; no-rule-matched
 V-RAPS,infinity,etIso (%^^ISO+),,pending,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,review,no dictionary alias; no-rule-matched
-V-RAPS,infinity,etN2O (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: end-tidal N2O; needs signal mapping
-V-RAPS,infinity,etO2 (%^^ISO+),,physiological_signal,unknown,pending,pending,pending,pending,pending,pending,pending,24,4,classified,Infinity param: end-tidal O2; needs signal mapping
+V-RAPS,infinity,etN2O (%^^ISO+),ETN2O,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-80%,pending,normal_range=0-70%,pending,23,5,auto-mapped,auto-mapped from Infinity standard; verify
+V-RAPS,infinity,etO2 (%^^ISO+),ETO2,physiological_signal,unknown,%,1 Hz,no,agent analyzer; range check 0-100%,pending,normal_range=25-100%,pending,24,4,auto-mapped,auto-mapped from Infinity standard; verify
 V-RAPS,infinity,etPrimA (%^^ISO),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,1,27,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 V-RAPS,infinity,etPrimA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: end-tidal primary agent? verify; needs signal mapping
 V-RAPS,infinity,etSecA (%^^ISO+),,anesthesia_setting,unknown,pending,pending,pending,pending,pending,pending,pending,23,5,classified,Infinity param: end-tidal secondary agent? verify; needs signal mapping

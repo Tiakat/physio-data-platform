@@ -73,6 +73,16 @@ if [[ ! -d "$SEARCH_DIR" ]]; then
     exit 1
 fi
 
+# --- Python environment ---
+# Activate the ML pipeline virtual environment
+VENV_DIR="$HOME/ml-pipeline-venv"
+if [[ -f "$VENV_DIR/bin/activate" ]]; then
+    source "$VENV_DIR/bin/activate"
+    echo "Activated venv: $VENV_DIR"
+else
+    echo "WARNING: venv not found at $VENV_DIR, using system python3"
+fi
+
 echo "Input: $SEARCH_DIR"
 echo "Output: $OUTPUT_DIR"
 

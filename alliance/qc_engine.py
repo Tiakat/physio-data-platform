@@ -49,7 +49,14 @@ class QCEngine:
         """
         Deterministic QC for scalar physiological variables.
         Returns DataFrame with QC columns; NEVER deletes the raw value.
+        Non-numeric series are routed to event QC.
         """
+        # Coerce to numeric; if mostly non-numeric, treat as event/metadata
+        numeric = pd.to_numeric(series, errors="coerce")
+        if numeric.notna().sum() < len(series) * 0.5:
+            return self.qc_event(series, canonical)
+
+        series = numeric
         var = self.get_var(canonical)
         n = len(series)
         out = pd.DataFrame(index=series.index)

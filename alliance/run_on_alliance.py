@@ -44,16 +44,18 @@ def parse_infinity_csv(plaintext: bytes) -> pd.DataFrame:
     Returns DataFrame with canonical column names.
     """
     import io
-    try:
-        df = pd.read_csv(io.BytesIO(plaintext), low_memory=False)
-    except Exception:
-        # Try with different encoding/separator
+    # Dräger exports use semicolon separator
+    for sep in [";", ","]:
         try:
-            df = pd.read_csv(io.BytesIO(plaintext), sep=";",
-                             encoding="latin-1", low_memory=False)
-        except Exception as e:
-            print(f"    Warning: could not parse ({e})")
-            return pd.DataFrame()
+            df = pd.read_csv(io.BytesIO(plaintext), sep=sep, low_memory=False)
+            # Sanity check: need multiple columns
+            if len(df.columns) > 3:
+                break
+        except Exception:
+            continue
+    else:
+        print(f"    Warning: could not parse with ; or , separator")
+        return pd.DataFrame()
 
     # Basic cleanup: strip whitespace from columns
     df.columns = df.columns.str.strip()
@@ -70,23 +72,84 @@ def parse_infinity_csv(plaintext: bytes) -> pd.DataFrame:
     return df
 
 
+def extract_var_name(col: str) -> str:
+    """
+    Extract variable name from Dräger export format.
+    Examples:
+      '"HR (/min^^ISO+)"' → 'HR'
+      '"NBP D (mm(hg)^^ISO+)"' → 'NBP D'
+      '"STII (mm^^ISO+)"' → 'STII'
+      'DEVICENAME' → 'DEVICENAME'
+    """
+    import re
+    # Strip quotes and whitespace
+    c = col.strip().strip('"').strip("'").strip()
+    # Extract part before first '('
+    m = re.match(r'^([^()]+)', c)
+    if m:
+        c = m.group(1).strip()
+    return c
+
+
+# Manual mapping for known Dräger abbreviations → canonical
+DRAGER_ABBR = {
+    "HR": "HR",
+    "PLS": "HR",           # pulse = HR
+    "SPO2": "SPO2",
+    "NBP D": "NBP_DIA",
+    "NBP S": "NBP_SYS",
+    "NBP M": "NBP_MEAN",
+    "MVe": "MVE",
+    "Pplat": "PPLAT",
+    "PEEP": "PEEP",
+    "PIP": "PIP",
+    "RRc": "RR",           # calculated RR
+    "RR": "RR",
+    "inCO2": "INCO2",
+    "etCO2": "ETCO2",
+    "ART D": "ART_DIA",
+    "ART S": "ART_SYS",
+    "ART M": "ART_MEAN",
+    "PVC/min": "PVC",
+    "%PACED": "PACED",
+    "ARR": "ARR",
+    "STI": "STI", "STII": "STII", "STIII": "STIII",
+    "STaVR": "STAVR", "STaVF": "STAVF", "STaVL": "STAVL",
+    "STV": "STV", "STV+": "STV",
+    "VENT TYPE": "VENT_TYPE",
+    "DEVICENAME": "DEVICENAME",
+    "OBSERVATION_DATETIME": "TIMESTAMP",
+    "nr": None,  # row number, skip
+}
+
+
 def map_to_canonical(df: pd.DataFrame, ontology: dict) -> pd.DataFrame:
     """
-    Map raw column names to canonical variables using ontology aliases.
-    For now: exact match on canonical name (case-insensitive).
+    Map Dräger export columns to canonical variables.
+    Handles: '"HR (/min^^ISO+)"' → 'HR'
     """
     canonical_map = {}
     for col in df.columns:
-        col_upper = col.upper().strip()
-        # Direct match
-        if col_upper in ontology:
-            canonical_map[col] = col_upper
-        # Try without common suffixes
-        for suffix in [" (^^ISO+)", "^^ISO+)"]:
-            base = col_upper.replace(suffix, "").strip()
-            if base in ontology:
-                canonical_map[col] = base
+        var = extract_var_name(col)
+        var_upper = var.upper().strip()
+
+        # Try manual abbreviation map (case-insensitive)
+        canon = None
+        for abbr, c in DRAGER_ABBR.items():
+            if abbr.upper() == var_upper:
+                canon = c
                 break
+
+        # Fall back to direct ontology match
+        if canon is None and var_upper in ontology:
+            canon = var_upper
+
+        if canon and canon in ontology:
+            # Handle duplicates (e.g. RRc and RR both → RR)
+            if canon in canonical_map.values():
+                # Keep first, skip duplicate
+                continue
+            canonical_map[col] = canon
 
     # Rename and keep only mapped columns
     mapped = df.rename(columns=canonical_map)
